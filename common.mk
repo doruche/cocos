@@ -12,7 +12,7 @@ GDB := $(CROSS)gdb
 
 # General flags
 CFLAGS := -Wall -Werror -O2 -fno-pic -fno-builtin -ffreestanding -fno-stack-protector -mno-relax
-CFLAGS += -march=rv64gc -mabi=lp64d
+CFLAGS += -march=rv64gc -mabi=lp64d -std=gnu11
 # Critical for kernel to support large address space
 CFLAGS += -mcmodel=medany
 

@@ -1,9 +1,9 @@
 # Makefile for IPC module
 
-include ../../common.mk
+include $(ROOT_DIR)/common.mk
 
 # Crucial parameters
-CFLAGS += -I$(INCLUDE_DIR)
+CFLAGS += -I$(ROOT_DIR)/include
 
 C_SRC := $(wildcard *.c)
 S_SRC := $(wildcard *.S)
@@ -21,4 +21,4 @@ $(MODULE_DIR):
 	$(CC) $(CFLAGS) -c $< -o $(MODULE_DIR)/$@
 
 %.o: %.S
-	$(AS) $(ASFLAGS) -c $< -o $(MODULE_DIR)/$@
+	$(CC) $(CFLAGS) -c $< -o $(MODULE_DIR)/$@

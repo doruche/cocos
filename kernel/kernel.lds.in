@@ -1,6 +1,7 @@
-#include <consts/size.h>
-#include <arch/arch.h>
-#include <arch/layout.h>
+#include <kernel/consts/params.h>
+#include <kernel/arch/riscv.h>
+#include <kernel/arch/board.h>
+#include <kernel/arch/layout.h>
 
 OUTPUT_ARCH(riscv)
 ENTRY(_start);

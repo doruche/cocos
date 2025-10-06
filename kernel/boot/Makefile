@@ -1,9 +1,9 @@
 # Makefile for building boot module
 
-include ../../common.mk
+include $(ROOT_DIR)/common.mk
 
 # Crucial parameters
-CFLAGS += -I$(INCLUDE_DIR)
+CFLAGS += -I$(ROOT_DIR)/include
 
 C_SRC := $(wildcard *.c)
 S_SRC := $(wildcard *.S)

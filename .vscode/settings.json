@@ -1,5 +1,8 @@
 {
     "files.associations": {
-        "sbi.h": "c"
+        "sbi.h": "c",
+        "types.h": "c",
+        "string.h": "c",
+        "printk.h": "c"
     }
 }

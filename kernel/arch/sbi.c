@@ -1,16 +1,14 @@
-#include "arch/sbi.h"
+#include "kernel/arch/sbi.h"
 #include "types.h"
 
 /*
  * SBI (Supervisor Binary Interface) environment call.
  * Adapted from linux kernel: https://elixir.bootlin.com/linux/v6.6.32/source/arch/riscv/kernel/sbi.c
  */
-
-struct sbiret sbi_ecall(int ext, int fid, unsigned long arg0,
-			unsigned long arg1, unsigned long arg2,
-			unsigned long arg3, unsigned long arg4,
-			unsigned long arg5)
-{
+struct sbiret sbi_ecall(i32 ext, i32 fid, u64 arg0,
+			u64 arg1, u64 arg2,
+			u64 arg3, u64 arg4,
+			u64 arg5) {
 	struct sbiret ret;
 
 	register u64 a0 asm ("a0") = (u64)(arg0);
@@ -32,8 +30,8 @@ struct sbiret sbi_ecall(int ext, int fid, unsigned long arg0,
 }
 
 void
-sbi_console_putchar(int ch) {
-    sbi_ecall(SBI_EXT_0_1_CONSOLE_PUTCHAR, 0, (unsigned long)(ch),
+sbi_console_putchar(char ch) {
+    sbi_ecall(SBI_EXT_0_1_CONSOLE_PUTCHAR, 0, (u64)(ch),
           0, 0, 0, 0, 0);
 }
 
@@ -43,7 +41,6 @@ sbi_console_puts(const char* str) {
         sbi_console_putchar(*str++);
     }
 }
-
 
 void
 sbi_shutdown(void) {

@@ -1,4 +1,5 @@
-#include "consts/size.h"
+#include "kernel/consts/params.h"
+#include "kernel/arch/riscv.h"
 
     .section    .text.entry
     .globl      _start
@@ -6,6 +7,7 @@
 _start:
     # cease stack frame propagation from sbi
     mv fp, zero
+    mv ra, zero
 
     # set up boot stack
     # a0 -> mhartid

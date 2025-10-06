@@ -1,9 +1,9 @@
 /*
-    architecture related constants and macros.
-*/
+ * board specific definitions
+ */
 
-#ifndef _COMMON_ARCH_H
-#define _COMMON_ARCH_H 1
+#ifndef _K_COMMON_ARCH_H
+#define _K_COMMON_ARCH_H 1
 
 #ifndef NCPU
     #define NCPU 1

@@ -3,47 +3,38 @@
 include common.mk
 
 # Crucial parameters
-INCLUDE_DIR := include
+ROOT_DIR := .
+
 KERNEL_DIR := kernel
 USER_DIR := uspace
 
 BUILD_DIR := build
 
-KERNEL_LINKER_TEMPLATE := $(KERNEL_DIR)/kernel.lds.in
-KERNEL_LINKER := $(BUILD_DIR)/kernel.lds
+KERNEL_LINKER := $(BUILD_DIR)/kernel/kernel.lds
 
 KERNEL_ELF := $(BUILD_DIR)/kernel.elf
+KERNEL_ASM := $(BUILD_DIR)/kernel.asm
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_MAP := $(BUILD_DIR)/kernel.map
 
-LINKERS := $(KERNEL_LINKER)
+MODULES := kernel uspace libs
 
-MODULES := kernel uspace
-
-OBJS := $(BUILD_DIR)/**/*.o
+OBJS := $(BUILD_DIR)/kernel/*/*.o \
+	$(BUILD_DIR)/libs/*.o
 
 # todo uspace
-.PHONY: all clean kernel run gdb-client gdb-server
+.PHONY: all clean kernel libs run gdb-client gdb-server
 
-all: $(BUILD_DIR) $(LINKERS) $(MODULES)
+all: $(BUILD_DIRS) $(LINKERS) $(MODULES)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LINKER) -o $(KERNEL_ELF) $(OBJS) -Map=$(KERNEL_MAP)
 	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
-	$(OBJDUMP) -d $(KERNEL_ELF) > $(BUILD_DIR)/kernel.asm
-
-$(KERNEL_LINKER): $(KERNEL_LINKER_TEMPLATE)
-# -E: preprocess only
-# -P: inhibit generation of linemarkers
-# -x c: treat input as C code to make preprocessor happy
-# -I: include path
-	$(CC) \
-		-E \
-		-P \
-		-x c \
-		$< -o $@ \
-		-I $(INCLUDE_DIR) # Include path
+	$(OBJDUMP) -d $(KERNEL_ELF) > $(KERNEL_ASM)
 
 $(MODULES):
-	$(MAKE) -C $@ BUILD_DIR=../$(BUILD_DIR) INCLUDE_DIR=../$(INCLUDE_DIR)
+	$(MAKE)		\
+		-C $@	\
+		BUILD_DIR=../$(BUILD_DIR) \
+		ROOT_DIR=../$(ROOT_DIR)
 
 $(BUILD_DIR):
 	mkdir -p $@
