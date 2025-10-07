@@ -4,7 +4,7 @@
 #ifndef _K_MISC_PRINTK_H
 #define _K_MISC_PRINTK_H 1
 
-#include "types.h"
+#include "libs/types.h"
 #include <stdarg.h>
 
 isize printk(const char *fmt, ...);

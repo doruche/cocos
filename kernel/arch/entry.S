@@ -1,5 +1,5 @@
 #include "kernel/consts/params.h"
-#include "kernel/arch/riscv.h"
+#include "kernel/arch/mm.h"
 
     .section    .text.entry
     .globl      _start
@@ -19,4 +19,4 @@ _start:
     add sp, sp, a0
 
     # jump to the world of C!
-    j kstart
+    j arch_init

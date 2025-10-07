@@ -21,4 +21,4 @@ $(MODULE_DIR):
 	$(CC) $(CFLAGS) -c $< -o $(MODULE_DIR)/$@
 
 %.o: %.S
-	$(CC) $(CFLAGS) -c $< -o $(MODULE_DIR)/$@
+	$(CC) $(CFLAGS) -c $< -o $(MODULE_DIR)/$@ -D__DEFONLY__

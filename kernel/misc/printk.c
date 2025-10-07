@@ -10,8 +10,8 @@
 
 #include "kernel/misc/printk.h"
 #include "kernel/arch/sbi.h"
-#include "types.h"
-#include "kernel/misc/panic.h"
+#include "kernel/misc/log.h"
+#include "libs/types.h"
 #include <stdarg.h>
 
 static usize
@@ -76,7 +76,7 @@ print_int(i64 num, u8 base, bool is_signed, bool pad) {
 
     if (pad && total_len < 16) {
         // riscv64
-        for (int k = 0; k < 64 - total_len; k++) {
+        for (int k = 0; k < 16 - total_len; k++) {
             printed_len += print_char('0');
         }
     }

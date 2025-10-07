@@ -6,7 +6,7 @@
 #ifndef _LIBS_STRING_H
 #define _LIBS_STRING_H 1
 
-#include "types.h"
+#include "libs/types.h"
 
 void*   memset(void* s, u8 c, usize n);
 void*   memcpy(void* dest, const void* src, usize n);

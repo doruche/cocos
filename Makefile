@@ -28,7 +28,7 @@ OBJS := $(BUILD_DIR)/kernel/*/*.o \
 all: $(BUILD_DIRS) $(LINKERS) $(MODULES)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LINKER) -o $(KERNEL_ELF) $(OBJS) -Map=$(KERNEL_MAP)
 	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
-	$(OBJDUMP) -d $(KERNEL_ELF) > $(KERNEL_ASM)
+	$(OBJDUMP) -d -S $(KERNEL_ELF) > $(KERNEL_ASM)
 
 $(MODULES):
 	$(MAKE)		\

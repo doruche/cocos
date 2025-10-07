@@ -1,5 +1,5 @@
 #include "kernel/arch/sbi.h"
-#include "types.h"
+#include "libs/types.h"
 
 /*
  * SBI (Supervisor Binary Interface) environment call.
@@ -40,6 +40,11 @@ sbi_console_puts(const char* str) {
     while (*str) {
         sbi_console_putchar(*str++);
     }
+}
+
+void
+sbi_set_timer(u64 timecmp) {
+	sbi_ecall(SBI_EXT_0_1_SET_TIMER, 0, timecmp, 0, 0, 0, 0, 0);
 }
 
 void

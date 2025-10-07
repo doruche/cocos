@@ -4,7 +4,7 @@
  */
 
 #include "libs/string.h"
-#include "types.h"
+#include "libs/types.h"
 
 void*
 memset(void* s, u8 c, usize n) {

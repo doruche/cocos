@@ -5,7 +5,8 @@
 
 #include "kernel/misc/test.h"
 #include "kernel/misc/printk.h"
-#include "kernel/misc/panic.h"
+#include "kernel/misc/log.h"
+#include "kernel/misc/assert.h"
 
 void
 printk_test(void) {
@@ -35,8 +36,8 @@ printk_test(void) {
 void
 panic_test(void) {
     panic("this is a panic test");
-    assert(1 == 2, "1 is not equal to 2");
-    assert_eq(1, 2, "1 is not equal to 2");
-    assert_ne(1, 1, "1 is equal to 1");
+    assert(1 == 2);
+    assert_eq(1, 2);
+    assert_ne(1, 1);
     printk("panic_test: all tests passed (no panic/assert triggered)\n");
 }

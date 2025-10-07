@@ -1,7 +1,8 @@
+#define __DEFONLY__
+
 #include <kernel/consts/params.h>
-#include <kernel/arch/riscv.h>
+#include <kernel/arch/mm.h>
 #include <kernel/arch/board.h>
-#include <kernel/arch/layout.h>
 
 OUTPUT_ARCH(riscv)
 ENTRY(_start);
@@ -20,6 +21,12 @@ SECTIONS {
         __srodata = .;
         *(.rodata .rodata.*)
         __erodata = .;
+    }
+
+    .data : ALIGN(4K) {
+        __sdata = .;
+        *(.data .data.*)
+        __edata = .;
     }
 
     .bss : ALIGN(4K) {

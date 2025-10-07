@@ -11,4 +11,7 @@
     #error "currently only support uniprocessor"
 #endif
 
+#define KERN_BASE   0x80200000
+#define PHYSTOP     0x88000000
+
 #endif

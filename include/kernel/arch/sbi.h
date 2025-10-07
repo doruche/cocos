@@ -5,7 +5,7 @@
 #ifndef _K_ARCH_SBI_H
 #define _K_ARCH_SBI_H 1
 
-#include "types.h"
+#include "libs/types.h"
 
 enum sbi_ext_id {
     SBI_EXT_0_1_SET_TIMER = 0x0,
@@ -25,7 +25,9 @@ struct sbiret sbi_ecall(i32 ext, i32 fid, u64 arg0,
 
 // pure sbi calls
 void    sbi_console_putchar(char ch);
+void    sbi_set_timer(u64 timecmp);
 void    sbi_shutdown(void);
+
 
 // higher level sbi calls
 void    sbi_console_puts(const char* str);

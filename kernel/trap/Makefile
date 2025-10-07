@@ -1,4 +1,4 @@
-# Makefile for building module of miscellaneous kernel components
+# Makefile for trap handling module
 
 include $(ROOT_DIR)/common.mk
 
@@ -10,7 +10,7 @@ S_SRC := $(wildcard *.S)
 SRCS := $(C_SRC) $(S_SRC)
 OBJS := $(C_SRC:.c=.o) $(S_SRC:.S=.o)
 
-MODULE_DIR := $(BUILD_DIR)/misc
+MODULE_DIR := $(BUILD_DIR)/trap
 
 all: $(MODULE_DIR) $(OBJS)
 
