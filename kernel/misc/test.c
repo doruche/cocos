@@ -7,6 +7,7 @@
 #include "kernel/misc/printk.h"
 #include "kernel/misc/log.h"
 #include "kernel/misc/assert.h"
+#include "kernel/mm/pm.h"
 
 void
 printk_test(void) {
@@ -40,4 +41,29 @@ panic_test(void) {
     assert_eq(1, 2);
     assert_ne(1, 1);
     printk("panic_test: all tests passed (no panic/assert triggered)\n");
+}
+
+void
+pm_test(void) {
+    printk("------ test physical memory allocator ------\n");
+
+    ppn_t pages[10];
+    for (int i = 0; i < 10; i++) {
+        pages[i] = palloc();
+        assert(pages[i] != 0);
+        printk("allocated page %d: ppn=%p\n", i, pages[i]);
+    }
+
+    for (int i = 0; i < 10; i++) {
+        pfree(pages[i]);
+        printk("freed page %d: ppn=%p\n", i, pages[i]);
+    }
+
+    for (int i = 0; i < 10; i++) {
+        ppn_t ppn = palloc();
+        assert(ppn != 0);
+        printk("re-allocated page %d: ppn=%p\n", i, ppn);
+    }
+
+    printk("------ test physical memory allocator end ------\n");
 }

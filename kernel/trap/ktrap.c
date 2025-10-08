@@ -43,7 +43,7 @@ ktrap(u64 prev_sp) {
 
     if (scause_is_irq(r_scause())) {
         u64 irq = r_scause() & ~SCAUSE_IRQ_FLAG;
-        trace("IRQ: %s", irq_str(irq));
+        // trace("IRQ: %s", irq_str(irq));
         switch (irq) {
             case SCAUSE_IRQ_TIMER:
                 timer_intr();

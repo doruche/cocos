@@ -8,5 +8,6 @@
 
 void    printk_test(void);
 void    panic_test(void);
+void    pm_test(void);
 
 #endif

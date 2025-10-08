@@ -3,6 +3,10 @@
 
 #define NULL ((void*)0)
 
+#define TAG(name) /* nothing to do, just for readability */
+
+#ifndef __DEFONLY__
+
 #include <stdbool.h>
 typedef unsigned char       u8;
 typedef signed char         i8;
@@ -17,5 +21,12 @@ typedef double              f64;
 
 typedef u64 usize;
 typedef i64 isize;
+
+typedef u64 paddr_t;
+typedef u64 vaddr_t;
+typedef u64 ppn_t;
+typedef u64 vpn_t;
+
+#endif
 
 #endif
