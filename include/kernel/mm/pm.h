@@ -15,7 +15,7 @@ typedef struct _page_run_t {
     u64 ref;
 } page_run_t;
 
-void    palloc_init(bootinfo_t* bootinfo);
+void    pm_init(bootinfo_t* bootinfo);
 ppn_t   palloc(void);
 void   pfree(ppn_t ppn);
 

@@ -13,5 +13,7 @@
         (type *)( (char *)__mptr - offset_of(type,member) );})
 #define array_size(arr) (sizeof(arr) / sizeof((arr)[0]))
 
+#define align_up(size, align) \
+    (((size) + (align) - 1) & ~((align) - 1))
 
 #endif

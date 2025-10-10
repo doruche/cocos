@@ -14,6 +14,9 @@
 #define PGUP(addr) (((addr) + PAGE_MASK) & ~PAGE_MASK)
 #define PGDOWN(addr) ((addr) & ~PAGE_MASK)
 
+#define PPN2PA(ppn) ((ppn) << PAGE_SHIFT)
+#define PA2PPN(pa)  ((pa) >> PAGE_SHIFT)
+
 // we use Sv39 mode
 #define SATP_MODE_SV39 8
 #define SATP(pgtbl) ((SATP_MODE_SV39 << 60) | (((u64)(pgtbl)) >> PAGE_SHIFT))
@@ -44,6 +47,7 @@ typedef struct _pgtbl_t {
 } pgtbl_t;
 
 void    pgtbl_init(pgtbl_t* pgtbl);
+void    pgtbl_destroy(pgtbl_t* pgtbl);
 void    pgtbl_map(pgtbl_t *pgtbl, vpn_t vpn, ppn_t ppn, u64 flags);
 void    pgtbl_unmap(pgtbl_t *pgtbl, vpn_t vpn);
 pte_t*  pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc);

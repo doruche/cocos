@@ -5,19 +5,22 @@
 #include "kernel/arch/timer.h"
 #include "kernel/arch/csr.h"
 #include "kernel/mm/pm.h"
+#include "kernel/mm/vm.h"
 #include "kernel/misc/test.h"
+
 
 void
 kstart(bootinfo_t* bootinfo) {
-    palloc_init(bootinfo);
-    info("palloc initialized.");
-
+    pm_init(bootinfo);
+    info("pm initialized.");
     enable_intr();
+    info("interrupt enabled.");
     timer_init();
-
-    pm_test();
-
-    for(;;);
+    info("timer initialized.");
+    kvms_init(bootinfo);    
+    info("kernel vm space initialized.");
+    
+    for (;;);
 
     unreachable()
 }
