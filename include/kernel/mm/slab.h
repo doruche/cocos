@@ -28,9 +28,11 @@ typedef struct _slab_t {
     // we can't use intrusive list here because we are now
     // building the slab allocator itself, and list_t depends on
     // dynamic memory allocation.
-    // so we just use a simple singly linked list.
+    // so we just use a simple double linked list.
+    struct _slab_t* prev;
     struct _slab_t* next;
     usize nfree;
+    usize nobj; // total number of objects
     obj_t* free_list;
 } slab_t;
 
@@ -39,17 +41,19 @@ typedef struct _slab_t {
 
 
 typedef struct _kmem_cache_t {
-    usize obj_size;
-    usize slab_size; // how many objects in a slab
-    slab_t* partial_slabs;
-    slab_t* free_slabs;
-    slab_t* full_slabs;
+    usize data_size; // object without header
+    // sentinel nodes for slab lists
+    slab_t* partial_slabs; // slabs with some free objects
+    slab_t* free_slabs; // slabs with all objects free
+    slab_t* full_slabs; // slabs with no free objects
 } kmem_cache_t;
 
-kmem_cache_t kmem_cache_create(usize obj_size);
-void kmem_cache_destroy(kmem_cache_t* cache);
-void* kmem_cache_alloc(kmem_cache_t* cache);
-void kmem_cache_free(kmem_cache_t* cache, void* obj);
+kmem_cache_t    kmem_cache_create(usize data_size);
+void            kmem_cache_destroy(kmem_cache_t* cache);
+void*           kmem_cache_alloc(kmem_cache_t* cache);
+void            kmem_cache_free(kmem_cache_t* cache, void* obj);
+
+void            kmem_cache_dump(kmem_cache_t* cache);
 
 #endif
 

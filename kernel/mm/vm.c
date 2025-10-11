@@ -14,7 +14,7 @@ vm_space_t kernel_vms;
 
 void kvms_init(bootinfo_t* bootinfo) {
     vm_init(&kernel_vms);
-    todo();
+    // todo();
 }
 
 void

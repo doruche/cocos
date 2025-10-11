@@ -47,6 +47,8 @@ paddr_t     vm_translate(vm_space_t* vms, vpn_t vpn);
 
 void        vm_area_dump(vm_space_t* vms);
 
+#include "kernel/boot.h"
+
 void        kvms_init(bootinfo_t* bootinfo);
 
 #endif

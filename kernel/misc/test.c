@@ -8,6 +8,7 @@
 #include "kernel/misc/log.h"
 #include "kernel/misc/assert.h"
 #include "kernel/mm/pm.h"
+#include "kernel/mm/slab.h"
 
 void
 printk_test(void) {
@@ -54,7 +55,7 @@ pm_test(void) {
         printk("allocated page %d: ppn=%p\n", i, pages[i]);
     }
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
         pfree(pages[i]);
         printk("freed page %d: ppn=%p\n", i, pages[i]);
     }
@@ -65,5 +66,35 @@ pm_test(void) {
         printk("re-allocated page %d: ppn=%p\n", i, ppn);
     }
 
+    ppn_t refpage = palloc();
+    assert_eq(pm_get_ref(refpage), 1);
+    pm_increase_ref(refpage);
+    pfree(refpage);
+    pfree(refpage);
+    assert_eq(pm_get_ref(refpage), 0);
+    ppn_t newpage = palloc();
+    assert_eq(newpage, refpage); // should be the same page
+
     printk("------ test physical memory allocator end ------\n");
+}
+
+void
+slab_test(void) {
+    printk("------ test slab allocator ------\n");
+
+    kmem_cache_t cache = kmem_cache_create(32);
+    void* objs[1000];
+    for (int i = 0; i < 1000; i++) {
+        objs[i] = kmem_cache_alloc(&cache);
+        assert(objs[i] != NULL);
+        printk("allocated object %d: %p\n", i, objs[i]);
+    }
+    kmem_cache_dump(&cache);
+    for (int i = 0; i < 1000; i++) {
+        kmem_cache_free(&cache, objs[i]);
+        printk("freed object %d: %p\n", i, objs[i]);
+    }
+    kmem_cache_dump(&cache);
+
+    printk("------ test slab allocator end ------\n");
 }
