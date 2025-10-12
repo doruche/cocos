@@ -30,6 +30,9 @@ bool    list_is_empty(list_t* list);
 bool    list_contains(list_t* list, list_elem_t* elem);
 usize   list_length(list_t* list);
 
+#define list_head(name) \
+    static list_t name = { &(name), &(name) }
+
 #define list_entry(ptr, type, member) \
     container_of(ptr, type, member)
 
@@ -41,7 +44,7 @@ usize   list_length(list_t* list);
 #define list_foreach(iter, list) \
     for (list_elem_t* iter = headof(list); iter != sentinelof(list); iter = iter->next)
 
-#define list_foreach_mut(iter, list, next) \
+#define list_foreach_safe(iter, list, next) \
     for (list_elem_t* iter = headof(list), *next = (iter ? iter->next : NULL); \
          iter != sentinelof(list); \
          iter = next, next = iter->next)

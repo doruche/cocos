@@ -31,6 +31,7 @@ typedef struct _slab_t {
     // so we just use a simple double linked list.
     struct _slab_t* prev;
     struct _slab_t* next;
+    usize data_size; // object without header
     usize nfree;
     usize nobj; // total number of objects
     obj_t* free_list;

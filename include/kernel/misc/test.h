@@ -10,5 +10,7 @@ void    printk_test(void);
 void    panic_test(void);
 void    pm_test(void);
 void    slab_test(void);
+void    pgtbl_test(void);
+void    vm_test(void);
 
 #endif

@@ -32,6 +32,8 @@ void    pfree(ppn_t ppn);
 void    pm_increase_ref(ppn_t ppn);
 usize   pm_get_ref(ppn_t ppn);
 
+usize   pm_count_free(void);
+
 
 #endif
 

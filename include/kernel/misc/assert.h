@@ -1,5 +1,5 @@
-#ifndef _K_MISC_PANIC_H
-#define _K_MISC_PANIC_H 1
+#ifndef _K_MISC_ASSERT_H
+#define _K_MISC_ASSERT_H 1
 
 #include "kernel/misc/log.h"
 
@@ -15,7 +15,7 @@
 #define assert(condition) \
     do { \
         if (!(condition)) { \
-            panic("Assertion failed %s: " \
+            panic("Assertion failed '%s': " \
                 , #condition); \
         } \
     } while(0)
@@ -29,7 +29,7 @@
         typeof(x) _x = (x); \
         typeof(y) _y = (y); \
         if(_x != _y) { \
-            panic("Assertion failed %s == %s: " \
+            panic("Assertion failed '%s == %s': " \
                 "\n\t left: %d" \
                 "\n\tright: %d" \
                 , #x, #y, _x, _y); \
@@ -41,11 +41,11 @@
         typeof(x) _x = (x); \
         typeof(y) _y = (y); \
         if(_x == _y) { \
-            panic("Assertion failed %s != %s: " \
+            panic("Assertion failed '%s != %s': " \
                 "\n\t left: %d" \
                 "\n\tright: %d" \
                 , #x, #y, _x, _y); \
         } \
     } while(0)
 
-#endif /* _K_MISC_PANIC_H */
+#endif

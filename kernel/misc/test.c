@@ -9,10 +9,15 @@
 #include "kernel/misc/assert.h"
 #include "kernel/mm/pm.h"
 #include "kernel/mm/slab.h"
+#include "kernel/arch/mm.h"
+#include "kernel/arch/board.h"
+#include "kernel/mm/vm.h"
+#include "libs/string.h"
+#include "kernel/arch/csr.h"
 
 void
 printk_test(void) {
-    printk("------ test printk ------\n");
+    notify("------ test printk ------");
     printk("1. basic string:\n");
     printk("\the quick brown fox jumps over the lazy dog\n");
     printk("\tlorem ipsum dolor sit amet, consectetur adipiscing elit\n");
@@ -32,7 +37,7 @@ printk_test(void) {
     printk("5. mixed:\n");
     printk("\tHello, %s! Your score is %d/%d (0x%x, %b, %o)\n", "Alice", 95, 100, 95, 95, 95);
     printk("6. percent sign: %%\n");
-    printk("------ test printk end ------\n");
+    notify("------ test printk end ------");
 }
 
 void
@@ -46,7 +51,7 @@ panic_test(void) {
 
 void
 pm_test(void) {
-    printk("------ test physical memory allocator ------\n");
+    notify("------ test physical memory allocator ------");
 
     ppn_t pages[10];
     for (int i = 0; i < 10; i++) {
@@ -75,12 +80,12 @@ pm_test(void) {
     ppn_t newpage = palloc();
     assert_eq(newpage, refpage); // should be the same page
 
-    printk("------ test physical memory allocator end ------\n");
+    notify("------ test physical memory allocator end ------");
 }
 
 void
 slab_test(void) {
-    printk("------ test slab allocator ------\n");
+    notify("------ test slab allocator ------");
 
     kmem_cache_t cache = kmem_cache_create(32);
     void* objs[1000];
@@ -96,5 +101,110 @@ slab_test(void) {
     }
     kmem_cache_dump(&cache);
 
-    printk("------ test slab allocator end ------\n");
+    notify("------ test slab allocator end ------");
+}
+
+void
+pgtbl_test(void) {
+    notify("------ test pgtbl ------");
+
+    usize nfree_pages_before = pm_count_free();
+    info("nfree pages before test: %d", nfree_pages_before);
+
+    pgtbl_t* pgtbl = (pgtbl_t*)PN2PA(palloc());
+    pgtbl_init(pgtbl);
+
+    // map some pages
+    for (ppn_t ppn = PA2PN(KERN_BASE); ppn < PA2PN(PHYSTOP); ppn++) {
+        vpn_t vpn = ppn - PA2PN(KERN_BASE);
+        pgtbl_map(pgtbl, vpn, ppn, PTE_V | PTE_R | PTE_W | PTE_X);
+    }
+
+    info("nfree pages after mapping: %d", pm_count_free());
+
+    // check mappings
+    for (vpn_t vpn = 0; vpn < PA2PN(PHYSTOP) - PA2PN(KERN_BASE); vpn++) {
+        ppn_t ppn = pgtbl_lookup(pgtbl, vpn);
+        assert_eq(ppn, vpn + PA2PN(KERN_BASE));
+        pgtbl_unmap(pgtbl, vpn);
+    }
+    info("nfree pages after unmapping: %d", pm_count_free());
+    pgtbl_destroy(pgtbl);
+
+    usize nfree_pages_after = pm_count_free();
+
+    assert_eq(nfree_pages_before, nfree_pages_after);
+    info("nfree pages after test: %d", nfree_pages_after);
+
+    notify("------ test pgtbl end ------");
+}
+
+void
+vm_test(void) {
+    notify("------ test vm ------");
+
+    usize nfree_pages_before = pm_count_free();
+    info("nfree pages before test: %d", nfree_pages_before);
+
+    vm_space_t test_vms;
+    vm_init(&test_vms);
+
+    // map a region of 10 pages
+    vpn_t test_vpn = 0x0; // some arbitrary address
+    ppn_t pages[10] = {0};
+    for (usize i = 0; i < 10; i++) {
+        ppn_t ppn = palloc();
+        pages[i] = ppn;
+        assert_ne(ppn, 0);
+        vm_map(&test_vms, test_vpn + i, ppn, 1, VM_ALLOCATED, VM_READ | VM_WRITE);
+    }
+
+    // identity map kernel space
+    vm_map(
+        &test_vms,
+        PA2PN(KERN_BASE),
+        PA2PN(KERN_BASE),
+        (PHYSTOP - KERN_BASE) / PAGE_SIZE,
+        VM_RESERVED,
+        VM_READ | VM_WRITE | VM_EXEC
+    );
+
+    info("nfree pages after mapping: %d", pm_count_free());
+
+    vm_activate(&test_vms);
+
+    // this should move on without page fault
+    // now check the mappings
+    // just write some data to the mapped region
+    for (usize i = 0; i < 10; i++) {
+        volatile u64* ptr = (u64*)PN2PA(test_vpn + i);
+        for (usize j = 0; j < PAGE_SIZE / sizeof(u64); j++) {
+            ptr[j] = (u64)(i + j);
+        }
+    }
+
+    // verify the data from physical memory
+    for (usize i = 0; i < 10; i++) {
+        volatile u64* ptr = (u64*)PN2PA(pages[i]);
+        for (usize j = 0; j < PAGE_SIZE / sizeof(u64); j++) {
+            assert_eq(ptr[j], (u64)(i + j));
+        }
+    }
+
+    // return to no paging mode
+    flush_tlb();
+    extern vm_space_t kernel_vms;
+    vm_activate(&kernel_vms);
+
+    // test unmapping across areas
+    vm_unmap(&test_vms, test_vpn + 3, 5, true);
+
+    // destroy the vm space
+    vm_destroy(&test_vms);
+    usize nfree_pages_after = pm_count_free();
+    // we use kmem_cache in vm, so the number of free pages may not be the same
+    // but should be close
+    info("nfree pages after test: %d", nfree_pages_after);
+
+    notify("------ test vm end ------");
 }

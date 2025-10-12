@@ -10,5 +10,7 @@
 #define COLOR_GREEN        "\033[32m"
 #define COLOR_YELLOW       "\033[33m"
 #define COLOR_CYAN         "\033[36m"
+#define COLOR_BOLD_CYAN    "\033[1;36m"
+#define COLOR_BOLD_PURPLE  "\033[1;35m"
 
 #endif

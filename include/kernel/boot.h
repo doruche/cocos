@@ -8,7 +8,10 @@
 #include "libs/types.h"
 
 enum memzone_type {
-    MEMZONE_KERNEL = 0,
+    MEMZONE_K_TEXT = 0,
+    MEMZONE_K_RODATA,
+    MEMZONE_K_DATA,
+    MEMZONE_K_BSS,
     MEMZONE_FREE,
     MEMZONE_DEV,
     MEMZONE_NONE,

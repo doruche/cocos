@@ -8,7 +8,7 @@
 /// if this exceeds KERNEL_HEAP_SIZE, we panic.
 static usize nused_pages = 0;
 
-#define SENTINEL_INIT(name) { &(name), &(name), 0, 0, NULL }
+#define SENTINEL_INIT(name) { &(name), &(name), 0, 0, 0, NULL }
 
 static slab_t free_sentinel = SENTINEL_INIT(free_sentinel);
 static slab_t partial_sentinel = SENTINEL_INIT(partial_sentinel);
@@ -37,6 +37,7 @@ slab_push_back(slab_t* list, slab_t* slab) {
     slab_insert(list->prev, list, slab);
 }
 
+#ifdef SLAB_DEBUG
 static bool
 slabs_contains(slab_t* list, slab_t* slab) {
     slab_t* cur = list->next;
@@ -48,10 +49,11 @@ slabs_contains(slab_t* list, slab_t* slab) {
     }
     return false;
 }
+#endif
 
 static void
 slab_remove(slab_t* list, slab_t* slab) {
-#ifdef SLAB_TEST
+#ifdef SLAB_DEBUG
     if (!slabs_contains(list, slab)) {
         panic("slab_remove: slab not in list");
     }
@@ -60,7 +62,7 @@ slab_remove(slab_t* list, slab_t* slab) {
     slab->next->prev = slab->prev;
     slab->prev = NULL;
     slab->next = NULL;
-#ifdef SLAB_TEST
+#ifdef SLAB_DEBUG
     assert(!slabs_contains(list, slab));
 #endif
 }
@@ -85,6 +87,7 @@ slab_init(slab_t* slab, usize data_size) {
     usize aligned_header_size = align_up(sizeof(slab_t), 8);
     u8* alloc_start = (u8*)slab + aligned_header_size;
     usize nobj = (PAGE_SIZE - aligned_header_size) / aligned_obj_size;
+    slab->data_size = data_size;
     slab->nfree = nobj;
     slab->nobj = nobj;
     
@@ -99,7 +102,7 @@ slab_init(slab_t* slab, usize data_size) {
     slab->next = NULL;
     slab->prev = NULL;
 
-#ifdef SLAB_TEST
+#ifdef SLAB_DEBUG
     info("slab_init: addr=%p, data_size=%d, nobj=%d", slab, data_size, nobj);
     info(" first obj at %p", alloc_start);
     info(" last obj at %p", alloc_start + (nobj - 1) * aligned_obj_size);
@@ -146,7 +149,7 @@ kmem_cache_alloc(kmem_cache_t* cache) {
         if (ppn == 0) {
             panic("kmem_cache_alloc: palloc failed");
         }
-        slab = (slab_t*)PPN2PA(ppn);
+        slab = (slab_t*)PN2PA(ppn);
         slab_init(slab, cache->data_size);
     }
 

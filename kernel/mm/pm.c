@@ -22,7 +22,7 @@ ppn_in_zone(pm_zone_t* zone, ppn_t ppn) {
 
 static ppn_t
 run2ppn(pm_zone_t* zone, page_run_t* run) {
-    ppn_t ppn = zone->salloc + ((paddr_t)run - PPN2PA(zone->spagerun)) / sizeof(page_run_t);
+    ppn_t ppn = zone->salloc + ((paddr_t)run - PN2PA(zone->spagerun)) / sizeof(page_run_t);
     assert(ppn_in_zone(zone, ppn));
     return ppn;
 }
@@ -31,7 +31,7 @@ static page_run_t*
 ppn2run(pm_zone_t* zone, ppn_t ppn) {
     assert(ppn_in_zone(zone, ppn));
     usize offset = ppn - zone->salloc;
-    return (page_run_t*)PPN2PA(zone->spagerun) + offset;
+    return (page_run_t*)PN2PA(zone->spagerun) + offset;
 }
 
 static pm_zone_t
@@ -66,6 +66,7 @@ pm_zone_alloc(pm_zone_t* zone) {
     page_run_t* run = zone->freelist;
     zone->freelist = run->next;
     run->next = NULL;
+    assert_eq(run->ref, 0);
     run->ref = 1; // set ref to 1
 
     zone->nfree--;
@@ -98,11 +99,11 @@ pm_init(bootinfo_t* bootinfo) {
             paddr_t smem = PGDOWN(freezone->start);
             paddr_t emem = PGUP(freezone->end);
 
-            pm_zone_t zone = pm_zone_init(PA2PPN(smem), PA2PPN(emem));
+            pm_zone_t zone = pm_zone_init(PA2PN(smem), PA2PN(emem));
 
-            info("pmzone found:\t[%p - %p) - (%d pages)", smem, emem, zone.npages);
-            trace("\tspagerun=%p, salloc=%p, npages=%d, nfree=%d",
-                PPN2PA(zone.spagerun), PPN2PA(zone.salloc), zone.npages, zone.nfree);
+            info("pmzone found:[%p - %p) - (%d pages)", smem, emem, zone.npages);
+            trace("spagerun=%p, salloc=%p, npages=%d, nfree=%d",
+                PN2PA(zone.spagerun), PN2PA(zone.salloc), zone.npages, zone.nfree);
 
             pmzones[npmzones++] = zone;
         } else if (bootinfo->zones[i].type == MEMZONE_NONE) {
@@ -133,7 +134,7 @@ pfree(ppn_t ppn) {
             return;
         }
     }
-    panic("pfree: invalid ppn %p", PPN2PA(ppn));
+    panic("pfree: invalid ppn %p", PN2PA(ppn));
 }
 
 void
@@ -144,11 +145,11 @@ pm_increase_ref(ppn_t ppn) {
             page_run_t* run = ppn2run(zone, ppn);
             assert(run->ref > 0); // can not increase ref of free page
             run->ref++;
-            trace("pm_increase_ref: ppn=%p, ref %d -> %d", PPN2PA(ppn), run->ref - 1, run->ref);
+            trace("pm_increase_ref: ppn=%p, ref %d -> %d", PN2PA(ppn), run->ref - 1, run->ref);
             return;
         }
     }
-    panic("pm_increase_ref: invalid ppn %p", PPN2PA(ppn));
+    panic("pm_increase_ref: invalid ppn %p", PN2PA(ppn));
 }
 
 usize
@@ -160,5 +161,15 @@ pm_get_ref(ppn_t ppn) {
             return run->ref;
         }
     }
-    panic("pm_get_ref: invalid ppn %p", PPN2PA(ppn));
+    panic("pm_get_ref: invalid ppn %p", PN2PA(ppn));
+}
+
+usize
+pm_count_free(void) {
+    usize nfree = 0;
+    for (usize i = 0; i < npmzones; i++) {
+        pm_zone_t* zone = pmzones + i;
+        nfree += zone->nfree;
+    }
+    return nfree;
 }

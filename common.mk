@@ -11,7 +11,7 @@ QEMU := qemu-system-riscv64
 GDB := $(CROSS)gdb
 
 # General flags
-CFLAGS := -Wall -Werror -Wno-error=unused -DSLAB_TEST
+CFLAGS := -Wall -Werror -Wno-error=unused -DPGTBL_DEBUG -DDEBUG
 CFLAGS += -O2 -fno-pic -fno-builtin -ffreestanding -fno-stack-protector -mno-relax -g
 CFLAGS += -march=rv64gc -mabi=lp64d -std=gnu11
 # Critical for kernel to support large address space

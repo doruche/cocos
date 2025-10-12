@@ -16,4 +16,7 @@
 #define align_up(size, align) \
     (((size) + (align) - 1) & ~((align) - 1))
 
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
 #endif

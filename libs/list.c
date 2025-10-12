@@ -59,6 +59,8 @@ list_remove(list_t* list, list_elem_t* elem) {
 #ifdef DEBUG
 // a safety check along with a huge performance hit
     if (!list_contains(list, elem)) {
+        #include "kernel/misc/log.h"
+        warn("list_remove: element not in list");
         return NULL;
     }
 #endif

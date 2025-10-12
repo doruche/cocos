@@ -9,10 +9,11 @@
 #include "kernel/misc/printk.h"
 #include "kernel/arch/sbi.h"
 
-#define COLOR_TRACE COLOR_BOLD_BLACK
-#define COLOR_INFO  COLOR_CYAN
-#define COLOR_WARN  COLOR_YELLOW
-#define COLOR_PANIC COLOR_BOLD_RED
+#define COLOR_TRACE     COLOR_BOLD_BLACK
+#define COLOR_INFO      COLOR_BOLD_CYAN
+#define COLOR_NOTIFY    COLOR_BOLD_PURPLE
+#define COLOR_WARN      COLOR_YELLOW
+#define COLOR_PANIC     COLOR_BOLD_RED
 
 #define trace(fmt, ...) \
     do { \
@@ -24,6 +25,13 @@
 #define info(fmt, ...) \
     do { \
         printk(COLOR_INFO "[INFO|%s:%d]\t", __FILE__, __LINE__); \
+        printk(fmt, ##__VA_ARGS__); \
+        printk("\n" COLOR_RESET); \
+    } while(0)
+
+#define notify(fmt, ...) \
+    do { \
+        printk(COLOR_NOTIFY "[NOTIFY|%s:%d]\t", __FILE__, __LINE__); \
         printk(fmt, ##__VA_ARGS__); \
         printk("\n" COLOR_RESET); \
     } while(0)
