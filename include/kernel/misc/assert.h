@@ -1,7 +1,7 @@
-#ifndef _K_MISC_ASSERT_H
-#define _K_MISC_ASSERT_H 1
+#pragma once
 
 #include "kernel/misc/log.h"
+#include "libs/errno.h"
 
 #define unreachable() \
     panic("unreachable code reached.\n");
@@ -15,7 +15,7 @@
 #define assert(condition) \
     do { \
         if (!(condition)) { \
-            panic("Assertion failed '%s': " \
+            panic("Assertion failed '%s'" \
                 , #condition); \
         } \
     } while(0)
@@ -48,4 +48,14 @@
         } \
     } while(0)
 
-#endif
+
+#define unwrap(x) ({ \
+        isize _ret = (isize)(x); \
+        do { \
+        if (_ret < 0) { \
+            panic("Assertion failed '%s >= 0': " \
+                "\nreturn code: %d (%s)" \
+                , #x, _ret, (_ret == -ENOMEM ? "Out of memory" : \
+                            _ret == -EINVAL ? "Invalid argument" : \
+                            _ret == -EBUSY  ? "Device or resource busy" : "Unknown error")); \
+        } } while(0); _ret; })

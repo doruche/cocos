@@ -145,10 +145,7 @@ kmem_cache_alloc(kmem_cache_t* cache) {
         if (nused_pages >= KERNEL_HEAP_SIZE / PAGE_SIZE) {
             panic("kmem_cache_alloc: out of memory");
         }
-        ppn_t ppn = palloc();
-        if (ppn == 0) {
-            panic("kmem_cache_alloc: palloc failed");
-        }
+        ppn_t ppn = unwrap(palloc_one());
         slab = (slab_t*)PN2PA(ppn);
         slab_init(slab, cache->data_size);
     }

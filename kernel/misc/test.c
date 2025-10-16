@@ -53,32 +53,54 @@ void
 pm_test(void) {
     notify("------ test physical memory allocator ------");
 
+    usize nfree_pages_before = pm_count_free();
+    info("nfree pages before test: %d", nfree_pages_before);
+
     ppn_t pages[10];
+
+    // basic test
+
     for (int i = 0; i < 10; i++) {
-        pages[i] = palloc();
-        assert(pages[i] != 0);
+        pages[i] = unwrap(palloc_one());
         printk("allocated page %d: ppn=%p\n", i, pages[i]);
     }
 
-    for (int i = 0; i < 5; i++) {
+    for (int i = 9; i >= 0; i--) {
         pfree(pages[i]);
         printk("freed page %d: ppn=%p\n", i, pages[i]);
     }
 
     for (int i = 0; i < 10; i++) {
-        ppn_t ppn = palloc();
-        assert(ppn != 0);
+        ppn_t ppn = unwrap(palloc_one());
         printk("re-allocated page %d: ppn=%p\n", i, ppn);
     }
 
-    ppn_t refpage = palloc();
-    assert_eq(pm_get_ref(refpage), 1);
-    pm_increase_ref(refpage);
-    pfree(refpage);
-    pfree(refpage);
-    assert_eq(pm_get_ref(refpage), 0);
-    ppn_t newpage = palloc();
-    assert_eq(newpage, refpage); // should be the same page
+    for (int i = 0; i < 10; i++) {
+        pfree(pages[i]);
+        printk("freed page %d: ppn=%p\n", i, pages[i]);
+    }
+
+    usize nfree_pages_after = pm_count_free();
+    assert_eq(nfree_pages_before, nfree_pages_after);
+
+    // allocate multiple pages
+    for (int i = 0; i < 10; i++) {
+        pages[i] = unwrap(palloc(i * i + 1));
+    }
+
+    pm_dump();
+
+    info("nfree pages after allocating multiple pages: %d", pm_count_free());
+
+    for (int i = 0; i < 10; i++) {
+        pfree(pages[i]);
+    }
+
+    nfree_pages_after = pm_count_free();
+    assert_eq(nfree_pages_before, nfree_pages_after);
+    info("nfree pages after freeing multiple pages: %d", nfree_pages_after);
+
+    pm_dump();
 
     notify("------ test physical memory allocator end ------");
 }
@@ -111,7 +133,7 @@ pgtbl_test(void) {
     usize nfree_pages_before = pm_count_free();
     info("nfree pages before test: %d", nfree_pages_before);
 
-    pgtbl_t* pgtbl = (pgtbl_t*)PN2PA(palloc());
+    pgtbl_t* pgtbl = (pgtbl_t*)PN2PA(unwrap(palloc_one()));
     pgtbl_init(pgtbl);
 
     // map some pages
@@ -152,12 +174,19 @@ vm_test(void) {
     // map a region of 10 pages
     vpn_t test_vpn = 0x0; // some arbitrary address
     ppn_t pages[10] = {0};
+
+    ppn_t ppn = unwrap(palloc(10));
     for (usize i = 0; i < 10; i++) {
-        ppn_t ppn = palloc();
-        pages[i] = ppn;
-        assert_ne(ppn, 0);
-        vm_map(&test_vms, test_vpn + i, ppn, 1, VM_ALLOCATED, VM_READ | VM_WRITE);
-    }
+        pages[i] = ppn + i;
+    }    
+    vm_map(
+        &test_vms,
+        test_vpn,
+        ppn,
+        10,
+        VM_ALLOCATED,
+        VM_READ | VM_WRITE | VM_CONTIGUOUS
+    );
 
     // identity map kernel space
     vm_map(
@@ -196,8 +225,11 @@ vm_test(void) {
     extern vm_space_t kernel_vms;
     vm_activate(&kernel_vms);
 
-    // test unmapping across areas
-    vm_unmap(&test_vms, test_vpn + 3, 5, true);
+    // this should panic. we mapped a VM_CONTIGUOUS area, which
+    // must be unmapped as a whole
+    // vm_unmap(&test_vms, test_vpn + 3, 5, true);
+
+    vm_unmap(&test_vms, test_vpn, VM_NPAGES_WHOLE, true);
 
     // destroy the vm space
     vm_destroy(&test_vms);

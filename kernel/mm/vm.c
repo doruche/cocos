@@ -34,6 +34,9 @@ void kvms_init(bootinfo_t* bootinfo) {
         // as they will be accessed by driver in user space.
         memzone_t* zone = &bootinfo->zones[i];
         vm_area_flags_t flags = 0;
+        // whether the mapping is VM_CONTIGUOUS or not is here not important,
+        // as the physical pages these mappings refer will never be reclaimed.
+        // they are RESERVED type mappings.
         switch (zone->type) {
             case MEMZONE_K_TEXT:
                 flags = VM_READ | VM_EXEC;
@@ -73,8 +76,7 @@ done:
 void
 vm_init(vm_space_t* vms) {
     list_init(&vms->areas);
-    ppn_t pgtbl_ppn = palloc();
-    assert_ne(pgtbl_ppn, 0);
+    ppn_t pgtbl_ppn = unwrap(palloc_one());
     vms->pgtbl = (pgtbl_t*)PN2PA(pgtbl_ppn);
     pgtbl_init(vms->pgtbl);
 }
@@ -131,9 +133,6 @@ vm_map(
     // check for overlapping
     list_foreach(iter, &vms->areas) {
         vm_area_t* area = list_entry(iter, vm_area_t, node);
-        // though whether two areas overlap should be judged by their bitmaps,
-        // but that would always be a bug in our current design,
-        // so we just check their ranges here.
         if (!(vpn + npages <= area->start || vpn >= area->end)) {
             panic("vm_map: overlapping areas");
         }
@@ -175,18 +174,9 @@ vpn_in_area(vpn_t vpn, vm_area_t* area) {
 // NOTE areas list manipulations are also done here!!!
 // do not call vm_area_destroy(), which will cause a recursion!!!
 static void
-vm_unmap_in_area(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
+vm_unmap_in_area(vm_space_t* vms, vm_area_t* area, vpn_t vpn, usize npages, bool free_pages) {
     assert(npages > 0);
 
-    // find the area
-    vm_area_t* area = NULL;
-    list_foreach(iter, &vms->areas) {
-        vm_area_t* a = list_entry(iter, vm_area_t, node);
-        if (vpn_in_area(vpn, a)) {
-            area = a;
-            break;
-        }
-    }
     if (vpn + npages > area->end) {
         panic("vm_unmap: unmapping beyond area end");
     }
@@ -214,7 +204,7 @@ vm_unmap_in_area(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
                 pfree(ppn);
             }
         }
-        list_remove(&vms->areas, &area->node);
+        list_remove(&area->node);
         kmem_cache_free(&area_cache, area);
     } else if (area->start == vpn && area->end > unmap_end) {
         // case 2, shrink from the start
@@ -261,7 +251,7 @@ vm_unmap_in_area(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
         right->flags = area->flags;
 
         // remove old area
-        list_remove(&vms->areas, &area->node);
+        list_remove(&area->node);
         kmem_cache_free(&area_cache, area);
         // insert new areas
         list_push_back(&vms->areas, &left->node);
@@ -270,8 +260,9 @@ vm_unmap_in_area(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
 }
 
 // this function can unmap across multiple areas
-void
-vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
+// NOTE all areas should be without flag VM_CONTIGUOUS
+static void
+vm_unmap_partial(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
     assert(npages > 0);
 
     while (npages > 0) {
@@ -281,6 +272,7 @@ vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
             vm_area_t* a = list_entry(iter, vm_area_t, node);
             if (vpn_in_area(vpn, a)) {
                 area = a;
+                assert((area->flags & VM_CONTIGUOUS) == 0);
                 break;
             }
         }
@@ -290,10 +282,58 @@ vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
 
         // unmap as much as we can in this area
         usize to_unmap = min(npages, area->end - vpn);
-        vm_unmap_in_area(vms, vpn, to_unmap, free_pages);
+        vm_unmap_in_area(vms, area, vpn, to_unmap, free_pages);
 
         vpn += to_unmap;
         npages -= to_unmap;
+    }
+}
+
+static void
+vm_unmap_whole(vm_space_t* vms, vpn_t start, bool free_pages) {
+    vm_area_t* area = NULL;
+    list_foreach(iter, &vms->areas) {
+        vm_area_t* a = list_entry(iter, vm_area_t, node);
+        if (vpn_in_area(start, a)) {
+            area = a;
+            break;
+        }
+    }
+    assert_eq(start, area->start);
+    assert((area->flags & VM_CONTIGUOUS) != 0);
+
+    ppn_t ppn = vm_translate(vms, start);
+    if (free_pages) {
+        pfree(ppn);
+    }
+    for (vpn_t v = area->start; v < area->end; v++) {
+        pgtbl_unmap(vms->pgtbl, v);
+    }
+    list_remove(&area->node);
+    kmem_cache_free(&area_cache, area);
+}
+
+void
+vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
+    vm_area_t* area = NULL;
+    list_foreach(iter, &vms->areas) {
+        vm_area_t* a = list_entry(iter, vm_area_t, node);
+        if (vpn_in_area(vpn, a)) {
+            area = a;
+            break;
+        }
+    }
+    if (area == NULL) {
+        panic("vm_unmap: area not found");
+    }
+    // if the area is contiguous, we must unmap the whole area
+    // thus npages is not used
+    assert_eq((area->flags & VM_CONTIGUOUS) != 0, npages == VM_NPAGES_WHOLE);
+
+    if (npages == 0) {
+        vm_unmap_whole(vms, vpn, free_pages);
+    } else {
+        vm_unmap_partial(vms, vpn, npages, free_pages);
     }
 }
 

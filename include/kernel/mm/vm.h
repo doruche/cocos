@@ -1,10 +1,7 @@
 /*
  * virtual memory management
  */
-#ifndef _K_MM_VM_H
-#define _K_MM_VM_H 1
-
-#ifndef __DEFONLY__
+#pragma once
 
 #include "libs/types.h"
 #include "libs/list.h"
@@ -25,6 +22,8 @@ typedef u64 vm_area_flags_t;
 #define VM_USER  (1L << 3)
 #define VM_FAKE  (1L << 4) // fake mapping, e.g. for guard page
 
+#define VM_CONTIGUOUS (1L << 16) // request contiguous physical pages
+
 typedef struct _vm_area_t {
     // [start, end)
     vpn_t start;
@@ -44,7 +43,15 @@ typedef struct _vm_space_t {
 // currently we do not do any error detection / recovery for simplicity
 void        vm_init(vm_space_t* vms);
 void        vm_destroy(vm_space_t* vms);
-void        vm_map(vm_space_t* vms, vpn_t vpn, ppn_t ppn, usize npages, enum vm_area_type type, vm_area_flags_t flags);
+void        vm_map(
+    vm_space_t* vms, 
+    vpn_t vpn, 
+    ppn_t ppn, 
+    usize npages,
+#define VM_NPAGES_WHOLE 0 
+    enum vm_area_type type, 
+    vm_area_flags_t flags
+);
 void        vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages);
 ppn_t       vm_translate(vm_space_t* vms, vpn_t vpn);
 void        vm_activate(vm_space_t* vms);
@@ -54,9 +61,5 @@ void        kvms_init(bootinfo_t* bootinfo);
 #ifdef VM_DEBUG
 
 void        vm_dump(vm_space_t* vms);
-
-#endif
-
-#endif
 
 #endif

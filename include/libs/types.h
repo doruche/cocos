@@ -23,6 +23,7 @@ typedef u64 usize;
 typedef i64 isize;
 
 typedef u64 paddr_t;
+typedef u64 kaddr_t;
 typedef u64 vaddr_t;
 typedef u64 ppn_t;
 typedef u64 vpn_t;

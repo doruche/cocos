@@ -14,9 +14,23 @@
 #define array_size(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 #define align_up(size, align) \
-    (((size) + (align) - 1) & ~((align) - 1))
+    (((u64)(size) + (u64)(align) - 1) & ~((u64)(align) - 1))
+
+#define loop while(1)
+
+/// bit should be declared as bool
+#define bit_traverse(bitmap, nbits, byte_cursor, bit_cursor) \
+    for (usize byte_cursor = 0; byte_cursor < ((nbits) + 7) / 8; byte_cursor++) \
+        for (usize bit_cursor = 0; \
+            bit_cursor < 8 && (byte_cursor * 8 + bit_cursor) < (nbits) \
+            ; bit_cursor++) \
+        // body. byte and bit are valid here
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
+
+#define __noreturn      __attribute__((noreturn))
+#define __section(name) __attribute__((section(name)))
+#define __maybe_unused  __attribute__((unused))
 
 #endif

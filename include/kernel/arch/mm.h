@@ -2,8 +2,7 @@
  * riscv architecture specific definitions and macros
  */
 
-#ifndef _K_ARCH_MM_H
-#define _K_ARCH_MM_H 1
+#pragma once
 
 #include "libs/types.h"
 
@@ -64,8 +63,6 @@ u64 pte_vmflag2archflag(vm_area_flags_t flags);
 
 #ifdef PGTBL_DEBUG
     void    pgtbl_dump(pgtbl_t *pgtbl);
-#endif
-
 #endif
 
 #endif

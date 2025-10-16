@@ -40,7 +40,6 @@ typedef struct _slab_t {
 #define OBJ_SLAB(obj) \
     ((slab_t*)PGDOWN((usize)(obj)))
 
-
 typedef struct _kmem_cache_t {
     usize data_size; // object without header
     // sentinel nodes for slab lists

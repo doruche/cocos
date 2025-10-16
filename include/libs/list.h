@@ -25,7 +25,7 @@ void    list_push_front(list_t* list, list_elem_t* elem);
 void    list_push_back(list_t* list, list_elem_t* elem);
 list_elem_t* list_pop_front(list_t* list);
 list_elem_t* list_pop_back(list_t* list);
-list_elem_t* list_remove(list_t* list, list_elem_t* elem);
+list_elem_t* list_remove(list_elem_t* elem);
 bool    list_is_empty(list_t* list);
 bool    list_contains(list_t* list, list_elem_t* elem);
 usize   list_length(list_t* list);

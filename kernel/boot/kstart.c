@@ -9,6 +9,7 @@
 #include "kernel/mm/kmalloc.h"
 #include "kernel/misc/test.h"
 
+isize errno = 0;
 
 void
 kstart(bootinfo_t* bootinfo) {

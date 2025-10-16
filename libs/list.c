@@ -54,16 +54,7 @@ list_length(list_t* list) {
 }
 
 list_elem_t*
-list_remove(list_t* list, list_elem_t* elem) {
-
-#ifdef DEBUG
-// a safety check along with a huge performance hit
-    if (!list_contains(list, elem)) {
-        #include "kernel/misc/log.h"
-        warn("list_remove: element not in list");
-        return NULL;
-    }
-#endif
+list_remove(list_elem_t* elem) {
 
     elem->prev->next = elem->next;
     elem->next->prev = elem->prev;
@@ -79,7 +70,7 @@ list_pop_front(list_t* list) {
     if (list_is_empty(list)) {
         return NULL;
     }
-    return list_remove(list, headof(list));
+    return list_remove(headof(list));
 }
 
 list_elem_t*
@@ -87,5 +78,5 @@ list_pop_back(list_t* list) {
     if (list_is_empty(list)) {
         return NULL;
     }
-    return list_remove(list, tailof(list));
+    return list_remove(tailof(list));
 }

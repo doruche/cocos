@@ -1,7 +1,8 @@
+
     .section .text
     .globl ktrap_trampoline
     .type ktrap_trampoline, @function
-    .align  4
+    .p2align 2
 ktrap_trampoline:
     # for kernel trap, we just push registers onto current stack
     addi sp, sp, -32 * 8
@@ -75,3 +76,64 @@ ktrap_trampoline:
 
     addi sp, sp, 32 * 8
     sret
+
+    .section .text.trampoline
+    .globl u_trampoline_entry
+    .type u_trampoline_entry, @function
+    .balign 4096
+u_trampoline_entry:
+    # we hold pointer to arch_task_t in sscratch
+    csrrw sp, sscratch, sp
+    # now sp -> arch_task_t, sscratch -> user sp
+    
+    # save registers
+    sd ra, 1*8(sp)
+    # do not save sp here
+    sd gp, 3*8(sp)
+    sd tp, 4*8(sp)
+    sd t0, 5*8(sp)
+    sd t1, 6*8(sp)
+    sd t2, 7*8(sp)
+    sd s0, 8*8(sp)
+    sd s1, 9*8(sp)
+    sd a0, 10*8(sp)
+    sd a1, 11*8(sp)
+    sd a2, 12*8(sp)
+    sd a3, 13*8(sp)
+    sd a4, 14*8(sp)
+    sd a5, 15*8(sp)
+    sd a6, 16*8(sp)
+    sd a7, 17*8(sp)
+    sd s2, 18*8(sp)
+    sd s3, 19*8(sp)
+    sd s4, 20*8(sp)
+    sd s5, 21*8(sp)
+    sd s6, 22*8(sp)
+    sd s7, 23*8(sp)
+    sd s8, 24*8(sp)
+    sd s9, 25*8(sp)
+    sd s10, 26*8(sp)
+    sd s11, 27*8(sp)
+    sd t3, 28*8(sp)
+    sd t4, 29*8(sp)
+    sd t5, 30*8(sp)
+    sd t6, 31*8(sp)
+
+    # store user sp
+    csrr t0, sscratch
+    sd t0, 2*8(sp)
+
+    # load kernel sp
+    # we've put kernel sp in scratch before.
+    ld sp, 32*8(sp)
+
+    j utrap
+
+
+
+    .section .text.trampoline
+    .globl u_trampoline_ret
+    .type u_trampoline_ret, @function
+    .align  4
+u_trampoline_ret:
+    # todo
