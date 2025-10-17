@@ -2,8 +2,7 @@
  * custom parameters about the operating system
  */
 
-#ifndef _K_COMMON_SIZE_H
-#define _K_COMMON_SIZE_H 1
+#pragma once
 
 #include "kernel/arch/mm.h"
 
@@ -15,4 +14,3 @@
 
 #define KSTACK_SIZE (2 * PAGE_SIZE) // 8KB kernel stack per process
 
-#endif

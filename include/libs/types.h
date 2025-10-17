@@ -4,6 +4,10 @@
 #define NULL ((void*)0)
 
 #define TAG(name) /* nothing to do, just for readability */
+// putting these tags here is inappropriate.
+// should migrate them later.
+#define __user TAG(user)
+#define __root TAG(root)
 
 #ifndef __DEFONLY__
 
@@ -23,8 +27,9 @@ typedef u64 usize;
 typedef i64 isize;
 
 typedef u64 paddr_t;
-typedef u64 kaddr_t;
 typedef u64 vaddr_t;
+typedef u64 kaddr_t;
+typedef u64 uaddr_t;
 typedef u64 ppn_t;
 typedef u64 vpn_t;
 

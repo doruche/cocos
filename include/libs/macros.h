@@ -15,6 +15,10 @@
 
 #define align_up(size, align) \
     (((u64)(size) + (u64)(align) - 1) & ~((u64)(align) - 1))
+#define align_down(size, align) \
+    ((u64)(size) & ~((u64)(align) - 1))
+#define is_aligned(size, align) \
+    (bool)(((u64)(size) & ((u64)(align) - 1)) == 0)
 
 #define loop while(1)
 

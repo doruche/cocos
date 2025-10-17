@@ -2,34 +2,41 @@
  * context related definitions
  */
 
-#ifndef _K_ARCH_CTX_H
-#define _K_ARCH_CTX_H 1
+#pragma once
 
 #include "libs/types.h"
+#include "kernel/mm/vm.h"
+#include "kernel/arch/board.h"
+
+#define TRAMPOLINE  (VIRSTOP - PAGE_SIZE)
 
 typedef struct _ctx_t {
     kaddr_t ra;
     kaddr_t sp;
-    u64 s[12];
+    u64     s[12];
 } ctx_t;
 
 typedef struct _trapframe_t {
-    u64 x[32];
-    u64 sepc;
-    u64 sstatus;
-    u64 sscratch;
+    u64     x[32];
+    uaddr_t sepc;
+    u64     sstatus;
+    u64     sscratch;
 } trapframe_t;
 
 typedef struct _arch_ctx_t {
-    trapframe_t* tf;    // put this first for assembly access
-    u64 scratch; // we put a scratch memory here for convienient access
+    trapframe_t tf;    // put this first for assembly access
+    u64 scratch; // put this right after tf for assembly access
     ctx_t ctx;
+
+    // bookkeeping info
+    ppn_t ustack_bottom;
+    ppn_t kstack_bottom;
 } arch_ctx_t;
 
-void    ctx_init(ctx_t* ctx, void (*entry)(void), kaddr_t stack_top);
-void    ctx_switch(ctx_t* prev, ctx_t* next);
+void        ctx_mm_init(void);
 
-void    arch_ctx_init(arch_ctx_t* actx, void (*entry)(void));
-void    arch_ctx_destroy(arch_ctx_t* actx);
+void        ctx_init(ctx_t* ctx, kaddr_t entry, kaddr_t mapped_stack_top);
+void        ctx_switch(ctx_t* prev, ctx_t* next);
 
-#endif
+arch_ctx_t* actx_init(vm_space_t* vms, kaddr_t mapped_kstack_top, kaddr_t entry, uaddr_t sepc);
+void        actx_destroy(arch_ctx_t* actx);

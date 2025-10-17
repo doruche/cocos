@@ -69,6 +69,10 @@ void kvms_init(bootinfo_t* bootinfo) {
         );
     }
 done:
+    // note that we're still in booting stage (we're on boot_stack right now).
+    // we'll switch to scheduler context just before running user tasks,
+    // when we will use kernel_vms again for mapping TRAMPOLINE and scheduler kstack.
+
     flush_tlb();
     vm_activate(&kernel_vms);
 }

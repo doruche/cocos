@@ -121,7 +121,6 @@ pte_archflag2vmflag(u64 flags) {
     return vmflags;
 }
 
-// sv39
 u64
 pte_vmflag2archflag(vm_area_flags_t flags) {
     u64 archflags = 0;
@@ -130,7 +129,7 @@ pte_vmflag2archflag(vm_area_flags_t flags) {
     if (flags & VM_WRITE) archflags |= PTE_W;
     if (flags & VM_EXEC) archflags |= PTE_X;
     if (flags & VM_USER) archflags |= PTE_U;
-    if (flags & VM_FAKE) archflags &= ~PTE_V; // fake mapping, not valid
+    if (flags & VM_FAKE) archflags &= ~PTE_V; // fake mapping means not valid
 
     return archflags;
 }

@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "mm.h": "c",
-        "pm.h": "c"
+        "pm.h": "c",
+        "types.h": "c",
+        "macros.h": "c"
     }
 }

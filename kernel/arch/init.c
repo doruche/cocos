@@ -10,6 +10,7 @@
 #include "kernel/misc/assert.h"
 #include "kernel/arch/board.h"
 #include "kernel/arch/mm.h"
+#include "kernel/arch/ctx.h"
 
 static bootinfo_t bootinfo;
 
@@ -76,10 +77,14 @@ arch_init(void) {
     w_sstatus(r_sstatus() | SPP_USER);
     w_sie(r_sie() & ~(SIE_SSIE | SIE_STIE | SIE_SEIE));
     w_stvec(STVEC((u64)ktrap_trampoline, STVEC_MODE_DIRECT));
-    info("interrupt done.");
+    info("interrupt disabled.");
 
     bootinfo_ctor();
     info("bootinfo constructed.");
+
+    ctx_mm_init();
+    w_sstatus(r_sstatus() | SSTATUS_SUM);   // enable supervisor access user memory
+    info("context management initialized.");    
 
     kstart(&bootinfo);
 }

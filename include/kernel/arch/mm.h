@@ -34,9 +34,6 @@
 #define PTE2PA(pte) (((pte) >> 10) << PAGE_SHIFT)
 #define PTE2PPN(pte) ((pte) >> 10)
 
-#define __user TAG(user)
-#define __root TAG(root)
-
 #ifndef __DEFONLY__
 
 static inline void
@@ -61,7 +58,6 @@ typedef u64 vm_area_flags_t;    // ? weird, redefine it here to avoid circular i
 
 vm_area_flags_t pte_archflag2vmflag(u64 flags);
 u64 pte_vmflag2archflag(vm_area_flags_t flags);
-
 
 #ifdef PGTBL_DEBUG
     void    pgtbl_dump(pgtbl_t *pgtbl);

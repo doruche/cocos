@@ -47,6 +47,7 @@ rdtime() {
 #define SSTATUS_SIE     (1L << 1)
 #define SSTATUS_SPIE    (1L << 5)
 #define SSTATUS_SPP     (1L << 8)
+#define SSTATUS_SUM     (1L << 18)
 
 #define SPP_USER       0
 #define SPP_SUPERVISOR 1
