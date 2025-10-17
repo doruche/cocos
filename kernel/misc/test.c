@@ -172,17 +172,30 @@ vm_test(void) {
     vm_init(&test_vms);
 
     // map a region of 10 pages
-    vpn_t test_vpn = 0x0; // some arbitrary address
+    vpn_t test_vpn1 = 0x0; // some arbitrary address
     ppn_t pages[10] = {0};
 
-    ppn_t ppn = unwrap(palloc(10));
     for (usize i = 0; i < 10; i++) {
-        pages[i] = ppn + i;
+        ppn_t ppn = unwrap(palloc_one());
+        pages[i] = ppn;
     }    
+    for (usize i = 0; i < 10; i++) {
+        vm_map(
+            &test_vms,
+            test_vpn1 + i,
+            pages[i],
+            1,
+            VM_ALLOCATED,
+            VM_READ | VM_WRITE
+        );
+    }
+
+    vpn_t test_vpn2 = 0x10000;
+    ppn_t huge_area_ppn = unwrap(palloc(10));
     vm_map(
         &test_vms,
-        test_vpn,
-        ppn,
+        test_vpn2,
+        huge_area_ppn,
         10,
         VM_ALLOCATED,
         VM_READ | VM_WRITE | VM_CONTIGUOUS
@@ -202,11 +215,13 @@ vm_test(void) {
 
     vm_activate(&test_vms);
 
-    // this should move on without page fault
-    // now check the mappings
     // just write some data to the mapped region
+    // now check the mappings
+    // this should move on without page fault
+
+    // 1. check the first mapped region
     for (usize i = 0; i < 10; i++) {
-        volatile u64* ptr = (u64*)PN2PA(test_vpn + i);
+        volatile u64* ptr = (u64*)PN2PA(test_vpn1 + i);
         for (usize j = 0; j < PAGE_SIZE / sizeof(u64); j++) {
             ptr[j] = (u64)(i + j);
         }
@@ -220,6 +235,16 @@ vm_test(void) {
         }
     }
 
+    // 2. check the huge contiguous mapped region
+    volatile u64* ptr = (u64*)PN2PA(test_vpn2);;
+    for (usize i = 0; i < 10 * PAGE_SIZE / sizeof(u64); i++) {
+        ptr[i] = (u64)i;
+    }
+    volatile u64* phys_ptr = (u64*)PN2PA(huge_area_ppn);
+    for (usize i = 0; i < 10 * PAGE_SIZE / sizeof(u64); i++) {
+        assert_eq(phys_ptr[i], (u64)i);
+    }
+
     // return to no paging mode
     flush_tlb();
     extern vm_space_t kernel_vms;
@@ -227,9 +252,12 @@ vm_test(void) {
 
     // this should panic. we mapped a VM_CONTIGUOUS area, which
     // must be unmapped as a whole
-    // vm_unmap(&test_vms, test_vpn + 3, 5, true);
+    // vm_unmap(&test_vms, test_vpn2 + 3, 5, true);
 
-    vm_unmap(&test_vms, test_vpn, VM_NPAGES_WHOLE, true);
+    for (usize i = 0; i < 5; i++) {
+        // unmap 5 pages manually
+        vm_unmap(&test_vms, test_vpn1 + i, 1, true);
+    }
 
     // destroy the vm space
     vm_destroy(&test_vms);
@@ -237,6 +265,7 @@ vm_test(void) {
     // we use kmem_cache in vm, so the number of free pages may not be the same
     // but should be close
     info("nfree pages after test: %d", nfree_pages_after);
+    assert_eq(nfree_pages_before, nfree_pages_after);
 
     notify("------ test vm end ------");
 }

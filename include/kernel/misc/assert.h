@@ -29,7 +29,7 @@
         typeof(x) _x = (x); \
         typeof(y) _y = (y); \
         if(_x != _y) { \
-            panic("Assertion failed '%s == %s': " \
+            panic("Assertion failed '(%s) == (%s)': " \
                 "\n\t left: %d" \
                 "\n\tright: %d" \
                 , #x, #y, _x, _y); \
@@ -41,7 +41,7 @@
         typeof(x) _x = (x); \
         typeof(y) _y = (y); \
         if(_x == _y) { \
-            panic("Assertion failed '%s != %s': " \
+            panic("Assertion failed '(%s) != (%s)': " \
                 "\n\t left: %d" \
                 "\n\tright: %d" \
                 , #x, #y, _x, _y); \
@@ -53,7 +53,7 @@
         isize _ret = (isize)(x); \
         do { \
         if (_ret < 0) { \
-            panic("Assertion failed '%s >= 0': " \
+            panic("Assertion failed '(%s) >= 0': " \
                 "\nreturn code: %d (%s)" \
                 , #x, _ret, (_ret == -ENOMEM ? "Out of memory" : \
                             _ret == -EINVAL ? "Invalid argument" : \

@@ -86,12 +86,17 @@ vm_area_destroy(vm_space_t* vms, vm_area_t* area) {
     trace("destroying vm area [%lx, %lx) type=%d flags=%lx",
         PN2PA(area->start), PN2PA(area->end), area->type, area->flags);
     
+    usize npages = area->end - area->start;
+    if (area->flags & VM_CONTIGUOUS) {
+        npages = VM_NPAGES_WHOLE;
+    }
+
     switch (area->type) {
         case VM_RESERVED:
-            vm_unmap(vms, area->start, area->end - area->start, false);
+            vm_unmap(vms, area->start, npages, false);
             break;
         case VM_ALLOCATED:
-            vm_unmap(vms, area->start, area->end - area->start, true);
+            vm_unmap(vms, area->start, npages, true);
             break;
         default:
             unreachable();
@@ -99,7 +104,9 @@ vm_area_destroy(vm_space_t* vms, vm_area_t* area) {
 
     // free area struct
     // these are currently handled in vm_unmap()
+    // however in an ideal design unmapping and area destruction should be decoupled.
     // we shall refactor this ugly design later.
+    //
     // list_remove(&vms->areas, &area->node);
     // kmem_cache_free(&area_cache, area);
 }

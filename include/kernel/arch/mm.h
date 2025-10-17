@@ -13,7 +13,9 @@
 #define PGUP(addr) (((addr) + PAGE_MASK) & ~PAGE_MASK)
 #define PGDOWN(addr) ((addr) & ~PAGE_MASK)
 
+// convert page number to page address
 #define PN2PA(ppn) ((ppn) << PAGE_SHIFT)
+// convert page address to page number
 #define PA2PN(pa)  ((pa) >> PAGE_SHIFT)
 
 // we use Sv39 mode
