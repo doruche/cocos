@@ -17,3 +17,5 @@
 
 #define KSTACK_SIZE (2 * PAGE_SIZE) // 8KB kernel stack per process
 
+#define TASK_NAME_MAX_LEN 32
+

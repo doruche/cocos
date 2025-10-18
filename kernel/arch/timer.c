@@ -33,6 +33,7 @@ timer_init(void) {
 
 void
 timer_intr(void) {
+    // todo: detect double claim
     trace("timer interrupt!");
     set_next_timer();
 }

@@ -24,7 +24,7 @@ kmem_cache_t area_cache;
 // list_head(vm_spaces);
 
 void kvms_init(bootinfo_t* bootinfo) {
-    area_cache = kmem_cache_create(sizeof(vm_area_t));
+    kmem_cache_create(&area_cache, "vm_area_cache", sizeof(vm_area_t));
 
     vm_init(&kernel_vms);
 
@@ -65,7 +65,7 @@ void kvms_init(bootinfo_t* bootinfo) {
             PA2PN(zone->start),
             (zone->end - zone->start) / PAGE_SIZE,
             VM_RESERVED,
-            flags
+            flags | VM_BASE
         );
         info("mapped kernel memory zone [%lx, %lx) flags=%c%c%c",
             zone->start, zone->end,
@@ -130,7 +130,9 @@ vm_destroy(vm_space_t* vms) {
     }
 
     assert(vms->areas.next == &vms->areas); // all areas should be destroyed
+    notify("free pages before destroying pgtbl: %ld", pm_count_free()); 
     pgtbl_destroy(vms->pgtbl); // and all mappings should be removed
+    notify("free pages after destroying pgtbl: %ld", pm_count_free());
 }
 
 /// create a new vm area and map it
@@ -144,7 +146,13 @@ vm_map(
     enum vm_area_type type,
     vm_area_flags_t flags
 ) {
-    assert(npages > 0);
+
+    if (npages == VM_NPAGES_WHOLE) {
+        if (!(flags & VM_CONTIGUOUS)) {
+            warn("vm_map: VM_NPAGES_WHOLE used without VM_CONTIGUOUS flag");
+            return;
+        }
+    }
     assert(type >= VM_RESERVED && type <= VM_ALLOCATED);
     if (flags & VM_FAKE) {
         assert(type == VM_RESERVED); // fake mappings can only be reserved
@@ -352,9 +360,18 @@ vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages) {
     assert_eq((area->flags & VM_CONTIGUOUS) != 0, npages == VM_NPAGES_WHOLE);
 
     if (npages == 0) {
+        usize prev_free_pages = pm_count_free();
         vm_unmap_whole(vms, vpn, free_pages);
+        usize after_free_pages = pm_count_free();
+        notify("contiguous vm_unmap freed %ld pages",
+            after_free_pages - prev_free_pages);
     } else {
+        usize prev_free_pages = pm_count_free();
+        info("to unmap [%lx, %lx) partially", PN2PA(vpn), PN2PA(vpn + npages));
         vm_unmap_partial(vms, vpn, npages, free_pages);
+        usize after_free_pages = pm_count_free();
+        notify("partial vm_unmap freed %ld pages",
+            after_free_pages - prev_free_pages);
     }
 }
 
@@ -367,6 +384,26 @@ void
 vm_activate(vm_space_t* vms) {
     // set the root page table
     pgtbl_activate(vms->pgtbl);
+}
+
+// only copy PTEs of root page table level,
+// i.e. a shallow copy.
+// use this carefully!!!
+void
+vm_copy_mappings(vm_space_t* dst, vm_space_t* src) {
+    for (usize i = 0; i < 512; i++) {
+        dst->pgtbl->entries[i] = src->pgtbl->entries[i];
+    }
+    // copy areas list
+    list_foreach(iter, &src->areas) {
+        vm_area_t* area = list_entry(iter, vm_area_t, node);
+        vm_area_t* new_area = kmem_cache_alloc(&area_cache);
+        *new_area = *area;
+        new_area->node.prev = NULL;
+        new_area->node.next = NULL;
+        new_area->type = VM_RESERVED; // avoid double free
+        list_push_back(&dst->areas, &new_area->node);
+    }
 }
 
 #ifdef DEBUG

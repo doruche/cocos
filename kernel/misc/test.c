@@ -109,7 +109,8 @@ void
 slab_test(void) {
     notify("------ test slab allocator ------");
 
-    kmem_cache_t cache = kmem_cache_create(32);
+    kmem_cache_t cache;
+    kmem_cache_create(&cache, "test_cache", 64);
     void* objs[1000];
     for (int i = 0; i < 1000; i++) {
         objs[i] = kmem_cache_alloc(&cache);

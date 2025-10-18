@@ -6,8 +6,9 @@
 #define TAG(name) /* nothing to do, just for readability */
 // putting these tags here is inappropriate.
 // should migrate them later.
-#define __user TAG(user)
-#define __root TAG(root)
+#define __user      TAG(user)
+#define __root      TAG(root)
+#define __readonly  TAG(readonly)
 
 #ifndef __DEFONLY__
 
@@ -32,6 +33,8 @@ typedef u64 kaddr_t;
 typedef u64 uaddr_t;
 typedef u64 ppn_t;
 typedef u64 vpn_t;
+
+typedef usize tid_t;
 
 #endif
 

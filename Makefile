@@ -17,13 +17,15 @@ KERNEL_ASM := $(BUILD_DIR)/kernel.asm
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_MAP := $(BUILD_DIR)/kernel.map
 
-MODULES := kernel uspace libs
+# put uspace before kernel as kernel depends on bootelf
+MODULES := uspace kernel libs
 
 OBJS := $(BUILD_DIR)/kernel/*/*.o \
 	$(BUILD_DIR)/libs/*.o
 
-# todo uspace
-.PHONY: all clean kernel libs run gdb-client gdb-server
+BOOT_ELF := $(BUILD_DIR)/uspace/servers/pm/pm.elf
+
+.PHONY: all clean uspace kernel libs run gdb-client gdb-server
 
 all: $(BUILD_DIRS) $(LINKERS) $(MODULES)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LINKER) -o $(KERNEL_ELF) $(OBJS) -Map=$(KERNEL_MAP)
@@ -35,6 +37,8 @@ $(MODULES):
 		-C $@	\
 		BUILD_DIR=../$(BUILD_DIR) \
 		ROOT_DIR=../$(ROOT_DIR)
+
+kernel: uspace
 
 $(BUILD_DIR):
 	mkdir -p $@

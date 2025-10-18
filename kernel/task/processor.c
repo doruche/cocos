@@ -7,6 +7,7 @@
 #include "libs/types.h"
 #include "kernel/consts/params.h"
 #include "kernel/arch/timer.h"
+#include "kernel/trap.h"
 
 processor_t processor;
 
@@ -16,7 +17,7 @@ processor_init(void) {
     kaddr_t sched_kstack_top = task_kstack_top(-1);
     ctx_init(
         &processor.sched_ctx,
-        (kaddr_t)sched,
+        (kaddr_t)scheduler,
         sched_kstack_top
     );
 
@@ -25,10 +26,10 @@ processor_init(void) {
     vm_map(
         &kernel_vms,
         (vpn_t)PA2PN(TRAMPOLINE),
-        (ppn_t)PA2PN(TRAMPOLINE),
+        (ppn_t)PA2PN((kaddr_t)u_trampoline_entry),
         1,
         VM_RESERVED, // trampoline should never be freed
-        VM_EXEC | VM_READ
+        VM_EXEC | VM_READ | VM_BASE
     );
     ppn_t kstack_ppn = unwrap_err(palloc(KSTACK_SIZE / PAGE_SIZE));
     vm_map(
@@ -36,8 +37,8 @@ processor_init(void) {
         (vpn_t)((sched_kstack_top - KSTACK_SIZE) / PAGE_SIZE),
         kstack_ppn,
         KSTACK_SIZE / PAGE_SIZE,
-        VM_ALLOCATED,
-        VM_READ | VM_WRITE | VM_CONTIGUOUS
+        VM_RESERVED,    // why would we free scheduler kstack...
+        VM_READ | VM_WRITE | VM_CONTIGUOUS | VM_BASE
     );
     vm_map(
         &kernel_vms,
@@ -45,7 +46,7 @@ processor_init(void) {
         VM_FAKE_PPN,
         1,
         VM_RESERVED,
-        VM_FAKE | VM_READ | VM_WRITE
+        VM_FAKE | VM_READ | VM_WRITE | VM_BASE
     );
     // and then jump to scheduler context...
 }

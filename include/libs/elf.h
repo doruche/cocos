@@ -6,6 +6,8 @@
 
 #include "libs/types.h"
 
+#define ELF_MAGIC   "\x7f""ELF"
+
 // number of bytes in e_ident[]
 #define EI_NIDENT   16
 

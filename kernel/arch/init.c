@@ -17,6 +17,10 @@ static bootinfo_t bootinfo;
 static void
 bootinfo_ctor(void) {
     // currently hardcoded.
+
+    extern u8 __bootelf[];
+    bootinfo.boot_elf = __bootelf;
+
     extern char __etext[];
     extern char __srodata[];
     extern char __erodata[];
@@ -82,7 +86,6 @@ arch_init(void) {
     bootinfo_ctor();
     info("bootinfo constructed.");
 
-    ctx_mm_init();
     w_sstatus(r_sstatus() | SSTATUS_SUM);   // enable supervisor access user memory
     info("context management initialized.");    
 

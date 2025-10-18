@@ -17,7 +17,9 @@ CFLAGS += -march=rv64gc -mabi=lp64d -std=gnu11
 # Critical for kernel to support large address space
 CFLAGS += -mcmodel=medany
 
-LDFLAGS := -nostdlib -static 
+CFLAGS += -fno-pie -no-pie
+
+LDFLAGS := -nostdlib -static -no-pie
 
 QEMU_FLAGS := -machine virt -nographic -m 128M -bios default -smp 1
 QEMU_FLAGS += -serial mon:stdio -nographic

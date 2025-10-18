@@ -8,6 +8,13 @@
 #include "kernel/misc/log.h"
 #include "kernel/misc/assert.h"
 #include "kernel/arch/csr.h"
+#include "libs/types.h"
+#include "libs/macros.h"
+#include "kernel/arch/ctx.h"
+#include "kernel/task/processor.h"
+#include "kernel/syscall.h"
+#include "kernel/arch/ctx.h"
+#include "kernel/arch/timer.h"
 
 __maybe_unused
 static const char* const
@@ -40,15 +47,86 @@ static const char* const exception_strs[] = {
 
 void
 utrap() {
-    todo()
+    trace("user trap!");
+
+    // sanity check
+    task_t* current = unwrap_null(current_task);
+    trapframe_t* tf = &current->actx.tf;
+    assert_eq(current->state, T_RUNNING);
+    assert(!intr_enabled());
+
+    actx_utrap_entry(&current->actx);
+
+    if (scause_is_irq(r_scause())) {
+        u64 irq = r_scause() & ~SCAUSE_IRQ_FLAG;
+        switch (irq) {
+            case SCAUSE_IRQ_TIMER: {
+                    trace("user timer interrupt");
+                    timer_intr(); // potential problem. timer irq already claimed by ktrap
+                    yield();
+                }
+                break;
+            default:
+                panic("Unhandled user IRQ: %s", irq_str(irq));
+        }
+    } else {
+        u64 exccode = r_scause();
+        switch (exccode) {
+            case SCAUSE_EXC_ECALL_FROM_U: {
+                    // syscall
+                    trace("syscall from user mode");
+                    if (!do_syscall(
+                        tf->x[17], // a7
+                        tf
+                    )) {
+                        // invalid syscall, kill the task
+                        task_crash_exit();
+                    }
+                }
+                break;
+            case SCAUSE_EXC_INST_PAGE_FAULT:
+            case SCAUSE_EXC_LOAD_PAGE_FAULT:
+            case SCAUSE_EXC_STORE_PAGE_FAULT: {
+                    uaddr_t fault_addr = r_stval();
+                    // currently just kill the task on page fault
+                    task_t* current = unwrap_null(current_task);
+                    notify(
+                        "task page fault: tid=%ld name=%s addr=0x%lx exccode=%s",
+                        current->tid, current->name,
+                        fault_addr, exception_strs[exccode]
+                    );
+                    task_crash_exit();
+                }
+                break;
+            default:
+                panic("Unhandled user exception: %s (sepc=0x%lx, stval=0x%lx)",
+                      (exccode < array_size(exception_strs) && exception_strs[exccode]) ?
+                        exception_strs[exccode] : "Unknown",
+                      r_sepc(), r_stval());
+        }
+    }
+
     utrap_ret();
 }
 
-// such a weird split is useful when creating a new process,
+// such a weird split is useful when creating a new task,
 // whose ctx.ra is set to here.
-__maybe_unused
 __noreturn
 void
 utrap_ret() {
-    todo()
+    task_t* current = unwrap_null(current_task);
+    assert_eq(current->state, T_RUNNING);
+
+    trace("returning to user space task tid=%ld name=%s",
+        current->tid, current->name);
+
+    actx_utrap_ret(&current->actx);
+
+    trace("jumping to user space...");
+
+    vaddr_t hook = TRAMPOLINE + 
+        ((u64)u_trampoline_ret - (u64)u_trampoline_entry);
+    ((void (*)(void))hook)();
+
+    unreachable();
 }

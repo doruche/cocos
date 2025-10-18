@@ -1,0 +1,43 @@
+OUTPUT_ARCH(riscv)
+ENTRY(_start);
+
+USER_BASE = 0x12000000;
+
+SECTIONS {
+    . = USER_BASE;
+
+    .text : ALIGN(4K) {
+        __stext = .;
+        *(.text.entry)
+        *(.text .text.*)
+        __etext = .;
+    }
+
+    .rodata : ALIGN(4K) {
+        __srodata = .;
+        *(.rodata .rodata.*)
+        __erodata = .;
+    }
+
+    .data : ALIGN(4K) {
+        __sdata = .;
+        *(.data .data.*)
+        *(.sdata .sdata.*)
+        *(COMMON)
+        __edata = .;
+    }
+
+    .bss : ALIGN(4K) {
+        __sbss = .;
+        *(.bss .bss.*)
+        *(.sbss .sbss.*)
+        *(COMMON)
+        __ebss = .;
+    }
+
+    /DISCARD/ : {
+        *(.comment)
+        *(.riscv.attributes)
+        *(.note.GNU-stack) 
+    }
+}

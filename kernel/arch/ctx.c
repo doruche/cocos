@@ -16,13 +16,6 @@
 #include "kernel/trap.h"
 
 
-static kmem_cache_t arch_ctx_cache;
-
-void
-ctx_mm_init(void) {
-    arch_ctx_cache = kmem_cache_create(sizeof(arch_ctx_t));
-}
-
 // initialize a kernel context with given entry and newly allocated kernel stack
 // caller should allocate memory for ctx
 // one exception: in arch_ctx_init, we allocate ctx_t in arch_ctx_t from slab
@@ -48,16 +41,16 @@ ctx_switch(ctx_t* prev, ctx_t* next) {
 }
 
 // vms required here to setup k/ustack mappings
-// will map: TRAMPOLINE, kstack, ustack
 // as they are required for context switch and user program running
-arch_ctx_t*
+// WILL ALLOCATE MEMORY FOR STACKS!!!
+void
 actx_init(
+    arch_ctx_t* actx,
     vm_space_t* vms, // for setting up stack mappings
     kaddr_t mapped_kstack_top,
     kaddr_t entry, 
     uaddr_t sepc
 ) {
-    arch_ctx_t* actx = (arch_ctx_t*)unwrap_err(kmem_cache_alloc(&arch_ctx_cache));
     memset(actx, 0, sizeof(arch_ctx_t));
     
     ppn_t ustack_bottom = unwrap_err(palloc(USTACK_SIZE / PAGE_SIZE));
@@ -68,19 +61,11 @@ actx_init(
 
     actx->tf.sepc = sepc;
     actx->tf.sstatus = (r_sstatus() & ~SSTATUS_SPP) | SSTATUS_SPIE;
-    actx->tf.sscratch = 0; // not used for now
+    actx->tf.ksp = mapped_kstack_top;
     actx->tf.x[2] = BIOS_BASE;
 
     ctx_init(&actx->ctx, entry, mapped_kstack_top);
     
-    vm_map(
-        vms,
-        (vpn_t)PA2PN(TRAMPOLINE),
-        (ppn_t)PA2PN(TRAMPOLINE),
-        1,
-        VM_RESERVED, // trampoline should never be freed
-        VM_EXEC | VM_READ
-    );
     vm_map(
         vms,
         (vpn_t)((mapped_kstack_top - KSTACK_SIZE) / PAGE_SIZE),
@@ -113,16 +98,22 @@ actx_init(
         VM_RESERVED,
         VM_FAKE | VM_READ | VM_WRITE | VM_USER
     );
-    return actx;
 }
 
 void
-actx_destroy(arch_ctx_t* actx) {
-    // if we map stacks as VM_ALLOCATED,
-    // then they will be deallocated when destroying vm_space
-    // if we map them as VM_RESERVED, we need to free them here
-    // the option is actually arbitrary for now,
-    // and we choose VM_ALLOCATED,
-    // such that the only thing to do here is to free the actx itself
-    kmem_cache_free(&arch_ctx_cache, actx);
+actx_utrap_entry(arch_ctx_t* cur_actx) {
+    // gprs & sscratch already stored by asm code
+    cur_actx->tf.sstatus = r_sstatus();
+    cur_actx->tf.sepc = r_sepc();
+    w_stvec(STVEC((u64)ktrap_trampoline, STVEC_MODE_DIRECT));
+    enable_intr();
+}
+
+void
+actx_utrap_ret(arch_ctx_t* cur_actx) {
+    disable_intr();
+    w_sscratch((u64)cur_actx);
+    w_sepc(cur_actx->tf.sepc);
+    w_sstatus((cur_actx->tf.sstatus & ~SSTATUS_SPP) | SSTATUS_SPIE);
+    w_stvec(STVEC(TRAMPOLINE, STVEC_MODE_DIRECT));  
 }

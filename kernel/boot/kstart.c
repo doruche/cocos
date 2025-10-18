@@ -26,7 +26,7 @@ kstart(bootinfo_t* bootinfo) {
 
 
     notify("cocos kernel booted successfully, jumping to scheduler...");
-    sched_init();    
+    sched_init(bootinfo->boot_elf);
 
     unreachable()
 }

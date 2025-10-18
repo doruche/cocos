@@ -12,7 +12,7 @@
 extern
 void    ktrap_trampoline(void);
 extern
-void    utrampoline_entry(void);
+void    u_trampoline_entry(void);
 extern
 void    u_trampoline_ret(void);
 u64     ktrap(u64 prev_sp);

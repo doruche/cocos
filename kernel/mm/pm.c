@@ -238,14 +238,11 @@ found:
     }
 
     zone->nfree -= (1 << order);
-    info("palloc_in_zone: zone->nfree -= %ld, now %ld", (1 << order), zone->nfree);
 
     ppn_t ppn = zone->salloc + unit_idx * (1 << order);
     usize page_idx = ppn - zone->salloc;
     zone->pages[page_idx].order = order;
 
-    trace("palloc_in_zone: allocated %ld pages at ppn 0x%lx, unit %ld, order %ld.",
-        (1 << order), ppn, unit_idx, order);
     return ppn;
 }
 
@@ -254,8 +251,6 @@ palloc(usize npages) {
     if (npages == 0) {
         return -EINVAL;
     }
-
-    trace("palloc: request %ld pages", npages);
 
     for (usize i = 0; i < npmzones; i++) {
         pm_zone_t* zone = &pmzones[i];
@@ -301,8 +296,6 @@ pfree_in_zone(pm_zone_t* zone, ppn_t ppn) {
     usize page_idx = ppn - zone->salloc;
     usize order = zone->pages[page_idx].order;
     assert_ne(order, BUDDY_MAX_ORDER + 1);
-    trace("pfree_in_zone: freeing %ld pages at ppn 0x%lx, unit %ld, order %ld.",
-        (1 << order), ppn, page_idx >> order, order);
     zone->pages[page_idx].order = BUDDY_MAX_ORDER + 1; // mark as free
 
     usize unit_idx = page_idx >> order;
@@ -320,20 +313,16 @@ pfree_in_zone(pm_zone_t* zone, ppn_t ppn) {
 
         // merge
         // to merge up, we should set these two buddies as used in the lower order bitmap.
-        trace("pfree_in_zone: merging buddies at order %ld, new unit %ld", o + 1, unit_idx >> 1);
         bm_set(bm, buddy_idx);
         bm_set(bm, unit_idx);
         unit_idx >>= 1;
     }
 
     zone->nfree += (1 << order);
-    info("pfree_in_zone: zone->nfree += %ld, now %ld", (1 << order), zone->nfree);
 }
 
 void
 pfree(ppn_t ppn) {
-    trace("pfree: try freeing page at ppn 0x%lx", ppn);
-
     for (usize i = 0; i < npmzones; i++) {
         pm_zone_t* zone = &pmzones[i];
         if (ppn_in_zone(zone, ppn)) {

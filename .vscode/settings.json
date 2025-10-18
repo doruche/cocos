@@ -3,6 +3,10 @@
         "mm.h": "c",
         "pm.h": "c",
         "types.h": "c",
-        "macros.h": "c"
+        "macros.h": "c",
+        "ctx.h": "c",
+        "vm.h": "c",
+        "syscall.h": "c",
+        "csr.h": "c"
     }
 }

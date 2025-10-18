@@ -8,6 +8,8 @@
 #include "kernel/misc/assert.h"
 #include "kernel/arch/timer.h"
 #include "libs/macros.h"
+#include "kernel/task/processor.h"
+#include "kernel/task/sched.h"
 
 static const char* const
 irq_str(u64 irq) {
@@ -54,8 +56,17 @@ ktrap(u64 prev_sp) {
     } else {
         u64 exccode = r_scause();
         if (exccode < array_size(exception_strs) && exception_strs[exccode]) {
-            panic("Exception: %s (sepc=0x%lx, stval=0x%lx)",
-                  exception_strs[exccode], r_sepc(), r_stval());
+            if (current_task == NULL) {
+                panic("Exception in scheduler: %s (sepc=0x%lx, stval=0x%lx)",
+                      exception_strs[exccode], r_sepc(), r_stval());
+            } else {
+                panic("Exception in task: tid=%ld name=%s exccode=%s (sepc=0x%lx, stval=0x%lx) ksp=0x%lx",
+                      current_task->tid, current_task->name,
+                      exception_strs[exccode], r_sepc(), r_stval(), task_kstack_top(current_task->tid));
+            }
+            
+            // panic("Exception: %s (sepc=0x%lx, stval=0x%lx)\ncurrent kstack [0x%ld, 0x%ld)",
+            //        exception_strs[exccode], r_sepc(), r_stval(), );
         } else {
             panic("Unknown Exception: %ld (sepc=0x%lx, stval=0x%lx)",
                   exccode, r_sepc(), r_stval());

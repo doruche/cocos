@@ -24,6 +24,7 @@ typedef struct _memzone_t {
 } memzone_t;
 
 typedef struct _bootinfo_t {
+    u8* boot_elf;
     memzone_t zones[NMEMZONE_MAX];
 } bootinfo_t;
 

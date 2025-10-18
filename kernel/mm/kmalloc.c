@@ -16,7 +16,7 @@ static kmem_cache_t caches[array_size(kmalloc_config)];
 void
 kmalloc_init(void) {
     for (usize i = 0; i < ncaches; i++) {
-        caches[i] = kmem_cache_create(kmalloc_config[i]);
+        kmem_cache_create(&caches[i], "kmalloc_cache", kmalloc_config[i]);
     }
 }
 
@@ -35,7 +35,7 @@ void
 kfree(void* ptr) {
     obj_t* obj = container_of(ptr, obj_t, data);
     slab_t* slab = OBJ_SLAB(obj);
-    usize data_size = slab->data_size;
+    usize data_size = slab->cache->data_size;
 
     // find the right cache
     for (isize i = ncaches - 1; i >= 0; i--) {

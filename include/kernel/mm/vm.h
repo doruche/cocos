@@ -11,7 +11,6 @@
 enum vm_area_type {
     VM_RESERVED = 0, // mapped but not allocated (e.g. MMIO regions)
     VM_ALLOCATED,   // allocated and mapped. come from physical memory allocator (free memory)
-    // we use these types to indicate how we tackle of them.
 };
 
 typedef u64 vm_area_flags_t;
@@ -20,10 +19,11 @@ typedef u64 vm_area_flags_t;
 #define VM_WRITE (1L << 1)
 #define VM_EXEC  (1L << 2)
 #define VM_USER  (1L << 3)
+#define VM_BASE  (1L << 4)
 // fake mapping, e.g. for guard page. must be used with VM_RESERVED
 // note that when setting up fake mapping, it is necessary to set at least one PTE flag,
 // on which we rely to detect fake mapping in page fault handler.
-#define VM_FAKE  (1L << 4)
+#define VM_FAKE  (1L << 5)
 
 #define VM_CONTIGUOUS (1L << 16) // request contiguous physical pages
 
@@ -59,6 +59,7 @@ void        vm_map(
 void        vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages, bool free_pages);
 ppn_t       vm_translate(vm_space_t* vms, vpn_t vpn);
 void        vm_activate(vm_space_t* vms);
+void        vm_copy_mappings(vm_space_t* dst, vm_space_t* src);
 
 void        kvms_init(bootinfo_t* bootinfo);
 
