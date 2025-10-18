@@ -49,7 +49,7 @@
     } while(0)
 
 
-#define unwrap(x) ({ \
+#define unwrap_err(x) ({ \
         isize _ret = (isize)(x); \
         do { \
         if (_ret < 0) { \
@@ -58,4 +58,11 @@
                 , #x, _ret, (_ret == -ENOMEM ? "Out of memory" : \
                             _ret == -EINVAL ? "Invalid argument" : \
                             _ret == -EBUSY  ? "Device or resource busy" : "Unknown error")); \
+        } } while(0); _ret; })
+
+#define unwrap_null(x) ({ \
+        typeof(x) _ret = (x); \
+        do { \
+        if (_ret == NULL) { \
+            panic("Assertion failed '(%s) != NULL'\n", #x); \
         } } while(0); _ret; })

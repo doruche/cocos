@@ -3,6 +3,7 @@
  */
 
 #include "kernel/arch/timer.h"
+#include "kernel/consts/params.h"
 #include "kernel/arch/sbi.h"
 #include "kernel/arch/csr.h"
 #include "kernel/misc/log.h"
@@ -10,6 +11,11 @@
 void
 set_next_timer(void) {
     sbi_set_timer(rdtime() + INTERVAL);
+}
+
+void
+set_timer(usize cycles) {
+    sbi_set_timer(rdtime() + cycles * INTERVAL);
 }
 
 /*
@@ -27,6 +33,6 @@ timer_init(void) {
 
 void
 timer_intr(void) {
-    // trace("timer interrupt!");
+    trace("timer interrupt!");
     set_next_timer();
 }

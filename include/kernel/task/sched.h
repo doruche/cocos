@@ -26,6 +26,14 @@ typedef struct _task_t {
     list_elem_t node; // node in task list
 } task_t;
 
+// layout
+// TRAMPOLINE
+// scheduler kstack | guard page
+// task 0 kstack | guard page
+// ...
+kaddr_t task_kstack_top(tid_t tid);
+
+void    sched_init(void);
 
 task_t* task_spawn(void (*entry)(void));
 void    task_exit(void);

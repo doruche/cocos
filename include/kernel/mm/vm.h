@@ -62,7 +62,7 @@ void        vm_activate(vm_space_t* vms);
 
 void        kvms_init(bootinfo_t* bootinfo);
 
-#ifdef VM_DEBUG
+#ifdef DEBUG
 
 void        vm_dump(vm_space_t* vms);
 

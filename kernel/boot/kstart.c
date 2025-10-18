@@ -7,11 +7,11 @@
 #include "kernel/mm/pm.h"
 #include "kernel/mm/vm.h"
 #include "kernel/mm/kmalloc.h"
+#include "kernel/task/sched.h"
 #include "kernel/misc/test.h"
+#include "libs/macros.h"
 
-isize errno = 0;
-
-void
+void __noreturn
 kstart(bootinfo_t* bootinfo) {
     pm_init(bootinfo);
     info("pm initialized.");
@@ -21,12 +21,12 @@ kstart(bootinfo_t* bootinfo) {
     info("interrupt enabled.");
     timer_init();
     info("timer initialized.");
-    kvms_init(bootinfo);    
+    kvms_init(bootinfo);
     info("kernel vm space initialized.");
 
-    vm_test();
 
-    for (;;);
+    notify("cocos kernel booted successfully, jumping to scheduler...");
+    sched_init();    
 
     unreachable()
 }

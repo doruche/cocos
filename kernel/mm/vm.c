@@ -67,6 +67,12 @@ void kvms_init(bootinfo_t* bootinfo) {
             VM_RESERVED,
             flags
         );
+        info("mapped kernel memory zone [%lx, %lx) flags=%c%c%c",
+            zone->start, zone->end,
+            (flags & VM_READ) ? 'r' : '-',
+            (flags & VM_WRITE) ? 'w' : '-',
+            (flags & VM_EXEC) ? 'x' : '-'
+        );
     }
 done:
     // note that we're still in booting stage (we're on boot_stack right now).
@@ -80,7 +86,7 @@ done:
 void
 vm_init(vm_space_t* vms) {
     list_init(&vms->areas);
-    ppn_t pgtbl_ppn = unwrap(palloc_one());
+    ppn_t pgtbl_ppn = unwrap_err(palloc_one());
     vms->pgtbl = (pgtbl_t*)PN2PA(pgtbl_ppn);
     pgtbl_init(vms->pgtbl);
 }
@@ -140,12 +146,16 @@ vm_map(
 ) {
     assert(npages > 0);
     assert(type >= VM_RESERVED && type <= VM_ALLOCATED);
+    if (flags & VM_FAKE) {
+        assert(type == VM_RESERVED); // fake mappings can only be reserved
+    }
 
     // check for overlapping
     list_foreach(iter, &vms->areas) {
         vm_area_t* area = list_entry(iter, vm_area_t, node);
         if (!(vpn + npages <= area->start || vpn >= area->end)) {
-            panic("vm_map: overlapping areas");
+            panic("vm_map: overlapping areas when mapping [%lx, %lx) with existing area [%lx, %lx)",
+                PN2PA(vpn), PN2PA(vpn + npages), PN2PA(area->start), PN2PA(area->end));
         }
     }
 
@@ -359,22 +369,21 @@ vm_activate(vm_space_t* vms) {
     pgtbl_activate(vms->pgtbl);
 }
 
-#ifdef VM_DEBUG
+#ifdef DEBUG
 
 void
 vm_dump(vm_space_t* vms) {
     trace("vm space dump:");
     list_foreach(iter, &vms->areas) {
         vm_area_t* area = list_entry(iter, vm_area_t, node);
-        trace("  area [%lx, %lx) type=%d flags=%lx",
-            area->start, area->end, area->type, area->flags);
-        for (usize i = 0; i < area->end - area->start; i++) {
-            if (area->bitmap[i]) {
-                ppn_t ppn = vm_translate(vms, area->start + i);
-                assert_ne(ppn, 0);
-                trace("    page %lx -> %lx", area->start + i, ppn);
-            }
-        }
+        trace("  area [%lx, %lx) type=%s flags=%c%c%c",
+            PN2PA(area->start), PN2PA(area->end),
+            area->type == VM_RESERVED ? "RESERVED" :
+            area->type == VM_ALLOCATED ? "ALLOCATED" : "UNKNOWN",
+            (area->flags & VM_READ) ? 'r' : '-',
+            (area->flags & VM_WRITE) ? 'w' : '-',
+            (area->flags & VM_EXEC) ? 'x' : '-'
+        );
     }
 }
 

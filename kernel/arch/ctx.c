@@ -57,11 +57,11 @@ actx_init(
     kaddr_t entry, 
     uaddr_t sepc
 ) {
-    arch_ctx_t* actx = (arch_ctx_t*)unwrap(kmem_cache_alloc(&arch_ctx_cache));
+    arch_ctx_t* actx = (arch_ctx_t*)unwrap_err(kmem_cache_alloc(&arch_ctx_cache));
     memset(actx, 0, sizeof(arch_ctx_t));
     
-    ppn_t ustack_bottom = unwrap(palloc(USTACK_SIZE / PAGE_SIZE));
-    ppn_t kstack_bottom = unwrap(palloc(KSTACK_SIZE / PAGE_SIZE));
+    ppn_t ustack_bottom = unwrap_err(palloc(USTACK_SIZE / PAGE_SIZE));
+    ppn_t kstack_bottom = unwrap_err(palloc(KSTACK_SIZE / PAGE_SIZE));
 
     actx->ustack_bottom = ustack_bottom;
     actx->kstack_bottom = kstack_bottom;

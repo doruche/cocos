@@ -61,7 +61,7 @@ pm_test(void) {
     // basic test
 
     for (int i = 0; i < 10; i++) {
-        pages[i] = unwrap(palloc_one());
+        pages[i] = unwrap_err(palloc_one());
         printk("allocated page %d: ppn=%p\n", i, pages[i]);
     }
 
@@ -71,7 +71,7 @@ pm_test(void) {
     }
 
     for (int i = 0; i < 10; i++) {
-        ppn_t ppn = unwrap(palloc_one());
+        ppn_t ppn = unwrap_err(palloc_one());
         printk("re-allocated page %d: ppn=%p\n", i, ppn);
     }
 
@@ -85,7 +85,7 @@ pm_test(void) {
 
     // allocate multiple pages
     for (int i = 0; i < 10; i++) {
-        pages[i] = unwrap(palloc(i * i + 1));
+        pages[i] = unwrap_err(palloc(i * i + 1));
     }
 
     pm_dump();
@@ -133,7 +133,7 @@ pgtbl_test(void) {
     usize nfree_pages_before = pm_count_free();
     info("nfree pages before test: %d", nfree_pages_before);
 
-    pgtbl_t* pgtbl = (pgtbl_t*)PN2PA(unwrap(palloc_one()));
+    pgtbl_t* pgtbl = (pgtbl_t*)PN2PA(unwrap_err(palloc_one()));
     pgtbl_init(pgtbl);
 
     // map some pages
@@ -176,7 +176,7 @@ vm_test(void) {
     ppn_t pages[10] = {0};
 
     for (usize i = 0; i < 10; i++) {
-        ppn_t ppn = unwrap(palloc_one());
+        ppn_t ppn = unwrap_err(palloc_one());
         pages[i] = ppn;
     }    
     for (usize i = 0; i < 10; i++) {
@@ -191,7 +191,7 @@ vm_test(void) {
     }
 
     vpn_t test_vpn2 = 0x10000;
-    ppn_t huge_area_ppn = unwrap(palloc(10));
+    ppn_t huge_area_ppn = unwrap_err(palloc(10));
     vm_map(
         &test_vms,
         test_vpn2,

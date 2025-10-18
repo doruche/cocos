@@ -42,7 +42,7 @@ pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc) {
         if (pte_is_branch(*pte)) {
             table = (pgtbl_t*)PTE2PA(*pte);
         } else if (alloc) {
-            ppn_t new_table_ppn = unwrap(palloc_one());
+            ppn_t new_table_ppn = unwrap_err(palloc_one());
             pgtbl_init((pgtbl_t*)PN2PA(new_table_ppn));
             *pte = (new_table_ppn << 10) | PTE_V;
             table = (pgtbl_t*)PN2PA(new_table_ppn);

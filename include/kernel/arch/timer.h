@@ -2,13 +2,16 @@
  * timer management
  */
 
-#ifndef KERNEL_ARCH_TIMER_H
-#define KERNEL_ARCH_TIMER_H 1
+#pragma once
 
-#define INTERVAL 10000000
+#include "libs/types.h"
 
 void    timer_init(void);
 void    set_next_timer(void);
+void    set_timer(usize cycles);
 void    timer_intr(void);
 
-#endif
+static inline void
+__wfi(void) {
+    asm volatile("wfi");
+}
