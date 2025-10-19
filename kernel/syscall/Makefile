@@ -10,7 +10,7 @@ S_SRC := $(wildcard *.S)
 SRCS := $(C_SRC) $(S_SRC)
 OBJS := $(C_SRC:.c=.o) $(S_SRC:.S=.o)
 
-MODULE_DIR := $(BUILD_DIR)/syscall
+override MODULE_DIR := $(MODULE_DIR)/syscall
 
 all: $(MODULE_DIR) $(OBJS)
 

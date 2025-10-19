@@ -2,31 +2,30 @@
 include $(ROOT_DIR)/common.mk
 
 # Crucial parameters
-MODULES = servers apps
+MODULES = servers
 
-LINKER := $(BUILD_DIR)/uspace/uspace.lds
+MODULE_DIR := $(BUILD_DIR)/uspace
+
+LINKER := $(MODULE_DIR)/uspace.lds
 LINKER_TEMPLATE := uspace.lds.in
 
 .PHONY: all $(MODULES)
 
-all: $(BUILD_DIR) $(MODULES) $(LINKER)
+all: $(MODULES) $(LINKER)
 
-$(BUILD_DIR):
-	mkdir -p $@
-	mkdir -p $(BUILD_DIR)/uspace
-	mkdir -p $(BUILD_DIR)/uspace/servers
-	mkdir -p $(BUILD_DIR)/uspace/apps
-
-$(MODULES): $(LINKER)
+$(MODULES): $(LINKER) $(MODULE_DIR)
 	$(MAKE) \
 		-C $@ \
-		BUILD_DIR=../$(BUILD_DIR)/uspace \
+		MODULE_DIR=../$(MODULE_DIR) \
 		ROOT_DIR=../$(ROOT_DIR)
 
-$(LINKER): $(LINKER_TEMPLATE)
+$(LINKER): $(LINKER_TEMPLATE) $(MODULE_DIR)
 	$(CC) \
 		-E \
 		-P \
 		-x c \
 		$< -o $@ \
 		-I $(ROOT_DIR)/include
+
+$(MODULE_DIR):
+	mkdir -p $@

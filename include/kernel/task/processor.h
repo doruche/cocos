@@ -11,6 +11,9 @@
 typedef struct _processor_t {
     ctx_t   sched_ctx;  // context for scheduler/this processor
     task_t* cur_task; // maybe NULL when executing on scheduler context
+
+    bool    prev_intr_state; // true for enabled, false for disabled
+    usize   intr_off_count;
 } processor_t;
 
 void    processor_init(void);
@@ -21,3 +24,6 @@ extern  processor_t processor;
     (&processor.sched_ctx)
 
 void    wait_for_intr(void);
+
+void    push_intr_off(void);
+void    pop_intr_off(void);

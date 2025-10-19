@@ -2,8 +2,7 @@
  * intrusive circular double linked list
  */
 
-#ifndef _LIBS_LIST_H
-#define _LIBS_LIST_H 1
+#pragma once
 
 #include "libs/types.h"
 #include "libs/macros.h"
@@ -49,4 +48,3 @@ usize   list_length(list_t* list);
          iter != sentinelof(list); \
          iter = next, next = iter->next)
 
-#endif

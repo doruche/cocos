@@ -1,8 +1,4 @@
-#define __DEFONLY__
-
-#include <kernel/consts/params.h>
-#include <kernel/arch/mm.h>
-#include <kernel/arch/board.h>
+#include "ld_asm_defs.h"
 
 OUTPUT_ARCH(riscv)
 ENTRY(_start);

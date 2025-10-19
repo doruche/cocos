@@ -170,8 +170,14 @@ vprintk(const char* fmt, va_list ap)  {
     return printed;
 }
 
+// we want this work.
+// it should work everywhere.
 isize
 printk(const char* fmt, ...) {
+    // do not use push/pop_intr_off here,
+    // as printk will also be called in early booting stage,
+    // when processor_init() is not called yet.
+    
     bool pre_intr_enabled = intr_enabled();
     disable_intr();
     va_list ap;

@@ -3,8 +3,7 @@
  * string & memory manipulation functions.
  */
 
-#ifndef _LIBS_STRING_H
-#define _LIBS_STRING_H 1
+#pragma once
 
 #include "libs/types.h"
 
@@ -16,5 +15,3 @@ char*   strcpy(char* dest, const char* src);
 char*   strncpy(char* dest, const char* src, usize n);
 char*   strcat(char* dest, const char* src);
 isize   strcmp(const char* s1, const char* s2);
-
-#endif /* _LIBS_STRING_H */

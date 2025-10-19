@@ -10,7 +10,7 @@ S_SRC := $(wildcard *.S)
 SRCS := $(C_SRC) $(S_SRC)
 OBJS := $(C_SRC:.c=.o) $(S_SRC:.S=.o)
 
-MODULE_DIR := $(BUILD_DIR)/trap
+override MODULE_DIR := $(MODULE_DIR)/trap
 
 all: $(MODULE_DIR) $(OBJS)
 

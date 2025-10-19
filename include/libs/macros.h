@@ -1,9 +1,7 @@
 /*
  * useful macros
  */
-
-#ifndef _LIBS_MACROS_H
-#define _LIBS_MACROS_H 1
+#pragma once
 
 #include "libs/types.h"
 
@@ -32,9 +30,3 @@
 
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
-
-#define __noreturn      __attribute__((noreturn))
-#define __section(name) __attribute__((section(name)))
-#define __maybe_unused  __attribute__((unused))
-
-#endif

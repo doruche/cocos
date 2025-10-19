@@ -17,7 +17,6 @@ KERNEL_ASM := $(BUILD_DIR)/kernel.asm
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_MAP := $(BUILD_DIR)/kernel.map
 
-# put uspace before kernel as kernel depends on bootelf
 MODULES := uspace kernel libs
 
 OBJS := $(BUILD_DIR)/kernel/*/*.o \
@@ -25,19 +24,24 @@ OBJS := $(BUILD_DIR)/kernel/*/*.o \
 
 BOOT_ELF := $(BUILD_DIR)/uspace/servers/pm/pm.elf
 
-.PHONY: all clean uspace kernel libs run gdb-client gdb-server
+.PHONY: all clean $(MODULES) run gdb-client gdb-server
 
-all: $(BUILD_DIRS) $(LINKERS) $(MODULES)
+all: $(MODULES)
 	$(LD) $(LDFLAGS) -T $(KERNEL_LINKER) -o $(KERNEL_ELF) $(OBJS) -Map=$(KERNEL_MAP)
 	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
 	$(OBJDUMP) -d -S $(KERNEL_ELF) > $(KERNEL_ASM)
 
-$(MODULES):
+$(MODULES): $(BUILD_DIR)
 	$(MAKE)		\
 		-C $@	\
 		BUILD_DIR=../$(BUILD_DIR) \
 		ROOT_DIR=../$(ROOT_DIR)
 
+$(BUILD_DIR): 
+	mkdir -p $@
+
+# building the kernel depends on bootelf from uspace.
+# this is a bit coarse-grained and slow, but works for now.
 kernel: uspace
 
 $(BUILD_DIR):

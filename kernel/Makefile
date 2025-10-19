@@ -3,22 +3,23 @@ include $(ROOT_DIR)/common.mk
 
 # Crucial parameters
 MODULES = $(shell ls -d */)
+MODULE_DIR := $(BUILD_DIR)/kernel
 
-LINKER := $(BUILD_DIR)/kernel/kernel.lds
+LINKER := $(MODULE_DIR)/kernel.lds
 LINKER_TEMPLATE := kernel.lds.in
 
 .PHONY: all $(MODULES)
 
-all: $(BUILD_DIR) $(MODULES) $(LINKER)
+all: $(MODULES) $(LINKER)
 
-$(BUILD_DIR):
-	mkdir -p $@
-
-$(MODULES):
+$(MODULES): $(MODULE_DIR)
 	$(MAKE) \
 		-C $@ \
-		BUILD_DIR=../$(BUILD_DIR)/kernel \
+		MODULE_DIR=../$(MODULE_DIR) \
 		ROOT_DIR=../$(ROOT_DIR)
+
+$(MODULE_DIR):
+	mkdir -p $@
 
 $(LINKER): $(LINKER_TEMPLATE)
 # -E: preprocess only

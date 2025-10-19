@@ -8,9 +8,10 @@ S_SRC := $(wildcard *.S)
 SRCS := $(C_SRC) $(S_SRC)
 OBJS := $(C_SRC:.c=.o) $(S_SRC:.S=.o)
 
-LINKER := $(BUILD_DIR)/../uspace.lds
+LINKER := $(ROOT_DIR)/build/uspace/uspace.lds
 
-MODULE_DIR := $(BUILD_DIR)/pm
+override MODULE_DIR := $(MODULE_DIR)/pm
+
 TARGET_ELF := $(MODULE_DIR)/pm.elf
 TARGET_ASM := $(MODULE_DIR)/pm.asm
 
@@ -19,7 +20,8 @@ all: $(MODULE_DIR) $(OBJS) $(TARGET_ELF) $(TARGET_ASM)
 $(MODULE_DIR):
 	mkdir -p $@
 
-$(TARGET_ELF): $(OBJS) $(LINKER)
+$(TARGET_ELF): $(MODULE_DIR) $(OBJS) $(LINKER)
+	echo "$(MODULE_DIR)"
 	$(LD) $(LDFLAGS) -T $(LINKER) -o $@ $(MODULE_DIR)/$(OBJS) $(LDFLAGS)
 
 $(TARGET_ASM): $(TARGET_ELF)

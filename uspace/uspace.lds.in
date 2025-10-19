@@ -1,7 +1,7 @@
+#include "ld_asm_defs.h"
+
 OUTPUT_ARCH(riscv)
 ENTRY(_start);
-
-USER_BASE = 0x12000000;
 
 SECTIONS {
     . = USER_BASE;

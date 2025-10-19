@@ -8,6 +8,7 @@
 #include "kernel/consts/params.h"
 #include "kernel/arch/timer.h"
 #include "kernel/trap.h"
+#include "kernel/arch/csr.h"
 
 processor_t processor;
 
@@ -54,4 +55,23 @@ processor_init(void) {
 void
 wait_for_intr(void) {
     __wfi();
+}
+
+void
+push_intr_off(void) {
+    if (processor.intr_off_count == 0) {
+        processor.prev_intr_state = intr_enabled();
+        disable_intr();
+    }
+    assert(!intr_enabled());
+    processor.intr_off_count++;
+}
+
+void
+pop_intr_off(void) {
+    assert(processor.intr_off_count > 0);
+    processor.intr_off_count--;
+    if (processor.intr_off_count == 0 && processor.prev_intr_state) {
+        enable_intr();
+    }
 }
