@@ -1,25 +1,31 @@
-# Makefile for building kernel modules
-include $(ROOT_DIR)/common.mk
+MOD_NAME := kernel
+MOD_SRCDIR := $(ROOT_DIR)/kernel
+MOD_OBJDIR := $(BUILD_DIR)/kernel
+TARGET := $(BUILD_DIR)/kernel.elf
 
-# Crucial parameters
-MODULES = $(shell ls -d */)
-MODULE_DIR := $(BUILD_DIR)/kernel
+LIBCOCO := $(BUILD_DIR)/libs/libgeneric.a
+LINKER := $(MOD_OBJDIR)/kernel.lds
+LINKER_TEMPLATE := $(MOD_SRCDIR)/kernel.lds.in
 
-LINKER := $(MODULE_DIR)/kernel.lds
-LINKER_TEMPLATE := kernel.lds.in
+CFLAGS := $(GLOBL_CFLAGS) -DKERNEL
 
-.PHONY: all $(MODULES)
+include $(ROOT_DIR)/scripts/build.mk
 
-all: $(MODULES) $(LINKER)
+.PHONY: all stub
 
-$(MODULES): $(MODULE_DIR)
-	$(MAKE) \
-		-C $@ \
-		MODULE_DIR=../$(MODULE_DIR) \
-		ROOT_DIR=../$(ROOT_DIR)
+all: $(TARGET)
 
-$(MODULE_DIR):
-	mkdir -p $@
+stub: | $(MOD_OBJDIR)_dirs
+	echo "$(MOD_SRCDIR)"
+	echo "$(cbuild_dir)"
+	echo "$(cbuild_rel_dir)"
+	echo "$(local_objs)"
+	echo "$(OBJS)"
+
+$(BUILD_DIR)/kernel.elf: $(MOD_OBJDIR)_dirs $(OBJS) $(LIBCOCO) $(LINKER)
+	$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBCOCO) -T $(LINKER) -Map=$(BUILD_DIR)/kernel.map
+	$(OBJCOPY) -S -O binary $@ $(BUILD_DIR)/kernel.bin
+	$(OBJDUMP) -d $@ > $(BUILD_DIR)/kernel.asm
 
 $(LINKER): $(LINKER_TEMPLATE)
 # -E: preprocess only

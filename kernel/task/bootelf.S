@@ -4,4 +4,4 @@
     .section .rodata
     .global __bootelf
 __bootelf:
-    .incbin "../../build/uspace/servers/pm/pm.elf"
+    .incbin "../build/uspace/servers/pm/pm.elf"

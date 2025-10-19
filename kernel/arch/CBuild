@@ -1,0 +1,9 @@
+obj-y :=			\
+	ctx.o			\
+	ctx_switch.o	\
+	init.o			\
+	pgtbl.o			\
+	timer.o			\
+	trampoline.o	\
+	sbi.o			\
+	entry.o

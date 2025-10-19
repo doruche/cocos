@@ -1,5 +1,4 @@
-#include "kernel/consts/params.h"
-#include "kernel/arch/mm.h"
+#include "ld_asm_defs.h"
 
     .section    .text.entry
     .globl      _start

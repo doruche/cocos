@@ -1,16 +1,8 @@
-# Makefile for building uspace servers
-include $(ROOT_DIR)/common.mk
+SERVERS := $(shell ls -d */ | xargs -n 1 basename)
 
-# Crucial parameters
-override MODULE_DIR := $(MODULE_DIR)/servers
-MODULES = $(shell ls -d */)
+.PHONY: all $(SERVERS)
 
-.PHONY: all $(MODULES)
+all: $(SERVERS)
 
-all: $(MODULES)
-
-$(MODULES):
-	$(MAKE) \
-		-C $@ \
-		MODULE_DIR=../$(MODULE_DIR) \
-		ROOT_DIR=../$(ROOT_DIR)
+$(SERVERS):
+	$(MAKE) -C $@ all -f$(ROOT_DIR)/scripts/userapp.mk

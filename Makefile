@@ -1,14 +1,38 @@
-# Makefile for building the kernel
+# Top-level build script, both for kernel and uspace.
 
-include common.mk
+# Toolchain
+CROSS := riscv64-unknown-elf-
 
-# Crucial parameters
-ROOT_DIR := .
+export CC := $(CROSS)gcc
+export AS := $(CROSS)as
+export LD := $(CROSS)ld
+export OBJCOPY := $(CROSS)objcopy
+export OBJDUMP := $(CROSS)objdump
 
-KERNEL_DIR := kernel
-USER_DIR := uspace
+# Directories
+export ROOT_DIR := $(CURDIR)
+export BUILD_DIR := $(abspath $(ROOT_DIR)/build)
 
-BUILD_DIR := build
+# General compiler flags
+export GLOBL_CFLAGS := \
+	-Wall -Werror -Wno-error=unused \
+	-O2 -fno-pic -fno-builtin -ffreestanding -fno-stack-protector -mno-relax -g \
+	-march=rv64gc -mabi=lp64d -std=gnu11 \
+	-mcmodel=medany -fno-pie \
+	-I$(ROOT_DIR)/include \
+	-I.
+
+export GLOBL_LDFLAGS := -nostdlib -static -no-pie
+
+# Emulator and debugger. Not used by sub-makefiles.
+QEMU := qemu-system-riscv64
+GDB := $(CROSS)gdb
+QEMU_FLAGS := \
+	-machine virt -nographic -m 128M -bios default -smp 1 \
+	-serial mon:stdio -nographic
+
+# Parameters
+MODULES := libs kernel uspace
 
 KERNEL_LINKER := $(BUILD_DIR)/kernel/kernel.lds
 
@@ -17,34 +41,27 @@ KERNEL_ASM := $(BUILD_DIR)/kernel.asm
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_MAP := $(BUILD_DIR)/kernel.map
 
-MODULES := uspace kernel libs
-
-OBJS := $(BUILD_DIR)/kernel/*/*.o \
+KERNEL_OBJS := $(BUILD_DIR)/kernel/*/*.o \
 	$(BUILD_DIR)/libs/*.o
 
-BOOT_ELF := $(BUILD_DIR)/uspace/servers/pm/pm.elf
-
-.PHONY: all clean $(MODULES) run gdb-client gdb-server
+.PHONY: all clean $(MODULES)			run gdb-client gdb-server
 
 all: $(MODULES)
-	$(LD) $(LDFLAGS) -T $(KERNEL_LINKER) -o $(KERNEL_ELF) $(OBJS) -Map=$(KERNEL_MAP)
-	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
-	$(OBJDUMP) -d -S $(KERNEL_ELF) > $(KERNEL_ASM)
-
-$(MODULES): $(BUILD_DIR)
-	$(MAKE)		\
-		-C $@	\
-		BUILD_DIR=../$(BUILD_DIR) \
-		ROOT_DIR=../$(ROOT_DIR)
-
-$(BUILD_DIR): 
-	mkdir -p $@
+#	$(LD) $(LDFLAGS) -T $(KERNEL_LINKER) -o $(KERNEL_ELF) $(KERNEL_OBJS) -Map=$(KERNEL_MAP)
+#	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
+#	$(OBJDUMP) -d -S $(KERNEL_ELF) > $(KERNEL_ASM)
 
 # building the kernel depends on bootelf from uspace.
 # this is a bit coarse-grained and slow, but works for now.
+uspace: libs
 kernel: uspace
 
-$(BUILD_DIR):
+$(MODULES): prepare
+	$(MAKE) all -C $@
+
+prepare: $(patsubst %,$(BUILD_DIR)/%,$(MODULES))
+
+$(BUILD_DIR)/%:
 	mkdir -p $@
 
 run:

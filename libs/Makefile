@@ -1,18 +1,14 @@
-# Makefile for building common libraries
-include $(ROOT_DIR)/common.mk
+MOD_NAME := lib
+MOD_SRCDIR := $(ROOT_DIR)/libs
+MOD_OBJDIR := $(BUILD_DIR)/libs
+CFLAGS := $(GLOBL_CFLAGS)
+TARGET := $(MOD_OBJDIR)/libgeneric.a
 
-# Crucial parameters
-SRCS := $(wildcard *.c)
-OBJS := $(SRCS:.c=.o)
+include $(ROOT_DIR)/scripts/build.mk
 
-LIB_DIR := $(BUILD_DIR)/libs
+.PHONY: all
 
-.PHONY: all $(LIBS)
+all: $(TARGET)
 
-all: $(LIB_DIR) $(OBJS)
-
-$(LIB_DIR):
-	mkdir -p $@
-
-%.o: %.c
-	$(CC) $(CFLAGS) -I$(ROOT_DIR)/include -c $< -o $(LIB_DIR)/$@
+$(TARGET): $(MOD_OBJDIR)_dirs $(OBJS)
+	$(AR) rcs $@ $(OBJS)

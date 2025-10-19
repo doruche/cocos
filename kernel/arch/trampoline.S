@@ -1,6 +1,3 @@
-#include "kernel/arch/board.h"
-#include "kernel/arch/mm.h"
-
     .section .text
     .globl ktrap_trampoline
     .type ktrap_trampoline, @function

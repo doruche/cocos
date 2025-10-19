@@ -1,0 +1,4 @@
+obj-y :=			\
+	handler.o		\
+	task.o			\
+	debug.o
