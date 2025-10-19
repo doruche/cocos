@@ -12,6 +12,12 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_PUTS]      __sys_puts,
 };
 
+static const char* const syscall_strs[] = {
+    [SYS_KILL]      = "kill",
+    [SYS_GETTID]    = "gettid",
+    [SYS_PUTS]      = "puts",
+};
+
 bool
 do_syscall(
     u64 syscall_no,
@@ -24,6 +30,11 @@ do_syscall(
         return false;
     }
     // a0
+
+    trace("do_syscall: syscall no=%ld (%s)",
+        syscall_no,
+        syscall_strs[syscall_no]
+    );
 
     u64 arg0 = tf->x[10];
     u64 arg1 = tf->x[11];

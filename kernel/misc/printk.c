@@ -12,6 +12,7 @@
 #include "kernel/arch/sbi.h"
 #include "kernel/misc/log.h"
 #include "libs/types.h"
+#include "kernel/arch/csr.h"
 #include <stdarg.h>
 
 static usize
@@ -171,9 +172,14 @@ vprintk(const char* fmt, va_list ap)  {
 
 isize
 printk(const char* fmt, ...) {
+    bool pre_intr_enabled = intr_enabled();
+    disable_intr();
     va_list ap;
     va_start(ap, fmt);
     isize ret = vprintk(fmt, ap);
     va_end(ap);
+    if (pre_intr_enabled) {
+        enable_intr();
+    }
     return ret;
 }
