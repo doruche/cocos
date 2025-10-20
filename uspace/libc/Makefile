@@ -10,4 +10,5 @@ include $(ROOT_DIR)/scripts/build.mk
 
 all: $(TARGET)
 $(TARGET): $(MOD_OBJDIR)_dirs $(OBJS)
-	$(AR) rcs $@ $(OBJS)
+	@echo "  AR\t$(shell realpath --relative-to=$(BUILD_DIR) $@)"
+	@$(AR) rcs $@ $(OBJS)

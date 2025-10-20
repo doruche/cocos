@@ -9,13 +9,16 @@ RUNNABLE := apps servers
 all: $(LINKER) $(LIBC) $(RUNNABLE)
 
 $(LIBC):
-	$(MAKE) -C $@ all
+	@echo "  MAKE\t$@"
+	@$(MAKE) -C $@ all
 
 $(RUNNABLE): $(LIBC) $(LINKER)
-	$(MAKE) -C $@ all
+	@echo "  MAKE\t$@"
+	@$(MAKE) -C $@ all
 
 $(LINKER): $(LINKER_TEMPLATE)
-	$(CC) \
+	@echo "  PP\t$(shell realpath --relative-to=$(BUILD_DIR) $@)"
+	@$(CC) \
 		-E \
 		-P \
 		-x c \

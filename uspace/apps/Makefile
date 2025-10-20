@@ -1,8 +1,9 @@
 APPS := $(shell ls -d */ | xargs -n 1 basename)
 
-.PHONY: all
+.PHONY: all $(APPS)
 
 all: $(APPS)
 
 $(APPS):
-	$(MAKE) -C $@ all -f$(ROOT_DIR)/scripts/userapp.mk
+	@echo "  MAKE\t$@"
+	@$(MAKE) -C $@ all -f$(ROOT_DIR)/scripts/userapp.mk

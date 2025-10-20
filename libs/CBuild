@@ -1,1 +1,2 @@
-obj-y := list.o string.o
+# obj-y := list.o string.o
+obj-y := list.o string.o printf.o

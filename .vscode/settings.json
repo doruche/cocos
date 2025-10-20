@@ -8,6 +8,8 @@
         "vm.h": "c",
         "syscall.h": "c",
         "csr.h": "c",
-        "CBuild": "makefile"
+        "CBuild": "makefile",
+        "panic.h": "c",
+        "printf.h": "c"
     }
 }

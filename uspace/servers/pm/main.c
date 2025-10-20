@@ -1,11 +1,8 @@
-#include "libs/types.h"
-#include "uspace/syscall.h"
-#include "libs/macros.h"
+#include "libs/printf.h"
+#include "uspace/task.h"
 
-char* hello = "Hello, World from PM Server!\n";
-
-void
-_start(void) {
-    sys_puts(hello);
-    sys_kill(sys_gettid());
+isize
+main(void) {
+    printf("Hello, World!\n");
+    return 0;
 }

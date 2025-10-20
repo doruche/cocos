@@ -1,3 +1,4 @@
 obj-y :=			\
 	printk.o		\
-	test.o			
+	test.o			\
+	panic.o

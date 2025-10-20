@@ -1,7 +1,7 @@
 #pragma once
 
 #include "libs/types.h"
-#include "uspace/arch/arch_syscall.h"
+#include "uspace/arch_syscall.h"
 #include "libs/sysno.h"
 
 static inline isize

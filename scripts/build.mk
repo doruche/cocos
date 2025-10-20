@@ -23,11 +23,7 @@ define collect_objs
 	$(eval cbuild_dir := $(dir $(1)))
 	$(eval cbuild_rel_dir := $(patsubst $(MOD_SRCDIR)/%,%,$(cbuild_dir)))
 
-	ifeq ($(cbuild_rel_dir),)
-		cbuild_rel_dir := .
-	endif
-
-	$(eval local_objs := $(patsubst %,$(cbuild_rel_dir)/%,$(obj-y)))
+	$(eval local_objs := $(patsubst %,$(cbuild_rel_dir)%,$(obj-y)))
 	$(eval OBJS += $(patsubst %,$(MOD_OBJDIR)/%,$(local_objs)))
 endef
 
@@ -36,14 +32,18 @@ $(foreach sub_mk,$(SUB_MKS),$(eval $(call collect_objs,$(sub_mk))))
 # General compiling rules
 
 $(MOD_OBJDIR)/%.o: $(MOD_SRCDIR)/%.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	@echo "  CC\t$(shell realpath $@ -m --relative-to=$(BUILD_DIR))"
+#	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $(shell realpath $< --relative-to=$(MOD_SRCDIR)) -o $@
 
 $(MOD_OBJDIR)/%.o: $(MOD_SRCDIR)/%.S
-	$(CC) $(CFLAGS) -c $< -o $@
+	@echo "  AS\t$(shell realpath $@ -m --relative-to=$(BUILD_DIR))"
+#	@$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $(shell realpath $< --relative-to=$(MOD_SRCDIR)) -o $@
 
 MODULE_SUBDIRS := $(sort $(dir $(OBJS)))
 
 .PHONY: $(MOD_OBJDIR)_dirs
 
 $(MOD_OBJDIR)_dirs:
-	mkdir -p $(MODULE_SUBDIRS)
+	@mkdir -p . $(MODULE_SUBDIRS)

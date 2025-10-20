@@ -13,7 +13,9 @@ export OBJDUMP := $(CROSS)objdump
 export ROOT_DIR := $(CURDIR)
 export BUILD_DIR := $(abspath $(ROOT_DIR)/build)
 
-# General compiler flags
+# General building flags
+export MAKEFLAGS += --no-print-directory
+
 export GLOBL_CFLAGS := \
 	-Wall -Werror -Wno-error=unused \
 	-O2 -fno-pic -fno-builtin -ffreestanding -fno-stack-protector -mno-relax -g \
@@ -24,7 +26,13 @@ export GLOBL_CFLAGS := \
 
 export GLOBL_LDFLAGS := -nostdlib -static -no-pie
 
+# Kernel specific flags
+export LOG ?= TRACE
+
 # Emulator and debugger. Not used by sub-makefiles.
+KERNEL_BIN := $(BUILD_DIR)/kernel.bin
+KERNEL_ELF := $(BUILD_DIR)/kernel.elf
+
 QEMU := qemu-system-riscv64
 GDB := $(CROSS)gdb
 QEMU_FLAGS := \
@@ -34,22 +42,10 @@ QEMU_FLAGS := \
 # Parameters
 MODULES := libs kernel uspace
 
-KERNEL_LINKER := $(BUILD_DIR)/kernel/kernel.lds
-
-KERNEL_ELF := $(BUILD_DIR)/kernel.elf
-KERNEL_ASM := $(BUILD_DIR)/kernel.asm
-KERNEL_BIN := $(BUILD_DIR)/kernel.bin
-KERNEL_MAP := $(BUILD_DIR)/kernel.map
-
-KERNEL_OBJS := $(BUILD_DIR)/kernel/*/*.o \
-	$(BUILD_DIR)/libs/*.o
-
-.PHONY: all clean $(MODULES)			run gdb-client gdb-server
+.PHONY: all clean $(MODULES) \
+		run gdb-client gdb-server
 
 all: $(MODULES)
-#	$(LD) $(LDFLAGS) -T $(KERNEL_LINKER) -o $(KERNEL_ELF) $(KERNEL_OBJS) -Map=$(KERNEL_MAP)
-#	$(OBJCOPY) -O binary $(KERNEL_ELF) $(KERNEL_BIN)
-#	$(OBJDUMP) -d -S $(KERNEL_ELF) > $(KERNEL_ASM)
 
 # building the kernel depends on bootelf from uspace.
 # this is a bit coarse-grained and slow, but works for now.
@@ -57,7 +53,8 @@ uspace: libs
 kernel: uspace
 
 $(MODULES): prepare
-	$(MAKE) all -C $@
+	@echo "  MAKE\t$@"
+	@$(MAKE) all -C $@
 
 prepare: $(patsubst %,$(BUILD_DIR)/%,$(MODULES))
 
