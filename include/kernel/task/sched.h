@@ -24,7 +24,7 @@ typedef struct _task_t {
     arch_ctx_t actx;
 
     tid_t tid;
-    tid_t pager;
+    struct _task_t* pager; // which task is responsible for handling this task's page faults
     task_state_t state;
     vm_space_t* vms; // keep this as a pointer for easy shared memory management later
     list_elem_t node; // node in task list

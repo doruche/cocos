@@ -30,7 +30,7 @@ processor_init(void) {
         (ppn_t)PA2PN((kaddr_t)u_trampoline_entry),
         1,
         VM_RESERVED, // trampoline should never be freed
-        VM_EXEC | VM_READ | VM_BASE
+        VM_EXEC | VM_READ
     );
     ppn_t kstack_ppn = unwrap_err(palloc(KSTACK_SIZE / PAGE_SIZE));
     vm_map(
@@ -39,7 +39,7 @@ processor_init(void) {
         kstack_ppn,
         KSTACK_SIZE / PAGE_SIZE,
         VM_RESERVED,    // why would we free scheduler kstack...
-        VM_READ | VM_WRITE | VM_CONTIGUOUS | VM_BASE
+        VM_READ | VM_WRITE
     );
     vm_map(
         &kernel_vms,
@@ -47,7 +47,7 @@ processor_init(void) {
         VM_FAKE_PPN,
         1,
         VM_RESERVED,
-        VM_FAKE | VM_READ | VM_WRITE | VM_BASE
+        VM_FAKE | VM_READ | VM_WRITE
     );
     // and then jump to scheduler context...
 }

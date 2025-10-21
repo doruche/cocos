@@ -55,8 +55,8 @@ task_kstack_top(tid_t tid) {
 }
 
 static void
-creat_first_task(u8* init_elf) {
-    elf_hdr_t* elf_header = (elf_hdr_t*)init_elf;
+creat_first_task(u8* bootelf) {
+    elf_hdr_t* elf_header = (elf_hdr_t*)bootelf;
     if (memcmp(elf_header->e_ident, ELF_MAGIC, 4) != 0) {
         panic("creat_first_task: invalid elf magic");
     }
@@ -64,14 +64,14 @@ creat_first_task(u8* init_elf) {
     task_t* init_task = task_spawn("pm", elf_header->e_entry);
 
     // load program segments
-    elf_phdr_t* phdrs = (elf_phdr_t*)(init_elf + elf_header->e_phoff);
+    elf_phdr_t* phdrs = (elf_phdr_t*)(bootelf + elf_header->e_phoff);
     for (usize i = 0; i < elf_header->e_phnum; i++) {
         elf_phdr_t* phdr = &phdrs[i];
         if (phdr->p_type != PT_LOAD) {
             continue;
         }
 
-        vm_area_flags_t flags = VM_USER | VM_CONTIGUOUS;
+        vm_area_flags_t flags = VM_USER;
         if (phdr->p_flags & PF_R) {
             flags |= VM_READ;
         }
@@ -88,7 +88,7 @@ creat_first_task(u8* init_elf) {
         ppn_t ppn = unwrap_err(palloc(npages));
         memcpy(
             (void*)PN2PA(ppn),
-            init_elf + phdr->p_offset,
+            bootelf + phdr->p_offset,
             filesz
         );
         // zero the rest
@@ -165,8 +165,7 @@ task_spawn(const char* name, uaddr_t entry) {
     // task exits. so it's just enough to copy the first level page table entries.
     // perfect!
 
-    extern vm_space_t kernel_vms;
-    vm_copy_mappings(task->vms, &kernel_vms);
+    kvms_derive(task->vms);
 
     // initialize arch context
     kaddr_t mapped_kstack_top = task_kstack_top(task->tid);

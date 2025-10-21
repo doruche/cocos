@@ -8,10 +8,7 @@
  * to be allocated from the slab allocator.
  */
 
-#ifndef _K_MM_SLAB_H
-#define _K_MM_SLAB_H 1
-
-#ifndef __DEFONLY__
+#pragma once
 
 #include "libs/types.h"
 #include "kernel/arch/mm.h"
@@ -58,7 +55,3 @@ void*           kmem_cache_alloc(kmem_cache_t* cache);
 void            kmem_cache_free(kmem_cache_t* cache, void* obj);
 
 void            kmem_cache_dump(kmem_cache_t* cache);
-
-#endif
-
-#endif

@@ -72,7 +72,7 @@ actx_init(
         kstack_bottom,
         KSTACK_SIZE / PAGE_SIZE,
         VM_ALLOCATED,
-        VM_READ | VM_WRITE | VM_CONTIGUOUS
+        VM_READ | VM_WRITE
     );
     vm_map(
         vms,
@@ -88,7 +88,7 @@ actx_init(
         ustack_bottom,
         USTACK_SIZE / PAGE_SIZE,
         VM_ALLOCATED,
-        VM_READ | VM_WRITE | VM_USER | VM_CONTIGUOUS
+        VM_READ | VM_WRITE | VM_USER
     );
     vm_map(
         vms,

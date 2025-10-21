@@ -30,8 +30,6 @@
 #define PTE_G   (1L << 5)   // global
 #define PTE_A   (1L << 6)   // accessed
 #define PTE_D   (1L << 7)   // dirty
-// software defined bits
-#define PTE_B   (1L << 8)   // base mappings. should not be uninstall forever
 
 #define PTE2PA(pte) (((pte) >> 10) << PAGE_SHIFT)
 #define PTE2PPN(pte) ((pte) >> 10)

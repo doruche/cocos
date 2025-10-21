@@ -109,20 +109,26 @@ void
 slab_test(void) {
     notify("------ test slab allocator ------");
 
+    usize nfree_pages_before = pm_count_free();
+    info("nfree pages before test: %d", nfree_pages_before);
+
     kmem_cache_t cache;
     kmem_cache_create(&cache, "test_cache", 64);
     void* objs[1000];
     for (int i = 0; i < 1000; i++) {
         objs[i] = kmem_cache_alloc(&cache);
         assert(objs[i] != NULL);
-        printk("allocated object %d: %p\n", i, objs[i]);
+        trace("allocated object %d: %p\n", i, objs[i]);
     }
     kmem_cache_dump(&cache);
     for (int i = 0; i < 1000; i++) {
         kmem_cache_free(&cache, objs[i]);
-        printk("freed object %d: %p\n", i, objs[i]);
+        trace("freed object %d: %p\n", i, objs[i]);
     }
     kmem_cache_dump(&cache);
+
+    usize nfree_pages_after = pm_count_free();
+    info("nfree pages after test: %d", nfree_pages_after);
 
     notify("------ test slab allocator end ------");
 }
@@ -199,7 +205,7 @@ vm_test(void) {
         huge_area_ppn,
         10,
         VM_ALLOCATED,
-        VM_READ | VM_WRITE | VM_CONTIGUOUS
+        VM_READ | VM_WRITE
     );
 
     // identity map kernel space
@@ -251,14 +257,16 @@ vm_test(void) {
     extern vm_space_t kernel_vms;
     vm_activate(&kernel_vms);
 
-    // this should panic. we mapped a VM_CONTIGUOUS area, which
-    // must be unmapped as a whole
-    // vm_unmap(&test_vms, test_vpn2 + 3, 5, true);
-
     for (usize i = 0; i < 5; i++) {
         // unmap 5 pages manually
-        vm_unmap(&test_vms, test_vpn1 + i, 1, true);
+        vm_unmap(&test_vms, test_vpn1 + i, 1);
     }
+
+    // split the huge area
+    vm_dump(&test_vms);
+    vm_unmap(&test_vms, test_vpn2, 1);
+    vm_unmap(&test_vms, test_vpn2 + 3, 5);
+    vm_dump(&test_vms);
 
     // destroy the vm space
     vm_destroy(&test_vms);

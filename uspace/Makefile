@@ -1,18 +1,20 @@
 LINKER := $(BUILD_DIR)/uspace/uspace.lds
 LINKER_TEMPLATE := uspace.lds.in
 
-LIBC := libc
-RUNNABLE := apps servers
 
-.PHONY: all $(LIBC) $(RUNNABLE)
+.PHONY: all libc apps servers
 
-all: $(LINKER) $(LIBC) $(RUNNABLE)
+all: $(LINKER) libc apps servers
 
-$(LIBC):
+libc:
 	@echo "  MAKE\t$@"
 	@$(MAKE) -C $@ all
 
-$(RUNNABLE): $(LIBC) $(LINKER)
+servers: libc $(LINKER)
+	@echo "  MAKE\t$@"
+	@$(MAKE) -C $@ all
+
+apps: libc $(LINKER)
 	@echo "  MAKE\t$@"
 	@$(MAKE) -C $@ all
 

@@ -25,13 +25,8 @@ pte_is_mapped(pte_t pte) {
     return (pte & (PTE_R | PTE_W | PTE_X | PTE_V)) != 0; // include fake mappings
 }
 
-static bool
-pte_is_base(pte_t pte) {
-    return (pte & PTE_B) != 0;
-}
-
 pte_t*
-pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc, bool create_base) {
+pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc) {
     usize indices[3] = {
         (vpn >> 18) & 0x1FF,
         (vpn >> 9) & 0x1FF,
@@ -50,9 +45,6 @@ pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc, bool create_base) {
             ppn_t new_table_ppn = unwrap_err(palloc_one());
             pgtbl_init((pgtbl_t*)PN2PA(new_table_ppn));
             *pte = (new_table_ppn << 10) | PTE_V;
-            if (create_base) {
-                *pte |= PTE_B;
-            }
             table = (pgtbl_t*)PN2PA(new_table_ppn);
         } else {
             return NULL;
@@ -72,7 +64,7 @@ pgtbl_init(pgtbl_t* pgtbl) {
 
 void
 pgtbl_map(__root pgtbl_t *pgtbl, vpn_t vpn, ppn_t ppn, u64 flags) {
-    pte_t* pte = pgtbl_walk(pgtbl, vpn, true, (flags & PTE_B) != 0);
+    pte_t* pte = pgtbl_walk(pgtbl, vpn, true);
     assert(pte != NULL);
 
     if (pte_is_mapped(*pte)) {
@@ -84,12 +76,8 @@ pgtbl_map(__root pgtbl_t *pgtbl, vpn_t vpn, ppn_t ppn, u64 flags) {
 
 void
 pgtbl_unmap(__root pgtbl_t *pgtbl, vpn_t vpn) {
-    pte_t* pte = pgtbl_walk(pgtbl, vpn, false, false);
+    pte_t* pte = pgtbl_walk(pgtbl, vpn, false);
     assert(pte != NULL);
-    if (pte_is_base(*pte)) {
-        // panic("pgtbl_unmap: base mapping, cannot unmap");
-        return;
-    }
 
     if (!pte_is_mapped(*pte)) {
         panic("pgtbl_unmap: not mapped");
@@ -106,9 +94,6 @@ void
 pgtbl_destroy(pgtbl_t *pgtbl) {
     for (int i = 0; i < 512; i++) {
         pte_t *pte = &pgtbl->entries[i];
-        if (pte_is_base(*pte)) {
-            continue;
-        }
         if (pte_is_branch(*pte)) {
             pgtbl_destroy((pgtbl_t*)PTE2PA(*pte));
         } else if (pte_is_leaf(*pte)) {
@@ -133,7 +118,6 @@ pte_archflag2vmflag(u64 flags) {
     if (flags & PTE_W) vmflags |= VM_WRITE;
     if (flags & PTE_X) vmflags |= VM_EXEC;
     if (flags & PTE_U) vmflags |= VM_USER;
-    if (flags & PTE_B) vmflags |= VM_BASE;
     if ((flags & PTE_V) == 0) vmflags |= VM_FAKE; // not valid means fake mapping
     return vmflags;
 }
@@ -146,7 +130,6 @@ pte_vmflag2archflag(vm_area_flags_t flags) {
     if (flags & VM_WRITE) archflags |= PTE_W;
     if (flags & VM_EXEC) archflags |= PTE_X;
     if (flags & VM_USER) archflags |= PTE_U;
-    if (flags & VM_BASE) archflags |= PTE_B;
     if (flags & VM_FAKE) archflags &= ~PTE_V; // fake mapping means not valid
 
     return archflags;
@@ -154,14 +137,12 @@ pte_vmflag2archflag(vm_area_flags_t flags) {
 
 ppn_t
 pgtbl_lookup(pgtbl_t *pgtbl, vpn_t vpn) {
-    pte_t* pte = pgtbl_walk(pgtbl, vpn, false, false);
+    pte_t* pte = pgtbl_walk(pgtbl, vpn, false);
     if (pte == NULL || !pte_is_mapped(*pte) || !pte_is_leaf(*pte)) {
         return 0;
     }
     return PTE2PPN(*pte);
 }
-
-#ifdef PGTBL_DEBUG
 
 static void
 _pgtbl_dump(pgtbl_t *pgtbl, int level) {
@@ -186,5 +167,3 @@ void
 pgtbl_dump(pgtbl_t *pgtbl) {
     _pgtbl_dump(pgtbl, 0);
 }
-
-#endif

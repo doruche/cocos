@@ -24,7 +24,6 @@ kstart(bootinfo_t* bootinfo) {
     kvms_init(bootinfo);
     info("kernel vm space initialized.");
 
-
     notify("cocos kernel booted successfully, jumping to scheduler...");
     sched_init(bootinfo->boot_elf);
 
