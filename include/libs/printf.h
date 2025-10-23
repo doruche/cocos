@@ -1,6 +1,12 @@
 /*
  * printf header file
- * user should implement __putc function
+ * user should implement __puts function
+ * this implementation supports:
+ * 1. %[l]<b|o|d|x>
+ * 2. %p
+ * 3. %c, %s
+ * 4. %%
+ * format specifiers.
  */
 
 #pragma once
@@ -8,7 +14,7 @@
 #include <stdarg.h>
 #include "libs/types.h"
 
-usize   __putc(char c); // user's hook
+extern usize   __puts(const char* str);
 
 isize   vprintf(const char *fmt, va_list ap);
 isize   printf(const char *fmt, ...);

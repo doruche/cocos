@@ -59,7 +59,7 @@ $(MODULES): prepare
 prepare: $(patsubst %,$(BUILD_DIR)/%,$(MODULES))
 
 $(BUILD_DIR)/%:
-	mkdir -p $@
+	@mkdir -p $@
 
 run:
 	$(QEMU) $(QEMU_FLAGS) \

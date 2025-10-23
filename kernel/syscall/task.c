@@ -4,6 +4,7 @@
 #include "libs/macros.h"
 #include "libs/types.h"
 #include "kernel/syscall.h"
+#include "kernel/task/sched.h"
 
 SYSCALL_DEFINE1(kill, tid_t, tid) {
     trace("sys_kill: called for tid=%ld", tid);
@@ -27,4 +28,21 @@ SYSCALL_DEFINE1(kill, tid_t, tid) {
 
 SYSCALL_DEFINE0(gettid) {
     return (unwrap_null(current_task))->tid;
+}
+
+SYSCALL_DEFINE3(spawn, const char*, name, uaddr_t, entry, tid_t, pager) {
+    trace("sys_spawn: called name=%s entry=0x%lx pager=%ld",
+        name, entry, pager);
+
+    task_t* pager_task = task_get(pager);
+    if (pager_task == NULL) {
+        trace("sys_spawn: invalid pager tid=%ld", pager);
+        return -1;
+    }
+
+    task_t* task = task_spawn(name, entry, pager_task);
+    trace("sys_spawn: spawned task tid=%ld name=%s entry=0x%lx pager=%ld",
+        task->tid, task->name, entry, pager);
+
+    return task->tid;
 }

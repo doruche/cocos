@@ -3,10 +3,11 @@
 #include "uspace/syscall.h"
 
 usize
-__putc(char c) {
-    static char buf[2];
-    buf[0] = c;
-    buf[1] = '\0';
-    sys_puts(buf);
-    return 1;
+__puts(const char* str) {
+    sys_puts(str);
+    usize len = 0;
+    while (str[len] != '\0') {
+        len++;
+    }
+    return len;
 }

@@ -61,7 +61,7 @@ creat_first_task(u8* bootelf) {
         panic("creat_first_task: invalid elf magic");
     }
 
-    task_t* init_task = task_spawn("pm", elf_header->e_entry);
+    task_t* init_task = task_spawn("pm", elf_header->e_entry, NULL);
 
     // load program segments
     elf_phdr_t* phdrs = (elf_phdr_t*)(bootelf + elf_header->e_phoff);
@@ -140,15 +140,21 @@ sched_init(u8* init_elf) {
 // user stack here,
 // they will be done by process manager.:P
 task_t*
-task_spawn(const char* name, uaddr_t entry) {
+task_spawn(const char* name, uaddr_t entry, task_t* pager) {
     task_t* task = unwrap_null(kmem_cache_alloc(&task_cache));
     memset(task, 0, sizeof(task_t));
 
     task->tid = alloc_tid();
     strncpy(task->name, name, TASK_NAME_MAX_LEN);
     task->state = T_READY;
-    task->vms = unwrap_null(kmem_cache_alloc(&task_vms_cache));
+    if (task->tid != 0) {
+        // pm does not need a pager
+        assert(pager != NULL);
+    }
+    task->pager = pager;
 
+
+    task->vms = unwrap_null(kmem_cache_alloc(&task_vms_cache));
     vm_init(task->vms);
 
     // important point:
@@ -158,13 +164,7 @@ task_spawn(const char* name, uaddr_t entry) {
     // 1. kernel code   necessary
     // 2. free memory   necessary
     // 3. trampoline    necessary
-    // 4. scheduler kstack. this is actually not necessary and
-    // a security risk, but we do it for simplicitly for now.
-    // should refine later.
-    // and cz all scheduler mappings are VM_RESERVED, they will not be freed when
-    // task exits. so it's just enough to copy the first level page table entries.
-    // perfect!
-
+    // 4. scheduler kstack. can be avoided by assembly tricks, but whatever.
     kvms_derive(task->vms);
 
     // initialize arch context
@@ -248,7 +248,6 @@ void
 scheduler(void) {
     // currently just simple round-robin
     assert(intr_enabled());
-
 
     loop {
         list_foreach_safe(iter, &task_list, next) {

@@ -1,9 +1,23 @@
+/*
+ * libgeneric's hooks
+ */
+
 #include "libs/panic.h"
+#include "libs/printf.h"
 #include "libs/types.h"
 #include "kernel/misc/printk.h"
 #include "kernel/misc/log.h"
+#include "kernel/arch/sbi.h"
 
-/* implement libgeneric's panic hook */
+usize
+__puts(const char* str) {
+    usize len = 0;
+    while (str[len] != '\0') {
+        sbi_console_putchar(str[len]);
+        len++;
+    }
+    return len;
+}
 
 void __noreturn
 __panic(const char* msg, ...) {

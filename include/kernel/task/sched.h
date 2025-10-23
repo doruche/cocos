@@ -41,7 +41,7 @@ task_t* task_get(tid_t tid);
 typedef struct _bootinfo_t bootinfo_t;
 void    sched_init(u8* init_elf);
 
-task_t* task_spawn(const char* name, uaddr_t entry);
+task_t* task_spawn(const char* name, uaddr_t entry, tid_t pager);
 void    task_kill(tid_t tid);
 void    task_crash_exit(void);
 

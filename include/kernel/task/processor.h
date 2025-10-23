@@ -23,6 +23,11 @@ extern  processor_t processor;
 #define scheduler_ctx \
     (&processor.sched_ctx)
 
+static inline bool
+in_scheduler_ctx(void) {
+    return current_task == NULL;
+}
+
 void    wait_for_intr(void);
 
 void    push_intr_off(void);

@@ -6,6 +6,15 @@
 #define panic __panic
 
 static usize
+__putc(char c) {
+    char buf[2];
+    buf[0] = c;
+    buf[1] = '\0';
+    __puts(buf);
+    return 1;
+}
+
+static usize
 print_str(const char* str) { 
     if (str == NULL) {
         return print_str("(null)");

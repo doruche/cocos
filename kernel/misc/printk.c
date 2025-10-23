@@ -1,11 +1,7 @@
 /*
  * print a kernel message.
- * this implementation supports:
- * 1. %[l]<b|o|d|x>
- * 2. %p
- * 3. %c, %s
- * 4. %%
- * format specifiers.
+ * we wrap printk to disable interrupts during printing
+ * to avoid messy outputs.
  */
 
 #include "kernel/misc/printk.h"
@@ -15,12 +11,6 @@
 #include "kernel/arch/csr.h"
 #include "libs/printf.h"
 #include <stdarg.h>
-
-usize
-__putc(char c) {
-    sbi_console_putchar(c);
-    return 1;
-}
 
 isize
 vprintk(const char* fmt, va_list ap) {
