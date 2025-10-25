@@ -22,32 +22,27 @@ processor_init(void) {
         sched_kstack_top
     );
 
-    // alright! finally, let's map TRAMPOLINE and scheduler kstack
+    // alright! finally we're to map TRAMPOLINE and scheduler kstack
     extern vm_space_t kernel_vms;
     vm_map(
         &kernel_vms,
         (vpn_t)PA2PN(TRAMPOLINE),
         (ppn_t)PA2PN((kaddr_t)u_trampoline_entry),
         1,
-        VM_RESERVED, // trampoline should never be freed
-        VM_EXEC | VM_READ
+        VM_READ | VM_EXEC
     );
-    ppn_t kstack_ppn = unwrap_err(palloc(KSTACK_SIZE / PAGE_SIZE));
-    vm_map(
+    unwrap_err(vm_alloc(
         &kernel_vms,
         (vpn_t)((sched_kstack_top - KSTACK_SIZE) / PAGE_SIZE),
-        kstack_ppn,
         KSTACK_SIZE / PAGE_SIZE,
-        VM_RESERVED,    // why would we free scheduler kstack...
         VM_READ | VM_WRITE
-    );
+    ));
     vm_map(
         &kernel_vms,
         (vpn_t)((sched_kstack_top - KSTACK_SIZE) / PAGE_SIZE - 1),
-        VM_FAKE_PPN,
+        0,
         1,
-        VM_RESERVED,
-        VM_FAKE | VM_READ | VM_WRITE
+        VM_READ | VM_WRITE | VM_FAKE
     );
     // and then jump to scheduler context...
 }

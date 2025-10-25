@@ -51,11 +51,11 @@ utrap() {
 
     // sanity check
     task_t* current = unwrap_null(current_task);
-    trapframe_t* tf = &current->actx.tf;
+    trapframe_t* tf = &current->actx->tf;
     assert_eq(current->state, T_RUNNING);
     assert(!intr_enabled());
 
-    actx_utrap_entry(&current->actx);
+    actx_utrap_entry(current->actx);
 
     if (scause_is_irq(r_scause())) {
         u64 irq = r_scause() & ~SCAUSE_IRQ_FLAG;
@@ -74,12 +74,15 @@ utrap() {
         switch (exccode) {
             case SCAUSE_EXC_ECALL_FROM_U: {
                     // syscall
-                    trace("syscall from user mode");
                     if (!do_syscall(
                         tf->x[17], // a7
                         tf
                     )) {
                         // invalid syscall, kill the task
+                        warn("invalid syscall %ld from task %d",
+                            tf->x[17],
+                            current->tid
+                        );
                         task_crash_exit();
                     }
                 }
@@ -95,7 +98,19 @@ utrap() {
                         current->tid, current->name,
                         fault_addr, exception_strs[exccode]
                     );
-                    task_crash_exit();
+                    if (task_get(current->pager) != NULL) {
+                        notify(
+                            "task page fault: requesting pager task %ld to handle",
+                            current->pager
+                        );
+                        yield();
+                    } else {
+                        warn(
+                            "task page fault: no valid pager for task %ld, killing",
+                            current->tid
+                        );
+                        task_crash_exit();
+                    }
                 }
                 break;
             default:
@@ -120,7 +135,7 @@ utrap_ret() {
     trace("returning to user space task tid=%ld name=%s",
         current->tid, current->name);
 
-    actx_utrap_ret(&current->actx);
+    actx_utrap_ret(current->actx);
 
     trace("jumping to user space...");
 

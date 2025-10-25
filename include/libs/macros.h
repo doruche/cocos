@@ -20,6 +20,18 @@
 
 #define loop while(1)
 
+#define PAGE_SIZE   0x1000
+#define PAGE_SHIFT  12
+#define PAGE_MASK   (PAGE_SIZE - 1)
+
+#define PGUP(addr) (((addr) + PAGE_MASK) & ~PAGE_MASK)
+#define PGDOWN(addr) ((addr) & ~PAGE_MASK)
+
+// convert page number to page address
+#define PN2PA(ppn) ((ppn) << PAGE_SHIFT)
+// convert page address to page number
+#define PA2PN(pa)  ((pa) >> PAGE_SHIFT)
+
 /// bit should be declared as bool
 #define bit_traverse(bitmap, nbits, byte_cursor, bit_cursor) \
     for (usize byte_cursor = 0; byte_cursor < ((nbits) + 7) / 8; byte_cursor++) \

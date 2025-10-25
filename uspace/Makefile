@@ -10,7 +10,8 @@ libc:
 	@echo "  MAKE\t$@"
 	@$(MAKE) -C $@ all
 
-servers: libc $(LINKER)
+# build apps first
+servers: libc $(LINKER) apps
 	@echo "  MAKE\t$@"
 	@$(MAKE) -C $@ all
 

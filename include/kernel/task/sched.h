@@ -21,13 +21,15 @@ typedef enum _task_state_t {
 typedef struct _task_t {
     char name[TASK_NAME_MAX_LEN];
 
-    arch_ctx_t actx;
+    arch_ctx_t* actx;
 
     tid_t tid;
-    struct _task_t* pager; // which task is responsible for handling this task's page faults
+    tid_t pager; // which task is responsible for handling this task's page faults
     task_state_t state;
     vm_space_t* vms; // keep this as a pointer for easy shared memory management later
     list_elem_t node; // node in task list
+
+    ppn_t* alloced_pages; // for sys_pm_alloc tracking.
 } task_t;
 
 // layout

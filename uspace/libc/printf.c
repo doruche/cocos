@@ -4,7 +4,7 @@
 
 usize
 __puts(const char* str) {
-    sys_puts(str);
+    sys_dbg_puts(str);
     usize len = 0;
     while (str[len] != '\0') {
         len++;

@@ -1,9 +1,6 @@
-#ifndef _K_BOOT_H
-#define _K_BOOT_H 1
+#pragma once
 
 #define NMEMZONE_MAX    16
-
-#ifndef __DEFONLY__
 
 #include "libs/types.h"
 
@@ -29,7 +26,3 @@ typedef struct _bootinfo_t {
 } bootinfo_t;
 
 void kstart(bootinfo_t*);
-
-#endif
-
-#endif

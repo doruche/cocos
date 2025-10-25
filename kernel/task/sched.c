@@ -17,6 +17,7 @@
 #include "kernel/mm/pm.h"
 #include "libs/string.h"
 #include "libs/elf.h"
+#include "kernel/mm/kmalloc.h"
 
 static list_t task_list; // all tasks
 
@@ -61,7 +62,7 @@ creat_first_task(u8* bootelf) {
         panic("creat_first_task: invalid elf magic");
     }
 
-    task_t* init_task = task_spawn("pm", elf_header->e_entry, NULL);
+    task_t* init_task = task_spawn("pm", elf_header->e_entry, 0);
 
     // load program segments
     elf_phdr_t* phdrs = (elf_phdr_t*)(bootelf + elf_header->e_phoff);
@@ -71,7 +72,7 @@ creat_first_task(u8* bootelf) {
             continue;
         }
 
-        vm_area_flags_t flags = VM_USER;
+        vm_flags_t flags = VM_USER;
         if (phdr->p_flags & PF_R) {
             flags |= VM_READ;
         }
@@ -85,26 +86,25 @@ creat_first_task(u8* bootelf) {
         usize memsz = phdr->p_memsz;
         usize filesz = phdr->p_filesz;
         usize npages = PGUP(memsz) / PAGE_SIZE;
-        ppn_t ppn = unwrap_err(palloc(npages));
-        memcpy(
-            (void*)PN2PA(ppn),
-            bootelf + phdr->p_offset,
-            filesz
-        );
-        // zero the rest
-        memset(
-            (void*)(PN2PA(ppn) + filesz),
-            0,
-            memsz - filesz
-        );
-        vm_map(
+        
+        unwrap_err(vm_alloc(
             init_task->vms,
             (vpn_t)PA2PN(phdr->p_vaddr),
-            ppn,
             npages,
-            VM_ALLOCATED,
             flags
-        );
+        ));
+        unwrap_err(vm_memcpy(
+            init_task->vms,
+            phdr->p_vaddr,
+            (kaddr_t)(bootelf + phdr->p_offset),
+            filesz
+        ));
+        unwrap_err(vm_memset(
+            init_task->vms,
+            phdr->p_vaddr + filesz,
+            0,
+            memsz - filesz
+        ));
         info("loaded init task segment: vaddr=%p memsz=%ld filesz=%ld flags=%c%c%c",
             phdr->p_vaddr, memsz, filesz,
             (flags & VM_READ) ? 'r' : '-',
@@ -128,7 +128,7 @@ sched_init(u8* init_elf) {
     // must init processor before creating first task.
     // there are dependencies between their mappings.
     processor_init();
-    notify("free pages: %ld", pm_count_free());
+    notify("free pages after processor init: %ld", pm_count_free());
     creat_first_task(init_elf);
 
     // declare an unused ctx on boot stack
@@ -140,19 +140,24 @@ sched_init(u8* init_elf) {
 // user stack here,
 // they will be done by process manager.:P
 task_t*
-task_spawn(const char* name, uaddr_t entry, task_t* pager) {
+task_spawn(const char* name, uaddr_t entry, tid_t pager) {
     task_t* task = unwrap_null(kmem_cache_alloc(&task_cache));
     memset(task, 0, sizeof(task_t));
 
     task->tid = alloc_tid();
     strncpy(task->name, name, TASK_NAME_MAX_LEN);
     task->state = T_READY;
-    if (task->tid != 0) {
-        // pm does not need a pager
-        assert(pager != NULL);
+    
+    // only init task has no pager
+    if (task->tid == 0) {
+        assert_eq(pager, 0);
+        task->pager = 0;
+        // bug. what if a page fault happens in init task?
+        // refine later.
+    } else {
+        assert_ne(task_get(pager), NULL);
+        task->pager = pager;
     }
-    task->pager = pager;
-
 
     task->vms = unwrap_null(kmem_cache_alloc(&task_vms_cache));
     vm_init(task->vms);
@@ -168,13 +173,23 @@ task_spawn(const char* name, uaddr_t entry, task_t* pager) {
     kvms_derive(task->vms);
 
     // initialize arch context
+    task->actx = unwrap_null(kmem_cache_alloc(&task_actx_cache));
     kaddr_t mapped_kstack_top = task_kstack_top(task->tid);
     actx_init(
-        &task->actx,
+        task->actx,
         task->vms,
         mapped_kstack_top,
         (kaddr_t)utrap_ret,
         entry
+    );
+
+    task->alloced_pages = unwrap_null(
+        kmalloc(sizeof(ppn_t) * TASK_MAX_PHYS_PAGES)
+    );
+    memset(
+        task->alloced_pages,
+        0,
+        sizeof(ppn_t) * TASK_MAX_PHYS_PAGES
     );
 
     list_push_back(&task_list, &task->node);
@@ -199,6 +214,15 @@ task_spawn(const char* name, uaddr_t entry, task_t* pager) {
 static void
 task_cleanup(task_t* task) {
     list_remove(&task->node);
+    
+    for (usize i = 0; i < TASK_MAX_PHYS_PAGES; i++) {
+        ppn_t ppn = task->alloced_pages[i];
+        if (ppn != 0) {
+            assert(pm_decref(ppn));
+        }
+    }
+
+    actx_destroy(task->actx, task->vms);
     vm_destroy(task->vms);
     kmem_cache_free(&task_vms_cache, task->vms);
     kmem_cache_free(&task_actx_cache, &task->actx);
@@ -226,7 +250,7 @@ task_crash_exit(void) {
     assert_eq(current->state, T_RUNNING);
     current->state = T_ZOMBIE;
     ctx_switch(
-        &current->actx.ctx,
+        &current->actx->ctx,
         scheduler_ctx
     );
 }
@@ -239,7 +263,7 @@ yield(void) {
     assert_eq(current->state, T_RUNNING);
     current->state = T_READY;
     ctx_switch(
-        &current->actx.ctx,
+        &current->actx->ctx,
         scheduler_ctx
     );
 }
@@ -263,7 +287,7 @@ scheduler(void) {
                     task->tid, task->name);
                 ctx_switch(
                     scheduler_ctx,
-                    &task->actx.ctx
+                    &task->actx->ctx
                 );
 
                 // returned from task

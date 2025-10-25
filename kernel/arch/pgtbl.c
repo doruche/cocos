@@ -10,23 +10,8 @@
 #include "kernel/arch/csr.h"
 #include "libs/types.h"
 
-static bool
-pte_is_leaf(pte_t pte) {
-    return (pte & (PTE_R | PTE_W | PTE_X)) != 0 && (pte & PTE_V) != 0;
-}
-
-static bool
-pte_is_branch(pte_t pte) {
-    return (pte & (PTE_R | PTE_W | PTE_X)) == 0 && (pte & PTE_V) != 0;
-}
-
-static bool
-pte_is_mapped(pte_t pte) {
-    return (pte & (PTE_R | PTE_W | PTE_X | PTE_V)) != 0; // include fake mappings
-}
-
-pte_t*
-pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc) {
+static pte_t*
+pgtbl_find_pte(pgtbl_t *pgtbl, vpn_t vpn, bool alloc) {
     usize indices[3] = {
         (vpn >> 18) & 0x1FF,
         (vpn >> 9) & 0x1FF,
@@ -42,7 +27,7 @@ pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc) {
         if (pte_is_branch(*pte)) {
             table = (pgtbl_t*)PTE2PA(*pte);
         } else if (alloc) {
-            ppn_t new_table_ppn = unwrap_err(palloc_one());
+            ppn_t new_table_ppn = unwrap_err(pm_alloc());
             pgtbl_init((pgtbl_t*)PN2PA(new_table_ppn));
             *pte = (new_table_ppn << 10) | PTE_V;
             table = (pgtbl_t*)PN2PA(new_table_ppn);
@@ -50,8 +35,80 @@ pgtbl_walk(pgtbl_t *pgtbl, vpn_t vpn, bool alloc) {
             return NULL;
         }
     }
-
     unreachable()
+}
+
+static void
+_pgtbl_walk(
+    pgtbl_t* pgtbl, 
+    pgtbl_leaf_walker leaf,
+    pgtbl_branch_walker branch,
+    void* ctx,
+    vpn_t vpn_prefix,
+    usize level
+) {
+    if (level >= 3) {
+        unreachable();
+    }
+
+    for (usize i = 0; i < 512; i++) {
+        pte_t* pte = &pgtbl->entries[i];
+        vpn_t vpn = vpn_prefix | (i << ((2 - level) * 9));
+        if (pte_is_branch(*pte)) {
+            _pgtbl_walk(
+                (pgtbl_t*)PTE2PA(*pte), 
+                leaf, 
+                branch, 
+                ctx,
+                vpn, 
+                level + 1
+            );
+            if (branch != NULL) {
+                branch(pgtbl, pte, ctx);
+            }
+        } else if (pte_is_leaf(*pte)) {
+            if (leaf != NULL) {
+                leaf(pgtbl, vpn, pte, ctx);
+            }
+        }
+    }
+}
+
+// post-order traversal
+// branches are always visited after leaves
+// this allows us to do conditional unmapping easily
+void
+pgtbl_walk(
+    pgtbl_t *pgtbl, 
+    pgtbl_leaf_walker leaf,
+    pgtbl_branch_walker branch,
+    void* ctx
+) {
+    _pgtbl_walk(pgtbl, leaf, branch, ctx, 0, 0);
+}
+
+void
+generic_branch_unmapper(
+    pgtbl_t *pgtbl,
+    pte_t* pte,
+    void* ctx
+) {
+    bool child_exists = false;
+    pgtbl_t* cur_table = (pgtbl_t*)PTE2PA(*pte);
+    for (usize i = 0; i < 512; i++) {
+        pte_t child = cur_table->entries[i];
+        if (pte_is_mapped(child)) {
+            child_exists = true;
+            break;
+        }
+    }
+    if (child_exists) {
+        return;
+    } else {
+        // no mapped entries, we can free this pagetable
+        assert(pm_decref(PA2PN((paddr_t)cur_table)));
+        *pte = 0;
+    }
 }
 
 void
@@ -64,7 +121,7 @@ pgtbl_init(pgtbl_t* pgtbl) {
 
 void
 pgtbl_map(__root pgtbl_t *pgtbl, vpn_t vpn, ppn_t ppn, u64 flags) {
-    pte_t* pte = pgtbl_walk(pgtbl, vpn, true);
+    pte_t* pte = pgtbl_find_pte(pgtbl, vpn, true);
     assert(pte != NULL);
 
     if (pte_is_mapped(*pte)) {
@@ -76,11 +133,10 @@ pgtbl_map(__root pgtbl_t *pgtbl, vpn_t vpn, ppn_t ppn, u64 flags) {
 
 void
 pgtbl_unmap(__root pgtbl_t *pgtbl, vpn_t vpn) {
-    pte_t* pte = pgtbl_walk(pgtbl, vpn, false);
-    assert(pte != NULL);
+    pte_t* pte = pgtbl_find_pte(pgtbl, vpn, false);
 
-    if (!pte_is_mapped(*pte)) {
-        panic("pgtbl_unmap: not mapped");
+    if (pte == NULL || !pte_is_mapped(*pte)) {
+        panic("pgtbl_unmap: not mapped vpn %p", vpn);
     }
 
     *pte = 0;
@@ -102,7 +158,8 @@ pgtbl_destroy(pgtbl_t *pgtbl) {
             panic("pgtbl_destroy: leaf entry found");
         }
     }
-    pfree(PA2PN((paddr_t)pgtbl));
+    // pagetable should be freed
+    assert(pm_decref(PA2PN((paddr_t)pgtbl)));
 }
 
 void
@@ -111,9 +168,9 @@ pgtbl_activate(pgtbl_t *pgtbl) {
     w_satp(SATP(pgtbl));
 }
 
-vm_area_flags_t
+vm_flags_t
 pte_archflag2vmflag(u64 flags) {
-    vm_area_flags_t vmflags = 0;
+    vm_flags_t vmflags = 0;
     if (flags & PTE_R) vmflags |= VM_READ;
     if (flags & PTE_W) vmflags |= VM_WRITE;
     if (flags & PTE_X) vmflags |= VM_EXEC;
@@ -123,7 +180,7 @@ pte_archflag2vmflag(u64 flags) {
 }
 
 u64
-pte_vmflag2archflag(vm_area_flags_t flags) {
+pte_vmflag2archflag(vm_flags_t flags) {
     u64 archflags = 0;
     archflags |= PTE_V;
     if (flags & VM_READ) archflags |= PTE_R;
@@ -135,13 +192,14 @@ pte_vmflag2archflag(vm_area_flags_t flags) {
     return archflags;
 }
 
-ppn_t
-pgtbl_lookup(pgtbl_t *pgtbl, vpn_t vpn) {
-    pte_t* pte = pgtbl_walk(pgtbl, vpn, false);
-    if (pte == NULL || !pte_is_mapped(*pte) || !pte_is_leaf(*pte)) {
-        return 0;
+bool
+pgtbl_lookup(pgtbl_t* pgtbl, vpn_t vpn, ppn_t* out_ppn) {
+    pte_t* pte = pgtbl_find_pte(pgtbl, vpn, false);
+    if (pte == NULL || !pte_is_mapped(*pte)) {
+        return false;
     }
-    return PTE2PPN(*pte);
+    *out_ppn = PTE2PPN(*pte);
+    return true;
 }
 
 static void
@@ -158,11 +216,12 @@ _pgtbl_dump(pgtbl_t *pgtbl, int level) {
             printk("%s[%d] -> branch to %p\n", prefix[level], i, (void*)PTE2PA(pte));
             _pgtbl_dump((pgtbl_t*)PTE2PA(pte), level + 1);
         } else if (pte_is_leaf(pte)) {
-            printk("%s[%d] -> leaf to %p (flags: 0x%03lx)\n", prefix[level], i, (void*)PTE2PA(pte), pte & 0x3FF);
+            printk("%s[%d] -> leaf to %p (flags: 0x%lx)\n", prefix[level], i, (void*)PTE2PA(pte), pte & 0x3FF);
         }
     }
 }
 
+// too tedious. refine later
 void
 pgtbl_dump(pgtbl_t *pgtbl) {
     _pgtbl_dump(pgtbl, 0);

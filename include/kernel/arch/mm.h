@@ -5,18 +5,8 @@
 #pragma once
 
 #include "libs/types.h"
-
-#define PAGE_SIZE   0x1000
-#define PAGE_SHIFT  12
-#define PAGE_MASK   (PAGE_SIZE - 1)
-
-#define PGUP(addr) (((addr) + PAGE_MASK) & ~PAGE_MASK)
-#define PGDOWN(addr) ((addr) & ~PAGE_MASK)
-
-// convert page number to page address
-#define PN2PA(ppn) ((ppn) << PAGE_SHIFT)
-// convert page address to page number
-#define PA2PN(pa)  ((pa) >> PAGE_SHIFT)
+#include "libs/macros.h"
+#include "kernel/mm/pm.h"
 
 // we use Sv39 mode
 #define SATP_MODE_SV39 8L
@@ -34,7 +24,7 @@
 #define PTE2PA(pte) (((pte) >> 10) << PAGE_SHIFT)
 #define PTE2PPN(pte) ((pte) >> 10)
 
-#ifndef __DEFONLY__
+#define PTE_FLAGS(pte) ((pte) & 0x3FF)
 
 static inline void
 flush_tlb() {
@@ -51,16 +41,34 @@ void    pgtbl_init(pgtbl_t* pgtbl);
 void    pgtbl_destroy(pgtbl_t* pgtbl);
 void    pgtbl_map(pgtbl_t *pgtbl, vpn_t vpn, ppn_t ppn, u64 flags);
 void    pgtbl_unmap(pgtbl_t *pgtbl, vpn_t vpn);
-ppn_t   pgtbl_lookup(pgtbl_t *pgtbl, vpn_t vpn);
+bool    pgtbl_lookup(pgtbl_t* pgtbl, vpn_t vpn, ppn_t* out_ppn);
 void    pgtbl_activate(pgtbl_t *pgtbl);
 
-typedef u64 vm_area_flags_t;    // ? weird, redefine it here to avoid circular include
+vm_flags_t pte_archflag2vmflag(u64 flags);
+u64 pte_vmflag2archflag(vm_flags_t flags);
 
-vm_area_flags_t pte_archflag2vmflag(u64 flags);
-u64 pte_vmflag2archflag(vm_area_flags_t flags);
+typedef void  (*pgtbl_leaf_walker)(
+    pgtbl_t *pgtbl, 
+    vpn_t vpn,
+    pte_t* pte,
+    void* ctx
+);
+typedef void (*pgtbl_branch_walker)(
+    pgtbl_t *pgtbl, 
+    pte_t* pte,
+    void* ctx
+);
+void    pgtbl_walk(
+    pgtbl_t *pgtbl, 
+    pgtbl_leaf_walker leaf,
+    pgtbl_branch_walker branch,
+    void* ctx
+);
+void generic_branch_unmapper(
+    pgtbl_t *pgtbl, 
+    pte_t* pte,
+    void* ctx
+);
 
-#ifdef PGTBL_DEBUG
-    void    pgtbl_dump(pgtbl_t *pgtbl);
-#endif
 
-#endif
+void    pgtbl_dump(pgtbl_t *pgtbl);

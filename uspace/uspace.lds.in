@@ -35,6 +35,9 @@ SECTIONS {
         __ebss = .;
     }
 
+    . = ALIGN(4K);
+    __sheap = .;
+
     /DISCARD/ : {
         *(.comment)
         *(.riscv.attributes)

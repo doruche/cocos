@@ -10,8 +10,6 @@
 
 #define TRAMPOLINE  (VIRSTOP - PAGE_SIZE)
 
-#ifndef __DEFONLY__
-
 typedef struct _ctx_t {
     kaddr_t ra;
     kaddr_t sp;
@@ -31,10 +29,6 @@ typedef struct _trapframe_t {
 typedef struct _arch_ctx_t {
     trapframe_t tf;    // put this first for assembly access
     ctx_t ctx;
-
-    // bookkeeping info
-    ppn_t ustack_bottom;
-    ppn_t kstack_bottom;
 } arch_ctx_t;
 
 void        ctx_init(ctx_t* ctx, kaddr_t entry, kaddr_t mapped_stack_top);
@@ -44,10 +38,9 @@ void        actx_init(
     arch_ctx_t* actx,
     vm_space_t* vms, 
     kaddr_t mapped_kstack_top, 
-    kaddr_t entry, 
-    uaddr_t sepc
+    kaddr_t kentry, 
+    uaddr_t uentry
 );
+void        actx_destroy(arch_ctx_t* actx, vm_space_t* vms);
 void        actx_utrap_entry(arch_ctx_t* cur_actx);
 void        actx_utrap_ret(arch_ctx_t* cur_actx);
-
-#endif

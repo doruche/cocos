@@ -35,9 +35,11 @@ KERNEL_ELF := $(BUILD_DIR)/kernel.elf
 
 QEMU := qemu-system-riscv64
 GDB := $(CROSS)gdb
+OUT_SERIAL := -serial mon:stdio
+OUT_LOG := -serial file:$(BUILD_DIR)/qemu.log
 QEMU_FLAGS := \
 	-machine virt -nographic -m 128M -bios default -smp 1 \
-	-serial mon:stdio -nographic
+	-nographic 
 
 # Parameters
 MODULES := libs kernel uspace
@@ -63,10 +65,17 @@ $(BUILD_DIR)/%:
 
 run:
 	$(QEMU) $(QEMU_FLAGS) \
+		$(OUT_SERIAL) \
+		-kernel $(KERNEL_BIN)
+
+run-log:
+	$(QEMU) $(QEMU_FLAGS) \
+		$(OUT_LOG) \
 		-kernel $(KERNEL_BIN)
 
 gdb-server:
 	$(QEMU) $(QEMU_FLAGS) \
+		$(OUT_SERIAL) \
 		-kernel $(KERNEL_BIN) \
 		-s -S
 

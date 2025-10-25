@@ -4,6 +4,6 @@
 
 void __noreturn
 exit(void) {
-    sys_kill(sys_gettid());
+    sys_task_kill(sys_task_gettid());
     __builtin_unreachable();
 }

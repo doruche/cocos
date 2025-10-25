@@ -1,7 +1,7 @@
 #pragma once
 
 #include "kernel/misc/log.h"
-#include "libs/errno.h"
+#include "libs/types.h"
 
 #define unreachable() \
     panic("unreachable code reached.\n");
@@ -55,9 +55,7 @@
         if (_ret < 0) { \
             panic("Assertion failed '(%s) >= 0': " \
                 "\nreturn code: %d (%s)" \
-                , #x, _ret, (_ret == -ENOMEM ? "Out of memory" : \
-                            _ret == -EINVAL ? "Invalid argument" : \
-                            _ret == -EBUSY  ? "Device or resource busy" : "Unknown error")); \
+                , #x, _ret, strerr(_ret)); \
         } } while(0); _ret; })
 
 #define unwrap_null(x) ({ \

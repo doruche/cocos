@@ -61,42 +61,29 @@ pm_test(void) {
     // basic test
 
     for (int i = 0; i < 10; i++) {
-        pages[i] = unwrap_err(palloc_one());
+        pages[i] = unwrap_err(pm_alloc());
         printk("allocated page %d: ppn=%p\n", i, pages[i]);
     }
 
     for (int i = 9; i >= 0; i--) {
-        pfree(pages[i]);
+        assert(pm_decref(pages[i]));
         printk("freed page %d: ppn=%p\n", i, pages[i]);
     }
 
     for (int i = 0; i < 10; i++) {
-        ppn_t ppn = unwrap_err(palloc_one());
+        ppn_t ppn = unwrap_err(pm_alloc());
         printk("re-allocated page %d: ppn=%p\n", i, ppn);
     }
 
+    pm_dump();
+    info("nfree pages after allocating multiple pages: %d", pm_count_free());
+
     for (int i = 0; i < 10; i++) {
-        pfree(pages[i]);
+        assert(pm_decref(pages[i]));
         printk("freed page %d: ppn=%p\n", i, pages[i]);
     }
 
     usize nfree_pages_after = pm_count_free();
-    assert_eq(nfree_pages_before, nfree_pages_after);
-
-    // allocate multiple pages
-    for (int i = 0; i < 10; i++) {
-        pages[i] = unwrap_err(palloc(i * i + 1));
-    }
-
-    pm_dump();
-
-    info("nfree pages after allocating multiple pages: %d", pm_count_free());
-
-    for (int i = 0; i < 10; i++) {
-        pfree(pages[i]);
-    }
-
-    nfree_pages_after = pm_count_free();
     assert_eq(nfree_pages_before, nfree_pages_after);
     info("nfree pages after freeing multiple pages: %d", nfree_pages_after);
 
@@ -140,7 +127,7 @@ pgtbl_test(void) {
     usize nfree_pages_before = pm_count_free();
     info("nfree pages before test: %d", nfree_pages_before);
 
-    pgtbl_t* pgtbl = (pgtbl_t*)PN2PA(unwrap_err(palloc_one()));
+    pgtbl_t* pgtbl = (pgtbl_t*)PN2PA(unwrap_err(pm_alloc()));
     pgtbl_init(pgtbl);
 
     // map some pages
@@ -153,7 +140,9 @@ pgtbl_test(void) {
 
     // check mappings
     for (vpn_t vpn = 0; vpn < PA2PN(PHYSTOP) - PA2PN(KERN_BASE); vpn++) {
-        ppn_t ppn = pgtbl_lookup(pgtbl, vpn);
+        ppn_t ppn;
+        bool found = pgtbl_lookup(pgtbl, vpn, &ppn);
+        assert(found);
         assert_eq(ppn, vpn + PA2PN(KERN_BASE));
         pgtbl_unmap(pgtbl, vpn);
     }
@@ -179,34 +168,22 @@ vm_test(void) {
     vm_init(&test_vms);
 
     // map a region of 10 pages
-    vpn_t test_vpn1 = 0x0; // some arbitrary address
+    vpn_t test_vpn = 0x0; // some arbitrary address
     ppn_t pages[10] = {0};
 
     for (usize i = 0; i < 10; i++) {
-        ppn_t ppn = unwrap_err(palloc_one());
+        ppn_t ppn = unwrap_err(pm_alloc());
         pages[i] = ppn;
     }    
     for (usize i = 0; i < 10; i++) {
         vm_map(
             &test_vms,
-            test_vpn1 + i,
+            test_vpn + i,
             pages[i],
             1,
-            VM_ALLOCATED,
             VM_READ | VM_WRITE
         );
     }
-
-    vpn_t test_vpn2 = 0x10000;
-    ppn_t huge_area_ppn = unwrap_err(palloc(10));
-    vm_map(
-        &test_vms,
-        test_vpn2,
-        huge_area_ppn,
-        10,
-        VM_ALLOCATED,
-        VM_READ | VM_WRITE
-    );
 
     // identity map kernel space
     vm_map(
@@ -214,7 +191,6 @@ vm_test(void) {
         PA2PN(KERN_BASE),
         PA2PN(KERN_BASE),
         (PHYSTOP - KERN_BASE) / PAGE_SIZE,
-        VM_RESERVED,
         VM_READ | VM_WRITE | VM_EXEC
     );
 
@@ -226,9 +202,8 @@ vm_test(void) {
     // now check the mappings
     // this should move on without page fault
 
-    // 1. check the first mapped region
     for (usize i = 0; i < 10; i++) {
-        volatile u64* ptr = (u64*)PN2PA(test_vpn1 + i);
+        volatile u64* ptr = (u64*)PN2PA(test_vpn + i);
         for (usize j = 0; j < PAGE_SIZE / sizeof(u64); j++) {
             ptr[j] = (u64)(i + j);
         }
@@ -241,35 +216,28 @@ vm_test(void) {
             assert_eq(ptr[j], (u64)(i + j));
         }
     }
-
-    // 2. check the huge contiguous mapped region
-    volatile u64* ptr = (u64*)PN2PA(test_vpn2);;
-    for (usize i = 0; i < 10 * PAGE_SIZE / sizeof(u64); i++) {
-        ptr[i] = (u64)i;
-    }
-    volatile u64* phys_ptr = (u64*)PN2PA(huge_area_ppn);
-    for (usize i = 0; i < 10 * PAGE_SIZE / sizeof(u64); i++) {
-        assert_eq(phys_ptr[i], (u64)i);
-    }
+    
 
     // return to no paging mode
     flush_tlb();
     extern vm_space_t kernel_vms;
     vm_activate(&kernel_vms);
 
-    for (usize i = 0; i < 5; i++) {
-        // unmap 5 pages manually
-        vm_unmap(&test_vms, test_vpn1 + i, 1);
-    }
+    vm_unmap(&test_vms, test_vpn, 10);
 
-    // split the huge area
-    vm_dump(&test_vms);
-    vm_unmap(&test_vms, test_vpn2, 1);
-    vm_unmap(&test_vms, test_vpn2 + 3, 5);
-    vm_dump(&test_vms);
+    vm_unmap(
+        &test_vms,
+        PA2PN(KERN_BASE),
+        (PHYSTOP - KERN_BASE) / PAGE_SIZE
+    );
 
     // destroy the vm space
     vm_destroy(&test_vms);
+    
+    for (usize i = 0; i < 10; i++) {
+        assert(pm_decref(pages[i]));
+    }
+
     usize nfree_pages_after = pm_count_free();
     // we use kmem_cache in vm, so the number of free pages may not be the same
     // but should be close

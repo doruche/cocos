@@ -8,56 +8,84 @@
 #include "kernel/arch/mm.h"
 #include "kernel/boot.h"
 
-enum vm_area_type {
-    VM_RESERVED = 0, // mapped but not allocated (e.g. MMIO regions)
-    VM_ALLOCATED,   // allocated and mapped. come from physical memory allocator (free memory)
-};
-
-typedef u64 vm_area_flags_t;
-#define VM_READ  (1L << 0)
-#define VM_WRITE (1L << 1)
-#define VM_EXEC  (1L << 2)
-#define VM_USER  (1L << 3)
-// fake mapping, e.g. for guard page. must be used with VM_RESERVED
-// note that when setting up fake mapping, it is necessary to set at least one PTE flag,
-// on which we rely to detect fake mapping in page fault handler.
-#define VM_FAKE  (1L << 5)
-
-typedef struct _vm_area_t {
-    // [start, end)
-    vpn_t start;
-    vpn_t end;
-    ppn_t sppn; // used when releasing memory back to pm
-    enum vm_area_type type;
-    vm_area_flags_t flags;
-    list_elem_t node; // in vm_space_t's areas list
-    // bool *bitmap; // for tracking allocated pages in this area, allocated dinamically
-} vm_area_t;
-
 typedef struct _vm_space_t {
-    list_t areas; // list of vm_area_t
     pgtbl_t* pgtbl;
 } vm_space_t;
 
-
-// currently we do not do any error detection / recovery for simplicity
 void        vm_init(vm_space_t* vms);
 void        vm_destroy(vm_space_t* vms);
 void        vm_map(
     vm_space_t* vms, 
     vpn_t vpn, 
     ppn_t ppn,
-#define VM_FAKE_PPN 0 // used with VM_FAKE areas. e.g. guard page
     usize npages,
-    enum vm_area_type type, 
-    vm_area_flags_t flags
+    vm_flags_t flags
 );
-void        vm_unmap(vm_space_t* vms, vpn_t vpn, usize npages);
-ppn_t       vm_translate(vm_space_t* vms, vpn_t vpn);
+void        vm_unmap(
+    vm_space_t* vms, 
+    vpn_t vpn, 
+    usize npages
+);
+void        vm_grant(
+    vm_space_t* dst,
+    vm_space_t* src,
+    vpn_t from,
+    vpn_t to,
+    usize npages,
+    vm_flags_t flags
+);
+isize       vm_alloc(
+    vm_space_t* vms,
+    vpn_t vpn,
+    usize npages,
+    vm_flags_t flags
+);
+
+typedef void (*vm_iter_callback_t)(
+    vaddr_t vaddr,
+    paddr_t paddr,
+    usize len,
+    void* ctx
+);
+isize       vm_iter(
+    vm_space_t* vms,
+    vaddr_t start,
+    usize n,
+    vm_iter_callback_t callback,
+    void* ctx
+);
+isize       vm_memcpy(
+    vm_space_t* vms,
+    vaddr_t dst,
+    kaddr_t src,
+    usize n
+);
+isize       vm_memset(
+    vm_space_t* vms,
+    vaddr_t dst,
+    u8 value,
+    usize n
+);
+
 void        vm_activate(vm_space_t* vms);
-// void        vm_copy_mappings(vm_space_t* dst, vm_space_t* src);
+bool        vm_is_mapped(vm_space_t* vms, vpn_t vpn);
 
 void        kvms_init(bootinfo_t* bootinfo);
 void        kvms_derive(vm_space_t* vms);
 
 void        vm_dump(vm_space_t* vms);
+
+static inline bool
+pte_is_leaf(pte_t pte) {
+    return (pte & (PTE_R | PTE_W | PTE_X)) != 0 && (pte & PTE_V) != 0;
+}
+
+static inline bool
+pte_is_branch(pte_t pte) {
+    return (pte & (PTE_R | PTE_W | PTE_X)) == 0 && (pte & PTE_V) != 0;
+}
+
+static inline bool
+pte_is_mapped(pte_t pte) {
+    return (pte & (PTE_R | PTE_W | PTE_X | PTE_V)) != 0; // include fake mappings
+}
