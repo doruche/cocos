@@ -11,6 +11,45 @@
 #define __noreturn      __attribute__((noreturn))
 #define __section(name) __attribute__((section(name)))
 #define __maybe_unused  __attribute__((unused))
+#define __aligned(x)   __attribute__((aligned(x)))
+
+#define offset_of(type, member)  ((usize) &((type *)0)->member)
+#define container_of(ptr, type, member) ({          \
+        const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+        (type *)( (char *)__mptr - offset_of(type,member) );})
+#define array_size(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+#define align_up(size, align) \
+    (((u64)(size) + (u64)(align) - 1) & ~((u64)(align) - 1))
+#define align_down(size, align) \
+    ((u64)(size) & ~((u64)(align) - 1))
+#define is_aligned(size, align) \
+    (bool)(((u64)(size) & ((u64)(align) - 1)) == 0)
+
+#define loop while(1)
+
+#define PAGE_SIZE   0x1000
+#define PAGE_SHIFT  12
+#define PAGE_MASK   (PAGE_SIZE - 1)
+
+#define PGUP(addr) (((addr) + PAGE_MASK) & ~PAGE_MASK)
+#define PGDOWN(addr) ((addr) & ~PAGE_MASK)
+
+// convert page number to page address
+#define PN2PA(ppn) ((ppn) << PAGE_SHIFT)
+// convert page address to page number
+#define PA2PN(pa)  ((pa) >> PAGE_SHIFT)
+
+/// bit should be declared as bool
+#define bit_traverse(bitmap, nbits, byte_cursor, bit_cursor) \
+    for (usize byte_cursor = 0; byte_cursor < ((nbits) + 7) / 8; byte_cursor++) \
+        for (usize bit_cursor = 0; \
+            bit_cursor < 8 && (byte_cursor * 8 + bit_cursor) < (nbits) \
+            ; bit_cursor++) \
+        // body. byte and bit are valid here
+
+#define max(a, b) ((a) > (b) ? (a) : (b))
+#define min(a, b) ((a) < (b) ? (a) : (b))
 
 #include <stdbool.h>
 typedef unsigned char       u8;
@@ -27,7 +66,6 @@ typedef double              f64;
 typedef u64 usize;
 typedef i64 isize;
 
-// should migrate to other place later
 typedef u64 paddr_t;
 typedef u64 vaddr_t;
 typedef u64 kaddr_t;
@@ -48,6 +86,8 @@ typedef u64 vm_flags_t;
 // note that when setting up fake mapping, it is necessary to set at least one PTE flag,
 // on which we rely to detect fake mapping in page fault handler.
 #define VM_FAKE  (1L << 5)
+
+#define is_err(errno) ((bool)((isize)(errno) < 0))
 
 #define ERR_NOMEM   1  // Out of memory
 #define ERR_INVAL   2  // Invalid argument

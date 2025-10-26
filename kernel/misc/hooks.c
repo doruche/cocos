@@ -4,7 +4,7 @@
 
 #include "libs/panic.h"
 #include "libs/printf.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "kernel/misc/printk.h"
 #include "libs/log.h"
 #include "kernel/arch/sbi.h"

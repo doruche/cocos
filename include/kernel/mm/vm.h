@@ -3,7 +3,7 @@
  */
 #pragma once
 
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "libs/list.h"
 #include "kernel/arch/mm.h"
 #include "kernel/boot.h"
@@ -26,14 +26,6 @@ void        vm_unmap(
     vpn_t vpn, 
     usize npages
 );
-void        vm_grant(
-    vm_space_t* dst,
-    vm_space_t* src,
-    vpn_t from,
-    vpn_t to,
-    usize npages,
-    vm_flags_t flags
-);
 isize       vm_alloc(
     vm_space_t* vms,
     vpn_t vpn,
@@ -41,30 +33,17 @@ isize       vm_alloc(
     vm_flags_t flags
 );
 
-typedef void (*vm_iter_callback_t)(
-    vaddr_t vaddr,
-    paddr_t paddr,
-    usize len,
-    void* ctx
-);
-isize       vm_iter(
-    vm_space_t* vms,
-    vaddr_t start,
-    usize n,
-    vm_iter_callback_t callback,
-    void* ctx
-);
 isize       vm_memcpy(
     vm_space_t* vms,
     vaddr_t dst,
     kaddr_t src,
-    usize n
+    usize len
 );
 isize       vm_memset(
     vm_space_t* vms,
     vaddr_t dst,
-    u8 value,
-    usize n
+    u8 val,
+    usize len
 );
 
 void        vm_activate(vm_space_t* vms);

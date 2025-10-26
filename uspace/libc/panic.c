@@ -2,7 +2,7 @@
 #include "libs/printf.h"
 #include "uspace/syscall.h"
 #include <stdarg.h>
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "uspace/task.h"
 
 void __noreturn

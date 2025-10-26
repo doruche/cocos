@@ -1,5 +1,5 @@
 #include "kernel/arch/sbi.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 /*
  * SBI (Supervisor Binary Interface) environment call.

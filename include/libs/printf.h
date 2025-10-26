@@ -12,9 +12,10 @@
 #pragma once
 
 #include <stdarg.h>
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 extern usize   __puts(const char* str);
 
 isize   vprintf(const char *fmt, va_list ap);
 isize   printf(const char *fmt, ...);
+void    flush(void);

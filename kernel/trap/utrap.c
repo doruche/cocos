@@ -8,8 +8,8 @@
 #include "libs/log.h"
 #include "libs/assert.h"
 #include "kernel/arch/csr.h"
-#include "libs/types.h"
-#include "libs/macros.h"
+#include "libs/prelude.h"
+
 #include "kernel/arch/ctx.h"
 #include "kernel/task/processor.h"
 #include "kernel/syscall.h"
@@ -139,6 +139,8 @@ utrap_ret() {
     actx_utrap_ret(current->actx);
 
     trace("jumping to user space...");
+
+    flush(); // flush console output buffer before returning to user space
 
     vaddr_t hook = TRAMPOLINE + 
         ((u64)u_trampoline_ret - (u64)u_trampoline_entry);

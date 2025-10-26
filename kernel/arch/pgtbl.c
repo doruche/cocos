@@ -8,7 +8,7 @@
 #include "kernel/mm/pm.h"
 #include "kernel/mm/vm.h"
 #include "kernel/arch/csr.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 static pte_t*
 pgtbl_find_pte(pgtbl_t *pgtbl, vpn_t vpn, bool alloc) {

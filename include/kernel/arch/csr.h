@@ -4,7 +4,7 @@
 #ifndef _K_ARCH_CSR_H
 #define _K_ARCH_CSR_H
 
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 #define IMPL_CSR_ACCESS(csr) \
     static inline void \

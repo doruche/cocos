@@ -2,8 +2,8 @@
 #include "libs/assert.h"
 #include "libs/log.h"
 #include "kernel/mm/slab.h"
-#include "libs/macros.h"
-#include "libs/types.h"
+
+#include "libs/prelude.h"
 
 static const usize kmalloc_config[] = {
     8, 16, 32, 64, 128, 256,

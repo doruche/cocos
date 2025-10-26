@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 #define BUDDY_MAX_ORDER 14 // max block size is 4KB * 2^14 = 64MB
 

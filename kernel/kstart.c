@@ -9,7 +9,7 @@
 #include "kernel/mm/kmalloc.h"
 #include "kernel/task/sched.h"
 #include "kernel/misc/test.h"
-#include "libs/macros.h"
+
 
 void __noreturn
 kstart(bootinfo_t* bootinfo) {

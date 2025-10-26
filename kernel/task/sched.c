@@ -2,8 +2,8 @@
 #include "kernel/task/sched.h"
 #include "libs/log.h"
 #include "libs/assert.h"
-#include "libs/macros.h"
-#include "libs/types.h"
+
+#include "libs/prelude.h"
 #include "libs/list.h"
 #include "kernel/mm/slab.h"
 #include "kernel/mm/vm.h"
@@ -195,8 +195,8 @@ task_spawn(const char* name, uaddr_t entry, tid_t pager) {
 
     list_push_back(&task_list, &task->node);
 
-    info("task spawned: tid=%ld name=%s",
-        task->tid, task->name);
+    info("task spawned: tid=%ld name=%s entry=%p",
+        task->tid, task->name, (void*)entry);
 
     return task;
 }

@@ -4,8 +4,7 @@
 
 #pragma once
 
-#include "libs/types.h"
-#include "libs/macros.h"
+#include "libs/prelude.h"
 #include "kernel/mm/pm.h"
 
 // we use Sv39 mode

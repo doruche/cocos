@@ -1,7 +1,7 @@
 #ifndef _K_TRAP_H
 #define _K_TRAP_H 1
 
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 // typedef struct _trapframe_t {
 //     u64 x[32];

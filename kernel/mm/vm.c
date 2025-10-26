@@ -7,7 +7,7 @@
 #include "libs/log.h"
 #include "kernel/mm/kmalloc.h"
 #include "libs/string.h"
-#include "libs/macros.h"
+#include "libs/iter.h"
 #include "kernel/arch/board.h"
 
 /* 
@@ -188,74 +188,76 @@ vm_alloc(
     return 0;
 }
 
-isize
-vm_iter(
-    vm_space_t* vms,
-    vaddr_t start,
-    usize n,
-    vm_iter_callback_t callback,
+static isize
+vm_memcpy_callback(
+    const range_t* chunk,
     void* ctx
 ) {
-    usize processed = 0;
-    while (processed < n) {
-        vpn_t vpn = PA2PN(start + processed);
-        ppn_t ppn;
-        if (!pgtbl_lookup(vms->pgtbl, vpn, &ppn)) {
-            warn("vm_iter: unmapped vpn %lx", vpn);
-            return -ERR_FAULT;
-        }
-        usize inpage_offset = (start + processed) % PAGE_SIZE;
-        usize inpage_len = min(n - processed, PAGE_SIZE - inpage_offset);
-        
-        callback(
-            PN2PA(vpn) + inpage_offset,
-            PN2PA(ppn) + inpage_offset,
-            inpage_len,
-            ctx
-        );
-
-        processed += inpage_len;
+    struct {
+        kaddr_t src;
+        vm_space_t* vms;
+    } *state = ctx;
+    ppn_t ppn;
+    if (!pgtbl_lookup(state->vms->pgtbl, PA2PN(chunk->start), &ppn)) {
+        warn("vm_memcpy: unmapped vpn %lx", PA2PN(chunk->start));
+        return -ERR_FAULT;
     }
+    usize inpage_offset = chunk->start % PAGE_SIZE;
+    usize inpage_len = chunk->end - chunk->start;
+    memcpy(
+        (void*)(PN2PA(ppn) + inpage_offset),
+        (const void*)state->src,
+        inpage_len
+    );
+    state->src += inpage_len;
     return 0;
 }
 
-static void
-vm_memcpy_callback(
-    vaddr_t vaddr,
-    paddr_t paddr,
-    usize len,
-    void* ctx
-) {
-    kaddr_t* src = (kaddr_t*)ctx;
-    memcpy((void*)paddr, (const void*)*src, len);
-    *src += len;
-}
-
-isize
-vm_memcpy(
+isize vm_memcpy(
     vm_space_t* vms,
-    vaddr_t dst, // destination in user space
-    kaddr_t src, // source in kernel space
-    usize n
+    vaddr_t dst,
+    kaddr_t src,
+    usize len
 ) {
-    return vm_iter(
-        vms,
-        dst,
-        n,
+    return unwrap_err(range_iter(
+        &(range_t) {
+            .start = dst,
+            .end = dst + len,
+        },
+        PAGE_SIZE,
         vm_memcpy_callback,
-        (void*)&src
-    );
+        &(struct {
+            kaddr_t src;
+            vm_space_t* vms;
+        }) {
+            .src = src,
+            .vms = vms,
+        }
+    ));
 }
 
-static void
+static isize
 vm_memset_callback(
-    vaddr_t vaddr,
-    paddr_t paddr,
-    usize len,
+    const range_t* chunk,
     void* ctx
 ) {
-    u8 value = *(u8*)ctx;
-    memset((void*)paddr, value, len);
+    struct {
+        u8 val;
+        vm_space_t* vms;
+    } *state = ctx;
+    ppn_t ppn;
+    if (!pgtbl_lookup(state->vms->pgtbl, PA2PN(chunk->start), &ppn)) {
+        warn("vm_memset: unmapped vpn %lx", PA2PN(chunk->start));
+        return -ERR_FAULT;
+    }
+    usize inpage_offset = chunk->start % PAGE_SIZE;
+    usize inpage_len = chunk->end - chunk->start;
+    memset(
+        (void*)(PN2PA(ppn) + inpage_offset),
+        state->val,
+        inpage_len
+    );
+    return 0;
 }
 
 isize
@@ -263,15 +265,23 @@ vm_memset(
     vm_space_t* vms,
     vaddr_t dst,
     u8 value,
-    usize n
+    usize len
 ) {
-    return vm_iter(
-        vms,
-        dst,
-        n,
+    return unwrap_err(range_iter(
+        &(range_t) {
+            .start = dst,
+            .end = dst + len,
+        },
+        PAGE_SIZE,
         vm_memset_callback,
-        (void*)&value
-    );
+        &(struct {
+            u8 val;
+            vm_space_t* vms;
+        }) {
+            .val = value,
+            .vms = vms,
+        }
+    ));
 }
 
 bool

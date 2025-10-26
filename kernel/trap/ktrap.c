@@ -7,7 +7,7 @@
 #include "libs/log.h"
 #include "libs/assert.h"
 #include "kernel/arch/timer.h"
-#include "libs/macros.h"
+
 #include "kernel/task/processor.h"
 #include "kernel/task/sched.h"
 

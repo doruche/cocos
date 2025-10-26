@@ -1,6 +1,6 @@
 #pragma once
 
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "uspace/arch_syscall.h"
 #include "libs/sysno.h"
 

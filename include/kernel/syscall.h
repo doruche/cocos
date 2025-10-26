@@ -6,7 +6,7 @@
 
 #include "kernel/arch/ctx.h"
 #include "kernel/task/sched.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "kernel/task/processor.h"
 #include "libs/sysno.h"
 

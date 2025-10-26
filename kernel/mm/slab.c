@@ -3,7 +3,7 @@
 #include "kernel/consts/params.h"
 #include "libs/assert.h"
 #include "libs/log.h"
-#include "libs/macros.h"
+
 #include "libs/string.h"
 
 #define sentinel_init(name) ((slab_t){ &(name), &(name), 0, 0, 0, NULL })

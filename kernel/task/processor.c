@@ -4,7 +4,7 @@
 #include "libs/assert.h"
 #include "kernel/mm/vm.h"
 #include "kernel/mm/pm.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "kernel/consts/params.h"
 #include "kernel/arch/timer.h"
 #include "kernel/trap.h"

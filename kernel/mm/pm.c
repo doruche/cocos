@@ -6,7 +6,7 @@
 #include "libs/log.h"
 #include "libs/assert.h"
 #include "kernel/mm/pm.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "kernel/boot.h"
 #include "kernel/arch/mm.h"
 

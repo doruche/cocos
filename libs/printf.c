@@ -1,5 +1,5 @@
 #include "libs/printf.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "libs/panic.h"
 #include <stdarg.h>
 
@@ -8,7 +8,7 @@
 static char buf[256];
 static usize buf_index = 0;
 
-static void
+void
 flush(void) {
     usize len = buf_index;
     if (len > 0) {

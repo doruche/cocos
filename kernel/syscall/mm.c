@@ -3,7 +3,7 @@
 #include "kernel/syscall.h"
 #include "libs/log.h"
 #include "libs/assert.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "kernel/mm/vm.h"
 
 SYSCALL_DEFINE1(pm_alloc, tid_t, tid) {
@@ -84,6 +84,7 @@ SYSCALL_DEFINE3(
         npages
     );
 
+    flush_tlb();
     return 0;
 }
 
@@ -139,5 +140,22 @@ SYSCALL_DEFINE5(
         flags
     );
 
+    // temp debug sanity check
+    ppn_t check_ppn;
+    if (!pgtbl_lookup(
+        target_task->vms->pgtbl,
+        vpn,
+        &check_ppn
+    )) {
+        panic("sys_vm_map: sanity check failed after mapping");
+    }
+    assert_eq(check_ppn, ppn);
+    notify("sys_vm_map: sanity check passed, vpn 0x%lx mapped to ppn 0x%lx in task %d",
+        vpn,
+        check_ppn,
+        tid
+    );
+
+    flush_tlb();
     return 0;
 }

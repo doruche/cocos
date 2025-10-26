@@ -1,7 +1,7 @@
 #include "kernel/syscall.h"
 #include "kernel/misc/printk.h"
 #include "libs/log.h"
-#include "libs/types.h"
+#include "libs/prelude.h"
 #include "libs/string.h"
 
 SYSCALL_DEFINE2(

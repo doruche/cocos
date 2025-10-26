@@ -5,7 +5,7 @@
 #ifndef _K_ARCH_SBI_H
 #define _K_ARCH_SBI_H 1
 
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 enum sbi_ext_id {
     SBI_EXT_0_1_SET_TIMER = 0x0,

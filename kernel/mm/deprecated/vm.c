@@ -7,7 +7,7 @@
 #include "libs/log.h"
 #include "kernel/mm/kmalloc.h"
 #include "libs/string.h"
-#include "libs/macros.h"
+
 
 
 // to manage kernel and user vm spaces, we adopt a simple strategy:

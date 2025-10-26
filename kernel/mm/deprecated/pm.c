@@ -3,8 +3,8 @@
 #include "kernel/arch/mm.h"
 #include "libs/log.h"
 #include "libs/assert.h"
-#include "libs/types.h"
-#include "libs/macros.h"
+#include "libs/prelude.h"
+
 #include "libs/string.h"
 
 static pm_zone_t pmzones[NPMZONE_MAX];

@@ -2,7 +2,7 @@
 
 #define NMEMZONE_MAX    16
 
-#include "libs/types.h"
+#include "libs/prelude.h"
 
 enum memzone_type {
     MEMZONE_K_TEXT = 0,
