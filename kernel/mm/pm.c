@@ -3,8 +3,8 @@
  */
 
 #include "kernel/boot.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "kernel/mm/pm.h"
 #include "libs/types.h"
 #include "kernel/boot.h"
@@ -13,7 +13,7 @@
 // simple linked list based physical page allocator
 // used to try buddy system but gave up due to complexity
 
-pm_zone_t pmzones[NPMZONE_MAX];
+static pm_zone_t pmzones[NPMZONE_MAX];
 static usize npmzones = 0;
 
 static bool

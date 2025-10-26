@@ -11,3 +11,4 @@
  */
 
 extern void __panic(const char* msg, ...);
+extern void __panic_no_msg(void);

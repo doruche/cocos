@@ -1,7 +1,7 @@
 #include "kernel/arch/ctx.h"
 #include "kernel/task/sched.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "libs/macros.h"
 #include "libs/types.h"
 #include "libs/list.h"
@@ -21,7 +21,7 @@
 
 static list_t task_list; // all tasks
 
-static tid_t next_tid = 0;
+static tid_t next_tid = 1;
 
 static kmem_cache_t task_cache;
 static kmem_cache_t task_vms_cache;
@@ -29,6 +29,7 @@ static kmem_cache_t task_actx_cache;
 
 static tid_t
 alloc_tid() {
+    // reserve zero for non-existent task
     // refine later to avoid tid overflow
     return next_tid++;
 }
@@ -149,7 +150,7 @@ task_spawn(const char* name, uaddr_t entry, tid_t pager) {
     task->state = T_READY;
     
     // only init task has no pager
-    if (task->tid == 0) {
+    if (task->tid == 1) {
         assert_eq(pager, 0);
         task->pager = 0;
         // bug. what if a page fault happens in init task?
@@ -225,7 +226,7 @@ task_cleanup(task_t* task) {
     actx_destroy(task->actx, task->vms);
     vm_destroy(task->vms);
     kmem_cache_free(&task_vms_cache, task->vms);
-    kmem_cache_free(&task_actx_cache, &task->actx);
+    kmem_cache_free(&task_actx_cache, task->actx);
     kmem_cache_free(&task_cache, task);
 }
 
@@ -247,6 +248,10 @@ task_kill(tid_t tid) {
 void
 task_crash_exit(void) {
     task_t* current = unwrap_null(current_task);
+    if (current->tid == TID_PM) {
+        panic("pm server crashed!");
+    }
+    
     assert_eq(current->state, T_RUNNING);
     current->state = T_ZOMBIE;
     ctx_switch(

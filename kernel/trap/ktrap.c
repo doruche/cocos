@@ -4,8 +4,8 @@
 
 #include "kernel/trap.h"
 #include "kernel/arch/csr.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "kernel/arch/timer.h"
 #include "libs/macros.h"
 #include "kernel/task/processor.h"

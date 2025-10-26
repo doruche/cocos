@@ -6,7 +6,7 @@
 #include "kernel/consts/params.h"
 #include "kernel/arch/sbi.h"
 #include "kernel/arch/csr.h"
-#include "kernel/misc/log.h"
+#include "libs/log.h"
 
 void
 set_next_timer(void) {

@@ -5,8 +5,8 @@
 #include "kernel/mm/vm.h"
 #include "kernel/task/sched.h"
 #include "kernel/trap.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "kernel/arch/csr.h"
 #include "libs/types.h"
 #include "libs/macros.h"
@@ -61,8 +61,9 @@ utrap() {
         u64 irq = r_scause() & ~SCAUSE_IRQ_FLAG;
         switch (irq) {
             case SCAUSE_IRQ_TIMER: {
-                    trace("user timer interrupt");
-                    timer_intr(); // potential problem. timer irq already claimed by ktrap
+                    // trace("user timer interrupt");
+                    // timer_intr(); // avoid double handling timer intr
+                    // ugly logic, refine later
                     yield();
                 }
                 break;
@@ -94,9 +95,9 @@ utrap() {
                     // currently just kill the task on page fault
                     task_t* current = unwrap_null(current_task);
                     notify(
-                        "task page fault: tid=%ld name=%s addr=0x%lx exccode=%s",
+                        "task page fault: tid=%ld name=%s addr=0x%lx pc=0x%lx exccode=%s",
                         current->tid, current->name,
-                        fault_addr, exception_strs[exccode]
+                        fault_addr, r_sepc(), exception_strs[exccode]
                     );
                     if (task_get(current->pager) != NULL) {
                         notify(

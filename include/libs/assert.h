@@ -1,7 +1,7 @@
 #pragma once
 
-#include "kernel/misc/log.h"
 #include "libs/types.h"
+#include "libs/log.h"
 
 #define unreachable() \
     panic("unreachable code reached.\n");

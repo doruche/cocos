@@ -1,6 +1,6 @@
 #include "kernel/task/processor.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "libs/macros.h"
 #include "libs/types.h"
 #include "kernel/syscall.h"
@@ -14,7 +14,7 @@ SYSCALL_DEFINE1(task_kill, tid_t, tid) {
         return -ERR_NOENT;
     }
     tid_t current_tid = (unwrap_null(current_task))->tid;
-    if (task->tid == current_tid) {
+    if (tid == current_tid) {
         trace("sys_kill: task killing itself tid=%ld name=%s",
             task->tid, task->name);
         task_crash_exit();

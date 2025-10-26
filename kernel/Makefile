@@ -7,7 +7,7 @@ LIBGENERIC := $(BUILD_DIR)/libs/libgeneric.a
 LINKER := $(MOD_OBJDIR)/kernel.lds
 LINKER_TEMPLATE := $(MOD_SRCDIR)/kernel.lds.in
 
-CFLAGS := $(GLOBL_CFLAGS) -DKERNEL -DLOG=$(LOG)
+CFLAGS := $(GLOBL_CFLAGS) -DKERNEL -DLOG=$(KLOG) -DNAME=\"kernel/\"
 LDFLAGS := $(GLOBL_LDFLAGS) -T $(LINKER) -Map=$(BUILD_DIR)/kernel.map
 
 include $(ROOT_DIR)/scripts/build.mk

@@ -131,4 +131,8 @@ SYSCALL_DECLARE3(
 );
 
 /* dbg */
-SYSCALL_DECLARE1(dbg_puts, const char*, str);
+SYSCALL_DECLARE2(
+    dbg_puts, 
+    const char*, str,
+    usize, len
+);

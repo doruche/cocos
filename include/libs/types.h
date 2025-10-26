@@ -36,6 +36,8 @@ typedef u64 ppn_t;
 typedef u64 vpn_t;
 
 typedef usize tid_t;
+#define TID_INVALID ((tid_t)0)
+#define TID_PM      ((tid_t)1)
 
 typedef u64 vm_flags_t;
 #define VM_READ  (1L << 0)
@@ -46,14 +48,6 @@ typedef u64 vm_flags_t;
 // note that when setting up fake mapping, it is necessary to set at least one PTE flag,
 // on which we rely to detect fake mapping in page fault handler.
 #define VM_FAKE  (1L << 5)
-
-typedef struct _pm_access_params_t {
-    tid_t tid;
-    ppn_t ppn;
-    vpn_t vpn;
-    usize npages;
-    bool write;
-} pm_access_params_t;
 
 #define ERR_NOMEM   1  // Out of memory
 #define ERR_INVAL   2  // Invalid argument

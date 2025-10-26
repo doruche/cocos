@@ -1,8 +1,8 @@
 #include "kernel/mm/pm.h"
 #include "kernel/mm/slab.h"
 #include "kernel/consts/params.h"
-#include "kernel/misc/assert.h"
-#include "kernel/misc/log.h"
+#include "libs/assert.h"
+#include "libs/log.h"
 #include "libs/macros.h"
 #include "libs/string.h"
 

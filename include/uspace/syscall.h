@@ -29,11 +29,11 @@ sys_task_gettid(void) {
 }
 
 static inline isize
-sys_dbg_puts(const char* str) {
+sys_dbg_puts(const char* str, usize len) {
     return arch_syscall(
         SYS_DBG_PUTS,
         (u64)(str),
-        0,
+        (u64)(len),
         0,
         0,
         0

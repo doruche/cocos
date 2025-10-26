@@ -12,5 +12,10 @@ __panic(const char* msg, ...) {
     printf("PANIC: ");
     vprintf(msg, ap);
     va_end(ap);
-    exit();    
+    task_exit();    
+}
+
+void __noreturn
+__panic_no_msg(void) {
+    task_exit();
 }

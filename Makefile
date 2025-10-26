@@ -26,8 +26,8 @@ export GLOBL_CFLAGS := \
 
 export GLOBL_LDFLAGS := -nostdlib -static -no-pie
 
-# Kernel specific flags
-export LOG ?= TRACE
+export KLOG ?= TRACE
+export ULOG ?= TRACE
 
 # Emulator and debugger. Not used by sub-makefiles.
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin

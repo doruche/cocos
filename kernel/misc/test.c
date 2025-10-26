@@ -5,8 +5,8 @@
 
 #include "kernel/misc/test.h"
 #include "kernel/misc/printk.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "kernel/mm/pm.h"
 #include "kernel/mm/slab.h"
 #include "kernel/arch/mm.h"

@@ -6,7 +6,7 @@
 #include "libs/printf.h"
 #include "libs/types.h"
 #include "kernel/misc/printk.h"
-#include "kernel/misc/log.h"
+#include "libs/log.h"
 #include "kernel/arch/sbi.h"
 
 usize
@@ -27,6 +27,12 @@ __panic(const char* msg, ...) {
     vprintk(msg, ap);
     printk("\n" COLOR_RESET);
     va_end(ap);
+    sbi_shutdown();
+    __builtin_unreachable();
+}
+
+void __noreturn
+__panic_no_msg(void) {
     sbi_shutdown();
     __builtin_unreachable();
 }

@@ -6,7 +6,7 @@
 
 #include "kernel/misc/printk.h"
 #include "kernel/arch/sbi.h"
-#include "kernel/misc/log.h"
+#include "libs/log.h"
 #include "libs/types.h"
 #include "kernel/arch/csr.h"
 #include "libs/printf.h"

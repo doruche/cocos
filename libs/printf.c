@@ -5,12 +5,28 @@
 
 #define panic __panic
 
+static char buf[256];
+static usize buf_index = 0;
+
+static void
+flush(void) {
+    usize len = buf_index;
+    if (len > 0) {
+        buf[buf_index] = '\0';
+        __puts(buf);
+        buf_index = 0;
+    }
+}
+
 static usize
-__putc(char c) {
-    char buf[2];
-    buf[0] = c;
-    buf[1] = '\0';
-    __puts(buf);
+putc(char c) {
+    if (buf_index >= sizeof(buf) - 1) {
+        flush();
+    }
+    buf[buf_index++] = c;
+    if (c == '\n') {
+        flush();
+    }
     return 1;
 }
 
@@ -22,7 +38,7 @@ print_str(const char* str) {
     
     usize len = 0;
     while(str[len]) {
-        __putc(str[len]);
+        putc(str[len]);
         len++;
     }
     return len;
@@ -47,7 +63,7 @@ print_int(i64 num, u8 base, bool is_signed, bool pad) {
     }
 
     if (abs_num == 0) {
-        return __putc('0'); 
+        return putc('0'); 
     }
 
     char buf[65] = {0};
@@ -65,18 +81,18 @@ print_int(i64 num, u8 base, bool is_signed, bool pad) {
 
     int printed_len = 0;
     if (sign) {
-        printed_len += __putc(sign);
+        printed_len += putc(sign);
     }
 
     if (pad && total_len < 16) {
         // riscv64
         for (int k = 0; k < 16 - total_len; k++) {
-            printed_len += __putc('0');
+            printed_len += putc('0');
         }
     }
 
     for (usize j = i; j > 0; j--) {
-        printed_len += __putc(buf[j - 1]);
+        printed_len += putc(buf[j - 1]);
     }
     
     return printed_len;
@@ -138,7 +154,7 @@ vprintf(const char* fmt, va_list ap)  {
                 }
                 case 'c': {
                     char c = (char)va_arg(ap, int); // char is promoted to int in va_arg
-                    printed += __putc(c);
+                    printed += putc(c);
                     break;
                 }
                 case 'p': {
@@ -148,7 +164,7 @@ vprintf(const char* fmt, va_list ap)  {
                     break;
                 }
                 case '%': {
-                    printed += __putc('%');
+                    printed += putc('%');
                     break;
                 }
                 default: {
@@ -157,9 +173,10 @@ vprintf(const char* fmt, va_list ap)  {
                 }
             }
         } else {
-            printed += __putc(fmt[i]);
+            printed += putc(fmt[i]);
         }
     }
+    flush();
     return printed;
 }
 

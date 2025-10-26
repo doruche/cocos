@@ -1,6 +1,6 @@
 #include "kernel/syscall.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "libs/types.h"
 #include "libs/macros.h"
 #include "kernel/arch/ctx.h"

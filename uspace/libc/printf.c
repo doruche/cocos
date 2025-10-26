@@ -1,13 +1,10 @@
 #include "libs/printf.h"
 #include "libs/types.h"
 #include "uspace/syscall.h"
+#include "libs/string.h"
 
 usize
 __puts(const char* str) {
-    sys_dbg_puts(str);
-    usize len = 0;
-    while (str[len] != '\0') {
-        len++;
-    }
-    return len;
+    usize len = strlen(str);
+    return sys_dbg_puts(str, len);
 }

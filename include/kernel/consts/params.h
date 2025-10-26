@@ -7,7 +7,7 @@
 #include "kernel/arch/mm.h"
 #include "kernel/arch/board.h"
 
-#define INTERVAL FREQUENCY / 10 // timer interrupt interval: 0.1s
+#define INTERVAL FREQUENCY / 5 // timer interrupt interval: 0.5s
 
 #define BOOT_STACK_SIZE (8 * PAGE_SIZE)
 

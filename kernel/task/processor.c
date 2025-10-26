@@ -1,7 +1,7 @@
 #include "kernel/task/processor.h"
 #include "kernel/arch/ctx.h"
 #include "kernel/task/sched.h"
-#include "kernel/misc/assert.h"
+#include "libs/assert.h"
 #include "kernel/mm/vm.h"
 #include "kernel/mm/pm.h"
 #include "libs/types.h"

@@ -6,7 +6,7 @@ TYPE := $(shell basename $(shell dirname $(CURDIR)))
 MOD_NAME := uspace/$(TYPE)/$(APP_NAME)
 MOD_SRCDIR := $(CURDIR)
 MOD_OBJDIR := $(BUILD_DIR)/uspace/$(TYPE)/$(APP_NAME)
-CFLAGS := $(GLOBL_CFLAGS)
+CFLAGS := $(GLOBL_CFLAGS) -DLOG=$(ULOG) -DNAME=\"$(TYPE)/$(APP_NAME)/\"
 LDFLAGS := $(GLOBL_LDFLAGS) -T $(BUILD_DIR)/uspace/uspace.lds
 TARGET := $(MOD_OBJDIR)/$(APP_NAME).elf
 
@@ -22,6 +22,6 @@ all: $(MOD_OBJDIR)_dirs $(TARGET)
 
 $(TARGET): $(OBJS) $(LIBS)
 	@echo "  LD\t$(shell realpath --relative-to=$(BUILD_DIR) $@)"
-	@$(LD) $(LDFLAGS) -o $@ $^
+	@$(LD) $(LDFLAGS) -o $@ $^ $(LIBS) -Map=$(MOD_OBJDIR)/$(APP_NAME).map
 	@echo "  DUMP\t$(basename $(shell realpath --relative-to=$(BUILD_DIR) $@)).asm"
 	@$(OBJDUMP) -S $@ > $(MOD_OBJDIR)/$(APP_NAME).asm

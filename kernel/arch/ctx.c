@@ -3,9 +3,9 @@
  */
 
 #include "kernel/arch/ctx.h"
-#include "kernel/misc/assert.h"
+#include "libs/assert.h"
 #include "libs/macros.h"
-#include "kernel/misc/log.h"
+#include "libs/log.h"
 #include "libs/types.h"
 #include "kernel/consts/params.h"
 #include "libs/string.h"

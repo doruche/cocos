@@ -1,8 +1,8 @@
 #include "libs/sysno.h"
 #include "kernel/task/sched.h"
 #include "kernel/syscall.h"
-#include "kernel/misc/log.h"
-#include "kernel/misc/assert.h"
+#include "libs/log.h"
+#include "libs/assert.h"
 #include "libs/types.h"
 #include "kernel/mm/vm.h"
 
@@ -96,7 +96,7 @@ SYSCALL_DEFINE5(
     vm_flags_t, flags
 ) {
     task_t* current = unwrap_null(current_task);
-    trace("sys_vm_map: task %d mapping ppn 0x%lx to vpn 0x%lx, npages %ld for task %d with flags 0x%03lx",
+    trace("sys_vm_map: task %d mapping ppn 0x%lx to vpn 0x%lx, npages %ld for task %d with flags 0x%lx",
         current->tid,
         ppn,
         vpn,
@@ -104,6 +104,13 @@ SYSCALL_DEFINE5(
         tid,
         flags
     ); 
+
+    if (flags & ~(VM_READ | VM_WRITE | VM_EXEC | VM_FAKE)) {
+        trace("sys_vm_map: invalid flags 0x%lx", flags);
+        return -ERR_INVAL;
+    }
+    // user on default
+    flags |= VM_USER;
 
     task_t* target_task = task_get(tid);
     if (target_task == NULL) {

@@ -3,8 +3,8 @@
  */
 
 #include "kernel/arch/mm.h"
-#include "kernel/misc/assert.h"
-#include "kernel/misc/log.h"
+#include "libs/assert.h"
+#include "libs/log.h"
 #include "kernel/mm/pm.h"
 #include "kernel/mm/vm.h"
 #include "kernel/arch/csr.h"
@@ -213,10 +213,10 @@ _pgtbl_dump(pgtbl_t *pgtbl, int level) {
     for (int i = 0; i < 512; i++) {
         pte_t pte = pgtbl->entries[i];
         if (pte_is_branch(pte)) {
-            printk("%s[%d] -> branch to %p\n", prefix[level], i, (void*)PTE2PA(pte));
+            trace("%s[%d] -> branch to %p\n", prefix[level], i, (void*)PTE2PA(pte));
             _pgtbl_dump((pgtbl_t*)PTE2PA(pte), level + 1);
         } else if (pte_is_leaf(pte)) {
-            printk("%s[%d] -> leaf to %p (flags: 0x%lx)\n", prefix[level], i, (void*)PTE2PA(pte), pte & 0x3FF);
+            trace("%s[%d] -> leaf to %p (flags: 0x%lx)\n", prefix[level], i, (void*)PTE2PA(pte), pte & 0x3FF);
         }
     }
 }

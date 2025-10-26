@@ -2,22 +2,29 @@
  * architecture-specific initialization code.
  */
 
-#include "kernel/misc/log.h"
+#include "libs/log.h"
 #include "kernel/boot.h"
 #include "kernel/arch/csr.h"
 #include "kernel/trap.h"
 #include "kernel/arch/init.h"
-#include "kernel/misc/assert.h"
+#include "libs/assert.h"
 #include "kernel/arch/board.h"
 #include "kernel/arch/mm.h"
 #include "kernel/arch/ctx.h"
+#include "libs/string.h"
 
 static bootinfo_t bootinfo;
 
 static void
+clear_bss(void) {
+    extern char __sbss[];
+    extern char __ebss[];
+    memset(__sbss, 0, (usize)(__ebss - __sbss));   
+}
+
+static void
 bootinfo_ctor(void) {
     // currently hardcoded.
-
     extern u8 __bootelf[];
     bootinfo.boot_elf = __bootelf;
 
@@ -75,6 +82,8 @@ bootinfo_ctor(void) {
 
 void
 arch_init(void) {
+    clear_bss();
+
     info("arch init...");
 
     disable_intr();
