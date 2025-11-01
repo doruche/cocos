@@ -4,11 +4,10 @@
 
 #pragma once
 
+#include "libs/prelude.h"
 #include "kernel/arch/ctx.h"
 #include "kernel/task/sched.h"
-#include "libs/prelude.h"
 #include "kernel/task/processor.h"
-#include "libs/sysno.h"
 
 typedef u64 (*syscall_ptr_t)(
     u64, u64, u64, u64, u64
@@ -109,9 +108,23 @@ SYSCALL_DECLARE3(
     task_spawn, 
     const char*, name, 
     uaddr_t, entry, 
-    tid_t, pager
+    port_t, pager
 );
 SYSCALL_DECLARE0(task_yield);
+SYSCALL_DECLARE1(task_block, tid_t, tid);
+SYSCALL_DECLARE1(task_resume, tid_t, tid);
+
+/* ipc */
+SYSCALL_DECLARE1(p_creat, port_t, req_pid);
+SYSCALL_DECLARE3(
+    p_transfer,
+    port_t, pid,
+    tid_t, dst,
+    port_flags_t, flags
+);
+SYSCALL_DECLARE1(p_close, port_t, pid);
+SYSCALL_DECLARE1(p_send, msg_hdr_t*, msg);
+SYSCALL_DECLARE1(p_recv, msg_hdr_t*, msg);
 
 /* mm */
 SYSCALL_DECLARE1(pm_alloc, tid_t, tid);

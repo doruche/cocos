@@ -14,5 +14,5 @@ tid_t   hot_spawn(
 tid_t   cold_spawn(
     const char* name,
     u8* elf_data,
-    tid_t pager
+    port_t pager
 );

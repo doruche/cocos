@@ -5,11 +5,9 @@
 #include "kernel/mm/vm.h"
 #include "kernel/task/sched.h"
 #include "kernel/trap.h"
-#include "libs/log.h"
-#include "libs/assert.h"
 #include "kernel/arch/csr.h"
 #include "libs/prelude.h"
-
+#include "kernel/ipc.h"
 #include "kernel/arch/ctx.h"
 #include "kernel/task/processor.h"
 #include "kernel/syscall.h"
@@ -64,7 +62,7 @@ utrap() {
                     // trace("user timer interrupt");
                     // timer_intr(); // avoid double handling timer intr
                     // ugly logic, refine later
-                    yield();
+                    task_yield();
                 }
                 break;
             default:
@@ -99,19 +97,7 @@ utrap() {
                         current->tid, current->name,
                         fault_addr, r_sepc(), exception_strs[exccode]
                     );
-                    if (task_get(current->pager) != NULL) {
-                        notify(
-                            "task page fault: requesting pager task %ld to handle",
-                            current->pager
-                        );
-                        yield();
-                    } else {
-                        warn(
-                            "task page fault: no valid pager for task %ld, killing",
-                            current->tid
-                        );
-                        task_crash_exit();
-                    }
+                    task_crash_exit();
                 }
                 break;
             default:

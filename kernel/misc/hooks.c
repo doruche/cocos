@@ -2,14 +2,14 @@
  * libgeneric's hooks
  */
 
-#include "libs/panic.h"
-#include "libs/printf.h"
+#include "libs/hooks.h"
 #include "libs/prelude.h"
 #include "kernel/misc/printk.h"
 #include "libs/log.h"
 #include "kernel/arch/sbi.h"
+#include "kernel/mm/kmalloc.h"
 
-usize
+usize __hook_impl
 __puts(const char* str) {
     usize len = 0;
     while (str[len] != '\0') {
@@ -19,7 +19,7 @@ __puts(const char* str) {
     return len;
 }
 
-void __noreturn
+void __noreturn __hook_impl
 __panic(const char* msg, ...) {
     va_list ap;
     va_start(ap, msg);
@@ -31,8 +31,23 @@ __panic(const char* msg, ...) {
     __builtin_unreachable();
 }
 
-void __noreturn
+void __noreturn __hook_impl
 __panic_no_msg(void) {
     sbi_shutdown();
     __builtin_unreachable();
+}
+
+
+usize __hook_impl
+__objsize(void* ptr) {
+    return kmalloc_objsize(ptr);
+}
+void* __hook_impl
+__malloc(usize size) {
+    return kmalloc(size);
+}
+
+void __hook_impl
+__free(void* ptr) {
+    kfree(ptr); 
 }

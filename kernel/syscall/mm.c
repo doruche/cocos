@@ -1,4 +1,3 @@
-#include "libs/sysno.h"
 #include "kernel/task/sched.h"
 #include "kernel/syscall.h"
 #include "libs/log.h"
@@ -138,22 +137,6 @@ SYSCALL_DEFINE5(
         ppn,
         npages,
         flags
-    );
-
-    // temp debug sanity check
-    ppn_t check_ppn;
-    if (!pgtbl_lookup(
-        target_task->vms->pgtbl,
-        vpn,
-        &check_ppn
-    )) {
-        panic("sys_vm_map: sanity check failed after mapping");
-    }
-    assert_eq(check_ppn, ppn);
-    notify("sys_vm_map: sanity check passed, vpn 0x%lx mapped to ppn 0x%lx in task %d",
-        vpn,
-        check_ppn,
-        tid
     );
 
     flush_tlb();

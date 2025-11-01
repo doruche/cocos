@@ -1,4 +1,4 @@
 obj-y :=			\
 	processor.o		\
 	sched.o			\
-	bootelf.o
+	bootimage.o

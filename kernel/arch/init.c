@@ -25,8 +25,8 @@ clear_bss(void) {
 static void
 bootinfo_ctor(void) {
     // currently hardcoded.
-    extern u8 __bootelf[];
-    bootinfo.boot_elf = __bootelf;
+    extern u8 __bootimage[];
+    bootinfo.bootimage = __bootimage;
 
     extern char __etext[];
     extern char __srodata[];

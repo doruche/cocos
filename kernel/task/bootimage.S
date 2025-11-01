@@ -2,6 +2,6 @@
 # will start all user servers.
 
     .section .rodata
-    .global __bootelf
-__bootelf:
+    .global __bootimage
+__bootimage:
     .incbin "../build/uspace/servers/pm/pm.elf"

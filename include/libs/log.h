@@ -5,8 +5,7 @@
 #pragma once
 
 #include "libs/color.h"
-#include "libs/panic.h"
-#include "libs/printf.h"
+#include "libs/hooks.h"
 
 #ifndef LOG
     #define LOG TRACE

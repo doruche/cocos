@@ -6,7 +6,7 @@
 #include "libs/prelude.h"
 
 static const usize kmalloc_config[] = {
-    8, 16, 32, 64, 128, 256,
+    8, 16, 32, 64, 128, 256, 512, 1024
 };
 
 static usize ncaches = array_size(kmalloc_config);
@@ -33,9 +33,7 @@ kmalloc(usize size) {
 
 void
 kfree(void* ptr) {
-    obj_t* obj = container_of(ptr, obj_t, data);
-    slab_t* slab = OBJ_SLAB(obj);
-    usize data_size = slab->cache->data_size;
+    usize data_size = kmalloc_objsize(ptr);
 
     // find the right cache
     for (isize i = ncaches - 1; i >= 0; i--) {
@@ -46,4 +44,11 @@ kfree(void* ptr) {
     }
 
     panic("kfree: cannot find cache for size %d", data_size);
+}
+
+usize
+kmalloc_objsize(void* ptr) {
+    obj_t* obj = container_of(ptr, obj_t, data);
+    slab_t* slab = OBJ_SLAB(obj);
+    return slab->cache->data_size;
 }

@@ -2,7 +2,6 @@
 
 #include "libs/prelude.h"
 #include "uspace/arch_syscall.h"
-#include "libs/sysno.h"
 
 static inline isize
 sys_task_kill(tid_t tid) {
@@ -44,7 +43,7 @@ static inline isize
 sys_task_spawn(
     const char* name,
     uaddr_t entry,
-    tid_t pager
+    port_t pager
 ) {
     return arch_syscall(
         SYS_TASK_SPAWN,
@@ -109,6 +108,94 @@ sys_task_yield(void) {
     return arch_syscall(
         SYS_TASK_YIELD,
         0,
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_p_creat(port_t req_pid) {
+    return arch_syscall(
+        SYS_P_CREAT,
+        (u64)(req_pid),
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_p_close(port_t pid) {
+    return arch_syscall(
+        SYS_P_CLOSE,
+        (u64)(pid),
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_p_transfer(
+    port_t pid,
+    tid_t dst,
+    port_flags_t flags
+) {
+    return arch_syscall(
+        SYS_P_TRANSFER,
+        (u64)(pid),
+        (u64)(dst),
+        (u64)(flags),
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_p_send(const msg_hdr_t* msg) {
+    return arch_syscall(
+        SYS_P_SEND,
+        (u64)(msg),
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_p_recv(msg_hdr_t* msg) {
+    return arch_syscall(
+        SYS_P_RECV,
+        (u64)(msg),
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_task_block(tid_t tid) {
+    return arch_syscall(
+        SYS_TASK_BLOCK,
+        (u64)(tid),
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_task_resume(tid_t tid) {
+    return arch_syscall(
+        SYS_TASK_RESUME,
+        (u64)(tid),
         0,
         0,
         0,

@@ -1,2 +1,2 @@
 # obj-y := list.o string.o
-obj-y := list.o string.o printf.o iter.o
+obj-y := list.o string.o printf.o iter.o vec.o mm.o

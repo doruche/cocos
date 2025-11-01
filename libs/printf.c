@@ -1,9 +1,5 @@
-#include "libs/printf.h"
+#include "libs/hooks.h"
 #include "libs/prelude.h"
-#include "libs/panic.h"
-#include <stdarg.h>
-
-#define panic __panic
 
 static char buf[256];
 static usize buf_index = 0;
@@ -13,7 +9,7 @@ flush(void) {
     usize len = buf_index;
     if (len > 0) {
         buf[buf_index] = '\0';
-        __puts(buf);
+        hook_call(puts, buf);
         buf_index = 0;
     }
 }

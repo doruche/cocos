@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdarg.h>
+
 #define NULL ((void*)0)
 
 #define TAG(name) 
@@ -77,6 +79,28 @@ typedef usize tid_t;
 #define TID_INVALID ((tid_t)0)
 #define TID_PM      ((tid_t)1)
 
+typedef u64 port_t;
+#define PID_INVALID ((port_t)0)
+#define PID_ANY     ((port_t)-1)
+typedef u64 msg_mode_t;
+typedef u64 msg_id_t;
+typedef struct _msg_hdr_t {
+    usize       size;           // total size of the message, including header
+#define MSG_MAX_SIZE 256
+    msg_mode_t  mode;           // message mode
+    port_t      local;          // port on the local side
+    port_t      remote;         // port on the remote side
+    msg_id_t    id;             // custom message id. used by user
+    u8          body[0];        // message body
+} msg_hdr_t;
+typedef u64 port_flags_t;
+#define port_privs(flags) ((flags) & 0xFFF)
+#define PORT_SEND   (1L << 0)
+#define PORT_RECV   (1L << 1)
+// after 12 bits are special options for port transfer
+#define PORT_TRANSFER_DISCARD   (1L << 12)
+
+
 typedef u64 vm_flags_t;
 #define VM_READ  (1L << 0)
 #define VM_WRITE (1L << 1)
@@ -115,3 +139,28 @@ strerr(isize err) {
             return "Unknown error";
     }
 }
+
+
+isize   vprintf(const char *fmt, va_list ap);
+isize   printf(const char *fmt, ...);
+void    flush(void);
+
+#define SYS_TASK_KILL   0
+#define SYS_TASK_GETTID 1
+#define SYS_DBG_PUTS    2
+#define SYS_PM_ALLOC    3
+#define SYS_VM_MAP      4
+#define SYS_VM_UNMAP    5
+#define SYS_TASK_SPAWN  6
+#define SYS_TASK_YIELD  8
+#define SYS_P_CREAT     9
+#define SYS_P_CLOSE     10
+#define SYS_P_TRANSFER  11
+#define SYS_P_SEND      12
+#define SYS_P_RECV      13
+#define SYS_TASK_BLOCK  14
+#define SYS_TASK_RESUME 15
+
+
+#include "libs/log.h"
+#include "libs/assert.h"

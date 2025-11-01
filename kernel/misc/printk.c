@@ -6,10 +6,8 @@
 
 #include "kernel/misc/printk.h"
 #include "kernel/arch/sbi.h"
-#include "libs/log.h"
 #include "libs/prelude.h"
 #include "kernel/arch/csr.h"
-#include "libs/printf.h"
 #include <stdarg.h>
 
 isize

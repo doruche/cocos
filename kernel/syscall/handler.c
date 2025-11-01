@@ -2,9 +2,7 @@
 #include "libs/log.h"
 #include "libs/assert.h"
 #include "libs/prelude.h"
-
 #include "kernel/arch/ctx.h"
-#include "libs/sysno.h"
 
 static const syscall_ptr_t syscall_table[] = {
     [SYS_TASK_KILL]      __sys_task_kill,
@@ -15,6 +13,13 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_VM_UNMAP]      __sys_vm_unmap,
     [SYS_TASK_SPAWN]    __sys_task_spawn,
     [SYS_TASK_YIELD]    __sys_task_yield,
+    [SYS_P_CREAT]      __sys_p_creat,
+    [SYS_P_CLOSE]      __sys_p_close,
+    [SYS_P_TRANSFER]   __sys_p_transfer,
+    [SYS_P_SEND]      __sys_p_send,
+    [SYS_P_RECV]      __sys_p_recv,
+    [SYS_TASK_BLOCK]  __sys_task_block,
+    [SYS_TASK_RESUME] __sys_task_resume,
 };
 
 static const char* const syscall_strs[] = {
@@ -26,6 +31,13 @@ static const char* const syscall_strs[] = {
     [SYS_VM_UNMAP]      = "vm_unmap",
     [SYS_TASK_SPAWN]    = "task_spawn",
     [SYS_TASK_YIELD]    = "task_yield",
+    [SYS_P_CREAT]      = "p_creat",
+    [SYS_P_CLOSE]      = "p_close",
+    [SYS_P_TRANSFER]   = "p_transfer",
+    [SYS_P_SEND]      = "p_send",
+    [SYS_P_RECV]      = "p_recv",
+    [SYS_TASK_BLOCK]  = "task_block",
+    [SYS_TASK_RESUME] = "task_resume",
 };
 
 bool

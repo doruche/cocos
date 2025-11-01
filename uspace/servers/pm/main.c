@@ -1,14 +1,9 @@
-#include "libs/printf.h"
 #include "uspace/task.h"
-#include "libs/panic.h"
 #include "uspace/syscall.h"
 #include "libs/elf.h"
 #include "libs/string.h"
-
 #include "task.h"
 #include "libs/prelude.h"
-#include "libs/log.h"
-#include "libs/assert.h"
 
 isize
 main(void) {
@@ -20,15 +15,9 @@ main(void) {
     if (tid == TID_INVALID) {
         panic("pm: failed to create task");
     }
+    trace("pm: launched app with tid %d", tid);
 
-    usize counter = 0;
-
-    loop  {
-        trace("pm: running... %d", counter++);
-        info("pm: running... %d", counter);
-        assert_eq(1, 1);
-        task_yield();
-    }
+    loop {}
 
     return 0;
 }

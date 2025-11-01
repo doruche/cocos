@@ -2,4 +2,5 @@ obj-y :=			\
 	handler.o		\
 	task.o			\
 	dbg.o			\
-	mm.o
+	mm.o			\
+	ipc.o

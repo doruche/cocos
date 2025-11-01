@@ -17,7 +17,7 @@ export BUILD_DIR := $(abspath $(ROOT_DIR)/build)
 export MAKEFLAGS += --no-print-directory
 
 export GLOBL_CFLAGS := \
-	-Wall -Werror -Wno-error=unused \
+	-Wall -Wno-error=unused \
 	-O2 -fno-pic -fno-builtin -ffreestanding -fno-stack-protector -mno-relax -g \
 	-march=rv64gc -mabi=lp64d -std=gnu11 \
 	-mcmodel=medany -fno-pie \
@@ -49,7 +49,7 @@ MODULES := libs kernel uspace
 
 all: $(MODULES)
 
-# building the kernel depends on bootelf from uspace.
+# building the kernel depends on bootimage from uspace.
 # this is a bit coarse-grained and slow, but works for now.
 uspace: libs
 kernel: uspace

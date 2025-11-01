@@ -1,15 +1,6 @@
-#include "kernel/misc/printk.h"
-#include "libs/log.h"
-#include "libs/assert.h"
 #include "kernel/boot.h"
-#include "kernel/arch/timer.h"
 #include "kernel/arch/csr.h"
-#include "kernel/mm/pm.h"
-#include "kernel/mm/vm.h"
-#include "kernel/mm/kmalloc.h"
-#include "kernel/task/sched.h"
 #include "kernel/misc/test.h"
-
 
 void __noreturn
 kstart(bootinfo_t* bootinfo) {
@@ -23,11 +14,13 @@ kstart(bootinfo_t* bootinfo) {
     info("timer initialized.");
     kvms_init(bootinfo);
     info("kernel vm space initialized.");
+    ipc_init();
+    info("ipc subsystem initialized.");
 
     // vm_test();
 
     notify("cocos kernel booted successfully, jumping to scheduler...");
-    sched_init(bootinfo->boot_elf);
+    sched_init(bootinfo->bootimage);
 
     unreachable()
 }

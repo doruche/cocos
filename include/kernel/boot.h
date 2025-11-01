@@ -21,8 +21,15 @@ typedef struct _memzone_t {
 } memzone_t;
 
 typedef struct _bootinfo_t {
-    u8* boot_elf;
+    u8* bootimage;
     memzone_t zones[NMEMZONE_MAX];
 } bootinfo_t;
 
 void kstart(bootinfo_t*);
+
+void pm_init(bootinfo_t* bootinfo);
+void kmalloc_init(void);
+void timer_init(void);
+void kvms_init(bootinfo_t* bootinfo);
+void ipc_init(void);
+void sched_init(u8* bootimage);

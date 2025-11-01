@@ -2,8 +2,6 @@
 #include "uspace/task.h"
 #include "vm.h"
 #include "task.h"
-#include "libs/log.h"
-#include "libs/assert.h"
 #include "libs/elf.h"
 #include "libs/string.h"
 #include "uspace/syscall.h"
@@ -94,7 +92,7 @@ hot_spawn(const char* name, u8* elf_data) {
     tid_t tid = sys_task_spawn(
         name,
         elf_hdr->e_entry,
-        task_gettid() // identical to TID_PM
+        task_gettid() // identical to TID_PM. actually not needed
     );
     if (is_err(tid)) {
         warn("hot_spawn: sys_task_spawn failed");
@@ -151,6 +149,9 @@ hot_spawn(const char* name, u8* elf_data) {
             )
         );
     }
+    
+    // fire up the task!
+    unwrap_err(sys_task_resume(tid));
 
     info("hot_spawn: spawned task %d", tid);
     return tid;
