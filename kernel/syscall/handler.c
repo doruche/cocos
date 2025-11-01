@@ -20,6 +20,7 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_P_RECV]      __sys_p_recv,
     [SYS_TASK_BLOCK]  __sys_task_block,
     [SYS_TASK_RESUME] __sys_task_resume,
+    [SYS_P_STAT]      __sys_p_stat,
 };
 
 static const char* const syscall_strs[] = {
@@ -38,6 +39,7 @@ static const char* const syscall_strs[] = {
     [SYS_P_RECV]      = "p_recv",
     [SYS_TASK_BLOCK]  = "task_block",
     [SYS_TASK_RESUME] = "task_resume",
+    [SYS_P_STAT]      = "p_stat",
 };
 
 bool
@@ -51,7 +53,6 @@ do_syscall(
     if (syscall_table[syscall_no] == NULL) {
         return false;
     }
-    // a0
 
     if (syscall_no != SYS_DBG_PUTS) {
         trace("do_syscall: syscall no=%ld (%s)",

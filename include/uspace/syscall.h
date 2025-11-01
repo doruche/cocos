@@ -202,3 +202,18 @@ sys_task_resume(tid_t tid) {
         0
     );
 }
+
+static inline isize
+sys_p_stat(
+    port_t pid,
+    p_stat_t* stat
+) {
+    return arch_syscall(
+        SYS_P_STAT,
+        (u64)(pid),
+        (u64)(stat),
+        0,
+        0,
+        0
+    );
+}

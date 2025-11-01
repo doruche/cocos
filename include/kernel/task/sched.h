@@ -22,16 +22,16 @@ typedef enum _task_state_t {
 typedef struct _task_t {
     char name[TASK_NAME_MAX_LEN];
     arch_ctx_t* actx;
-    __readonly tid_t tid;
-    // currently unused. work on pager should be done after ipc's proper implementation.
-    __maybe_unused __readonly port_t pager; // port of the pager task. should exist in port_list.
+    tid_t tid __readonly;
     task_state_t state;
     vm_space_t* vms; // keep this as a pointer for easy shared memory management later
     ppn_t* alloced_pages; // for sys_pm_alloc tracking.
-    
+    u8 msg_buf[MSG_MAX_SIZE]; // ipc buffer used for sending messages
+
     list_elem_t node_all; // node in all tasks list
     list_elem_t node_running; // node in running tasks list
-    list_elem_t node_port_tx; // node in port's tx waitlist
+    list_elem_t node_port_tx; // node in port's tx list
+    list_elem_t node_port_wtx; // node in port's tx waitlist
     list_t port_list; // list of task_port_t owned by this task
 } task_t;
 

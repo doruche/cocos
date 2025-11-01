@@ -13,7 +13,6 @@
 #include "kernel/trap.h"
 #include "kernel/boot.h"
 #include "kernel/mm/pm.h"
-#include "libs/string.h"
 #include "libs/elf.h"
 #include "kernel/mm/kmalloc.h"
 
@@ -160,7 +159,6 @@ task_spawn(const char* name, uaddr_t entry, port_t pager) {
     task->state = T_BLOCKED;
     
     // W.I.P. pager
-    task->pager = pager; // just record it for now
 
     task->vms = unwrap_null(kmem_cache_alloc(&task_vms_cache));
     vm_init(task->vms);
@@ -196,7 +194,10 @@ task_spawn(const char* name, uaddr_t entry, port_t pager) {
 
     list_push_back(&all_tasks, &task->node_all);
 
-    list_init(&task->port_list);
+    // ipc_init
+    // should make this a separate function later.
+    list_init(&task->port_list); 
+
 
     info("task spawned: tid=%ld name=%s entry=%p",
         task->tid, task->name, (void*)entry);
@@ -204,6 +205,8 @@ task_spawn(const char* name, uaddr_t entry, port_t pager) {
     return task;
 }
 
+// block a task.
+// if the task is the caller itself, yield cpu immediately.
 void
 task_block(tid_t tid) {
     task_t* task = unwrap_null(task_get(tid));
@@ -212,7 +215,15 @@ task_block(tid_t tid) {
     assert_ne(task->state, T_BLOCKED);
     task->state = T_BLOCKED;
     list_remove(&task->node_running);
+
+    if (task == current_task) {
+        ctx_switch(
+            &task->actx->ctx,
+            scheduler_ctx
+        );
+    }
 }
+
 
 void
 task_resume(tid_t tid) {
@@ -307,8 +318,8 @@ task_dump(void) {
     info("==== task dump start ====");
     list_foreach(iter, &all_tasks) {
         task_t* task = list_entry(iter, task_t, node_all);
-        info("task tid=%ld name=%s state=%d pager=%ld",
-            task->tid, task->name, task->state, task->pager);
+        info("task tid=%ld name=%s state=%d",
+            task->tid, task->name, task->state);
         list_foreach(port_iter, &task->port_list) {
             task_port_t* tport = list_entry(port_iter, task_port_t, node);
             info("  port id=%ld privs=%lx", tport->id, tport->privs);

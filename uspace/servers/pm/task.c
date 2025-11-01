@@ -3,7 +3,6 @@
 #include "vm.h"
 #include "task.h"
 #include "libs/elf.h"
-#include "libs/string.h"
 #include "uspace/syscall.h"
 #include "libs/iter.h"
 

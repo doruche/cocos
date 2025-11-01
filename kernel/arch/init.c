@@ -2,16 +2,14 @@
  * architecture-specific initialization code.
  */
 
-#include "libs/log.h"
+#include "libs/prelude.h"
 #include "kernel/boot.h"
 #include "kernel/arch/csr.h"
 #include "kernel/trap.h"
 #include "kernel/arch/init.h"
-#include "libs/assert.h"
 #include "kernel/arch/board.h"
 #include "kernel/arch/mm.h"
 #include "kernel/arch/ctx.h"
-#include "libs/string.h"
 
 static bootinfo_t bootinfo;
 

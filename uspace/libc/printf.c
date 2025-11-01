@@ -1,7 +1,6 @@
 #include "libs/hooks.h"
 #include "libs/prelude.h"
 #include "uspace/syscall.h"
-#include "libs/string.h"
 
 usize __hook_impl
 __puts(const char* str) {

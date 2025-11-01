@@ -1,11 +1,7 @@
 #include "kernel/mm/deprecated/pm.h"
 #include "kernel/boot.h"
 #include "kernel/arch/mm.h"
-#include "libs/log.h"
-#include "libs/assert.h"
 #include "libs/prelude.h"
-
-#include "libs/string.h"
 
 static pm_zone_t pmzones[NPMZONE_MAX];
 

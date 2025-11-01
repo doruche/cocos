@@ -125,6 +125,11 @@ SYSCALL_DECLARE3(
 SYSCALL_DECLARE1(p_close, port_t, pid);
 SYSCALL_DECLARE1(p_send, msg_hdr_t*, msg);
 SYSCALL_DECLARE1(p_recv, msg_hdr_t*, msg);
+SYSCALL_DECLARE2(
+    p_stat,
+    port_t, pid,
+    p_stat_t*, stat
+);
 
 /* mm */
 SYSCALL_DECLARE1(pm_alloc, tid_t, tid);

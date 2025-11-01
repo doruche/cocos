@@ -19,7 +19,7 @@ export MAKEFLAGS += --no-print-directory
 export GLOBL_CFLAGS := \
 	-Wall -Wno-error=unused \
 	-O2 -fno-pic -fno-builtin -ffreestanding -fno-stack-protector -mno-relax -g \
-	-march=rv64gc -mabi=lp64d -std=gnu11 \
+	-march=rv64gc -mabi=lp64d -std=gnu23 \
 	-mcmodel=medany -fno-pie \
 	-I$(ROOT_DIR)/include \
 	-I.

@@ -4,11 +4,9 @@
 
 #include "kernel/arch/ctx.h"
 #include "libs/assert.h"
-
 #include "libs/log.h"
 #include "libs/prelude.h"
 #include "kernel/consts/params.h"
-#include "libs/string.h"
 #include "kernel/mm/pm.h"
 #include "kernel/mm/vm.h"
 #include "kernel/mm/slab.h"

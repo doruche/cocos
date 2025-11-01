@@ -3,7 +3,6 @@
  * string & memory manipulation functions.
  */
 
-#include "libs/string.h"
 #include "libs/prelude.h"
 
 void*

@@ -1,7 +1,6 @@
 #include "libs/prelude.h"
 #include "libs/mm.h"
 #include "libs/hooks.h"
-#include "libs/string.h"
 
 void*
 malloc(usize size) {

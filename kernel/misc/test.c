@@ -5,14 +5,12 @@
 
 #include "kernel/misc/test.h"
 #include "kernel/misc/printk.h"
-#include "libs/log.h"
-#include "libs/assert.h"
+#include "libs/prelude.h"
 #include "kernel/mm/pm.h"
 #include "kernel/mm/slab.h"
 #include "kernel/arch/mm.h"
 #include "kernel/arch/board.h"
 #include "kernel/mm/vm.h"
-#include "libs/string.h"
 #include "kernel/arch/csr.h"
 
 void
