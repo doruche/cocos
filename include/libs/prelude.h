@@ -103,6 +103,7 @@ typedef u64 vm_flags_t;
 #define ERR_NOENT   4  // No such entry
 #define ERR_EXIST   5  // Entry already exists
 #define ERR_FAULT   6  // Bad address
+#define ERR_ABORT   7  // Operation aborted
 
 static inline char*
 strerr(isize err) {
@@ -145,6 +146,7 @@ void    flush(void);
 #define SYS_TASK_BLOCK  14
 #define SYS_TASK_RESUME 15
 #define SYS_P_STAT      16
+#define SYS_P_NOTIFY    17
 
 
 #include "libs/log.h"

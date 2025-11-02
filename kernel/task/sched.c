@@ -322,7 +322,9 @@ task_dump(void) {
             task->tid, task->name, task->state);
         list_foreach(port_iter, &task->port_list) {
             task_port_t* tport = list_entry(port_iter, task_port_t, node);
-            info("  port id=%ld privs=%lx", tport->id, tport->privs);
+            ipc_port_t* port = unwrap_null(p_get(tport->id));
+            info("  port id=%ld privs=%lx dead=%d tx_rc=%ld",
+                tport->id, tport->privs, port->dead, port->tx_rc);
         }
     }
     info("==== task dump end ====");

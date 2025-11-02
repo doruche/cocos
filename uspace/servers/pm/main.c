@@ -23,12 +23,11 @@ static void
 handle_msg(pm_msg_t* msg) {
     port_t src_port = msg->header.remote;
     usize size = msg->header.size;
-    msg_mode_t mode = msg->header.mode;
-    msg_id_t msg_id = msg->header.body.msg.id;
-    printf("pm: handling message id %ld from port %ld, size=%ld, mode=%lx\n",
-        msg_id, src_port, size, mode);
+    msg_id_t msg_id = msg->header.id;
+    printf("pm: handling message id %ld from port %ld, size=%ld\n",
+        msg_id, src_port, size);
 
-    switch (msg->header.body.msg.id) {
+    switch (msg->header.id) {
         case PM_REQ_PING: {
             printf("pm: ping received with val=%ld\n",
                 msg->body.ping.val);
@@ -36,7 +35,7 @@ handle_msg(pm_msg_t* msg) {
         }
         default: {
             printf("pm: unknown message id %ld received\n",
-                msg->header.body.msg.id);
+                msg->header.id);
             break;
         }
     }
@@ -68,12 +67,22 @@ main(void) {
     // receiver no need to set other fields
     pm_msg_t msg;
     msg.header.local = pm_port;
+    notifications_t notif;
+    notifications_t mask = 0;
+
 
     loop {
-        isize ret = sys_p_recv((msg_hdr_t*)&msg);
+        isize ret = sys_p_recv(
+            (msg_hdr_t*)&msg,
+            &notif,
+            mask
+        );
         if (is_err(ret)) {
             printf("pm: failed to receive message: %s\n",
                 strerr(ret));
+        } else if (notif != 0) {
+            printf("pm: received notification: %lx\n",
+                notif);
         } else {
             handle_msg(&msg);
         }

@@ -6,9 +6,9 @@
 
 #include "libs/prelude.h"
 
-typedef enum _pm_reqtype_t {
+typedef enum _pm_msg_id_t {
     PM_REQ_PING = 0,
-} pm_reqtype_t;
+} pm_msg_id_t;
 
 typedef union _pm_msgbody_t {
     struct {

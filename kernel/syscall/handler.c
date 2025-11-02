@@ -21,6 +21,7 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_TASK_BLOCK]  __sys_task_block,
     [SYS_TASK_RESUME] __sys_task_resume,
     [SYS_P_STAT]      __sys_p_stat,
+    [SYS_P_NOTIFY]    __sys_p_notify,
 };
 
 static const char* const syscall_strs[] = {
@@ -40,6 +41,7 @@ static const char* const syscall_strs[] = {
     [SYS_TASK_BLOCK]  = "task_block",
     [SYS_TASK_RESUME] = "task_resume",
     [SYS_P_STAT]      = "p_stat",
+    [SYS_P_NOTIFY]    = "p_notify",
 };
 
 bool

@@ -124,7 +124,17 @@ SYSCALL_DECLARE3(
 );
 SYSCALL_DECLARE1(p_close, port_t, pid);
 SYSCALL_DECLARE1(p_send, msg_hdr_t*, msg);
-SYSCALL_DECLARE1(p_recv, msg_hdr_t*, msg);
+SYSCALL_DECLARE2(
+    p_notify,
+    port_t, pid,
+    notifications_t, notif
+);
+SYSCALL_DECLARE3(
+    p_recv, 
+    msg_hdr_t*, msg,
+    notifications_t*, notif,
+    notifications_t, mask
+);
 SYSCALL_DECLARE2(
     p_stat,
     port_t, pid,

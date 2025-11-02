@@ -10,6 +10,10 @@
 // kernel global port object
 typedef struct _ipc_port_t {
     port_t id;
+    // whether rx closed the port
+    bool dead;
+    // tx reference count. if zero and rx closed, free the port.
+    usize tx_rc;
     list_elem_t node; // node in global port list
     struct {
         task_t* task;
@@ -41,5 +45,10 @@ isize   p_transfer(
     port_flags_t flags   
 );
 isize   p_send(const msg_hdr_t* msg);
-isize   p_recv(msg_hdr_t* msg);
+isize   p_notify(port_t pid, notifications_t notif);
+isize   p_recv(
+    msg_hdr_t* msg, 
+    notifications_t* notif,
+    notifications_t mask
+);
 isize   p_close(port_t pid, task_t* task);

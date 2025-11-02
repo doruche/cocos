@@ -168,12 +168,31 @@ sys_p_send(const msg_hdr_t* msg) {
 }
 
 static inline isize
-sys_p_recv(msg_hdr_t* msg) {
+sys_p_notify(
+    port_t pid,
+    notifications_t notif
+) {
+    return arch_syscall(
+        SYS_P_NOTIFY,
+        (u64)(pid),
+        (u64)(notif),
+        0,
+        0,
+        0
+    );
+}
+
+static inline isize
+sys_p_recv(
+    msg_hdr_t* msg,
+    notifications_t* notif,
+    notifications_t mask
+) {
     return arch_syscall(
         SYS_P_RECV,
         (u64)(msg),
-        0,
-        0,
+        (u64)(notif),
+        (u64)(mask),
         0,
         0
     );

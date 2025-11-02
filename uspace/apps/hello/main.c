@@ -13,9 +13,8 @@ ping_pm(usize val) {
     memset(&req, 0, sizeof(req));
     req.header.local = PID_INVALID; // one-way message.
     req.header.remote = pm_port;
-    req.header.mode = MSG_MODE_NORM;
     req.header.size = sizeof(req);
-    req.header.body.msg.id = PM_REQ_PING;
+    req.header.id = PM_REQ_PING;
     req.body.ping.val = val;
     isize ret = sys_p_send((msg_hdr_t*)&req);
     return ret;
@@ -35,7 +34,12 @@ main(int argc, char* argv[]) {
             printf("hello: pinged pm with val=%ld\n",
                 counter - 1);
         }
+        if (counter == 3) {
+            break;
+        }
     }
+    sys_p_close(pm_port);
+    loop {}
 
     return 0;
 }

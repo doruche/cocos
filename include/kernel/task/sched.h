@@ -27,7 +27,8 @@ typedef struct _task_t {
     vm_space_t* vms; // keep this as a pointer for easy shared memory management later
     ppn_t* alloced_pages; // for sys_pm_alloc tracking.
     u8 msg_buf[MSG_MAX_SIZE]; // ipc buffer used for sending messages
-
+    notifications_t notif; // pending notifications
+    notifications_t notif_mask; // notification mask
     list_elem_t node_all; // node in all tasks list
     list_elem_t node_running; // node in running tasks list
     list_elem_t node_port_tx; // node in port's tx list
