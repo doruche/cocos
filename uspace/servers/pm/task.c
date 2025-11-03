@@ -82,10 +82,19 @@ hot_spawn_callback(
 }
 
 tid_t
-hot_spawn(const char* name, u8* elf_data) {
+hot_spawn(
+    const char* name,
+    const u8* elf_data,
+    bool start
+) {
     elf_hdr_t* elf_hdr = (elf_hdr_t*)elf_data;
     if (memcmp(elf_hdr->e_ident, ELF_MAGIC, 4) != 0) {
-        warn("hot_spawn: invalid ELF magic");
+        warn("hot_spawn: invalid ELF magic %x%x%x%x",
+            elf_hdr->e_ident[0],
+            elf_hdr->e_ident[1],
+            elf_hdr->e_ident[2],
+            elf_hdr->e_ident[3]
+        );
         return TID_INVALID;
     }    
     tid_t tid = sys_task_spawn(
@@ -149,9 +158,12 @@ hot_spawn(const char* name, u8* elf_data) {
         );
     }
     
-    // fire up the task!
-    unwrap_err(sys_task_resume(tid));
-
     info("hot_spawn: spawned task %d", tid);
+    
+    // fire up the task!
+    if (start) {
+        unwrap_err(sys_task_resume(tid));
+    }
+
     return tid;
 }

@@ -120,6 +120,8 @@ strerr(isize err) {
             return "Entry already exists";
         case -ERR_FAULT:
             return "Bad address";
+        case -ERR_ABORT:
+            return "Operation aborted";
         default:
             return "Unknown error";
     }

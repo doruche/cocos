@@ -17,9 +17,14 @@ typedef union _pm_msgbody_t {
 } pm_msgbody_t;
 
 typedef struct _pm_msg_t {
-    msg_hdr_t header;
-    pm_msgbody_t body;
+    union {
+        struct {
+            msg_hdr_t header;
+            pm_msgbody_t body;
+        };
+        u8 padding[MSG_MAX_SIZE];
+    };
 } pm_msg_t;
 
-static_assert(sizeof(pm_msg_t) <= MSG_MAX_SIZE);
+static_assert(sizeof(pm_msg_t) == MSG_MAX_SIZE);
 static_assert(offset_of(pm_msg_t, header) == 0);

@@ -8,7 +8,7 @@ MOD_SRCDIR := $(CURDIR)
 MOD_OBJDIR := $(BUILD_DIR)/uspace/$(TYPE)/$(APP_NAME)
 CFLAGS := $(GLOBL_CFLAGS) -DLOG=$(ULOG) -DNAME=\"$(TYPE)/$(APP_NAME)/\"
 LDFLAGS := $(GLOBL_LDFLAGS) -T $(BUILD_DIR)/uspace/uspace.lds
-TARGET := $(MOD_OBJDIR)/$(APP_NAME).elf
+TARGET := $(MOD_OBJDIR)/$(APP_NAME)
 
 # NOTE libc depends on libgeneric! ORDER MATTERS!!!
 LIBS := $(BUILD_DIR)/libs/libgeneric.a $(BUILD_DIR)/uspace/libc/libc.a

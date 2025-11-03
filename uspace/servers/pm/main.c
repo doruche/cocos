@@ -1,7 +1,6 @@
-#include "uspace/task.h"
 #include "uspace/syscall.h"
-#include "libs/elf.h"
 #include "task.h"
+#include "bfs.h"
 #include "libs/prelude.h"
 #include "uspace/servers/pm.h"
 
@@ -15,6 +14,7 @@ pm_init(void) {
         panic("pm: failed to create pm port: %s",
             strerr((isize)pm_port));
     }
+    bfs_probe();
     trace("pm: created pm port %ld", pm_port);
     trace("pm: initialized.");
 }
@@ -22,11 +22,10 @@ pm_init(void) {
 static void
 handle_msg(pm_msg_t* msg) {
     port_t src_port = msg->header.remote;
-    usize size = msg->header.size;
     msg_id_t msg_id = msg->header.id;
-    printf("pm: handling message id %ld from port %ld, size=%ld\n",
-        msg_id, src_port, size);
-
+    printf("pm: handling message id %ld from port %ld\n",
+        msg_id, src_port);
+    
     switch (msg->header.id) {
         case PM_REQ_PING: {
             printf("pm: ping received with val=%ld\n",
@@ -41,36 +40,37 @@ handle_msg(pm_msg_t* msg) {
     }
 }
 
+static void
+spawn_init_tasks(void) {
+    trace("pm: spawning init tasks...");
+
+    usize i = 0;
+    loop { 
+        const bfs_inode_t* inode = bfs_inode(i++);
+        if (inode == NULL) {
+            break;
+        }
+        const u8* elf = bfs_read_inplace(inode);
+        tid_t tid = unwrap_err(hot_spawn(inode->name, elf, false));
+        unwrap_err(sys_p_transfer(pm_port, tid, PORT_SEND));
+        trace("pm: spawned init task '%s' (tid %ld)",
+            inode->name, tid);
+        unwrap_err(sys_task_resume(tid));
+    }
+
+    trace("pm: init tasks spawned.");
+}
+
 isize
 main(void) {
     pm_init();
 
-    extern u8 __app_elf[];
-    tid_t test_procs[3];
-    char namebuf[32] = "test_proc_0";
-    for (usize i = 0; i < 3; i++) {
-        // "test_proc_{i}"
-        namebuf[10] = '0' + (char)i;
-        namebuf[11] = '\0';
-        tid_t tid = unwrap_err(hot_spawn(
-            namebuf,
-            __app_elf
-        ));
-        test_procs[i] = tid;
-        unwrap_err(sys_p_transfer(
-            pm_port,
-            tid,
-            PORT_SEND
-        ));
-    }
+    spawn_init_tasks();
 
-    // receiver no need to set other fields
     pm_msg_t msg;
     msg.header.local = pm_port;
     notifications_t notif;
-    notifications_t mask = 0;
-
-
+    notifications_t mask = NOTIF_MASK_ALL;
     loop {
         isize ret = sys_p_recv(
             (msg_hdr_t*)&msg,
@@ -86,7 +86,12 @@ main(void) {
         } else {
             handle_msg(&msg);
         }
+        sys_task_yield();
     }
+
+    sys_p_close(pm_port);
+
+    loop {}
 
     return 0;
 }

@@ -6,13 +6,14 @@
 // does not need a pager
 tid_t   hot_spawn(
     const char* name,
-    u8* elf_data
+    const u8* elf_data,
+    bool start
 );
 
 // spawn a task without initialized vm space
 // needs a pager to handle page faults
 tid_t   cold_spawn(
     const char* name,
-    u8* elf_data,
+    const u8* elf_data,
     port_t pager
 );

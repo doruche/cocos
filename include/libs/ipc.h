@@ -18,7 +18,6 @@ typedef u64 msg_id_t;
 typedef struct _msg_hdr_t {
     port_t      local;           // port on the local side
     port_t      remote;         // port on the remote side
-    usize       size;           // total size of the message, including header
 #define MSG_MAX_SIZE 256
     msg_id_t id;            // custom message id. used by user
     u8 body[0];              // message body follows

@@ -8,6 +8,7 @@ export AS := $(CROSS)as
 export LD := $(CROSS)ld
 export OBJCOPY := $(CROSS)objcopy
 export OBJDUMP := $(CROSS)objdump
+export PYTHON := python3
 
 # Directories
 export ROOT_DIR := $(CURDIR)

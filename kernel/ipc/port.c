@@ -42,16 +42,13 @@ tp_attach(port_t pid, task_t* owner, port_flags_t privs) {
         assert_ne(tport->id, pid);
     }
 
-    if ((privs & PORT_RECV) && (port->rx.task != NULL)) {
-        panic("tp_attach: port %ld already has a receiver", pid);
-    }
-
     tport = unwrap_null(kmem_cache_alloc(&tport_cache));
     tport->privs = privs;
     tport->id = pid;
     list_push_back(&owner->port_list, &tport->node);
 
     if (privs & PORT_RECV) {
+        assert(port->rx.task == NULL);
         port->rx.task = owner;
     }
     if (privs & PORT_SEND) {
@@ -64,7 +61,7 @@ tp_attach(port_t pid, task_t* owner, port_flags_t privs) {
 }
 
 // note that this function is extremely dangerous!
-// if we detach a tport with recv right with notifying senders disabled,
+// if we detach a tport with recv right and close disabled,
 // those senders may hang forever when trying to send message to this port.
 // the reason for having this option is to support port transfer,
 // where the recv right is transferred to another task immediately after detaching.
@@ -73,7 +70,7 @@ tp_detach(
     port_t pid, 
     task_t* owner,
     port_flags_t flags,
-    bool notify_senders
+    bool close
 ) {
     ipc_port_t* port = unwrap_null(p_get(pid));
     task_port_t* tport = unwrap_null(tp_get(owner, pid));
@@ -90,13 +87,13 @@ tp_detach(
     if (port_has_recv(flags)) {
         assert(!port->rx.is_receiving);
         port->rx.task = NULL;
-        port->dead = true;
-        if (notify_senders) {
+        if (close) {
             // only notify blocked senders here.
             // note that we adopt a lazy free strategy for ports.
             // even though we know the port is dead now,
             // we do not remove senders' tport.
             // it will be done when they call p_close later.
+            port->dead = true;
             list_foreach_safe(iter, &port->tx.waiting_tasks, next) {
                 task_t* sender = list_entry(iter, task_t, node_port_wtx);
                 list_remove(&sender->node_port_wtx);
@@ -118,16 +115,18 @@ tp_detach(
     }
 
     if (port->tx_rc == 0 && port->dead) {
-        trace("tp_detach: port %ld has no tx_rc and is dead, freeing port",
+        info("tp_detach: port %ld has no tx_rc and is dead, freeing port",
             pid);
         list_remove(&port->node);
+        assert(port->rx.task == NULL);
+        assert(list_is_empty(&port->tx.tasks));
+        assert(list_is_empty(&port->tx.waiting_tasks));
         kmem_cache_free(&port_cache, port);
     }
 
     trace("tp_detach: port %ld detached from task %ld with flags %lx",
         pid, owner->tid, flags);
 }
-
 
 static void
 ipc_port_init(ipc_port_t* port, port_t id, task_t* creator) {
@@ -181,7 +180,6 @@ p_transfer(
         return -ERR_INVAL;
     }
 
-    ipc_port_t* port = unwrap_null(p_get(pid));
     task_port_t* tport = tp_get(ori, pid);
     if (tport == NULL) {
         warn("p_transfer: original owner task %ld has no such port %ld",
@@ -255,11 +253,10 @@ p_send(const msg_hdr_t* msg) {
     }
     if (port->dead) {
         warn("p_send: port %ld is dead", pid);
-        return -ERR_NOENT;
+        return -ERR_ABORT;
     }
     
-    memset(current->msg_buf, 0, MSG_MAX_SIZE);
-    memcpy(current->msg_buf, msg, msg->size);
+    memcpy(current->msg_buf, msg, MSG_MAX_SIZE);
     
     list_push_back(&port->tx.waiting_tasks, &current->node_port_wtx);
     if (port->rx.is_receiving) {
@@ -371,7 +368,7 @@ p_recv(
         msg_hdr_t *send_msg = (msg_hdr_t*)sender->msg_buf;
         port_t src = send_msg->remote; // this can be PID_INVALID for one-way message
         assert_eq(send_msg->remote, local);
-        memcpy(msg, send_msg, send_msg->size);
+        memcpy(msg, send_msg, MSG_MAX_SIZE);
         // need to do a swap of local and remote
         msg->local = local;
         msg->remote = src;
