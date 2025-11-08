@@ -5,6 +5,5 @@
 result_t
 main(usize argc, char* argv[]) {
     printf("hello, cocos userland!\n");
-    loop {}
     return 0;
 }

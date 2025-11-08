@@ -20,6 +20,7 @@
         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
         (type *)( (char *)__mptr - offset_of(type,member) );})
 #define array_size(arr) (sizeof(arr) / sizeof((arr)[0]))
+#define sizeof_member(type, member) sizeof(((type *)0)->member)
 
 #define swap(a, b) do { \
     typeof(a) __tmp = (a); \
@@ -102,9 +103,12 @@ typedef u64 vm_flags_t;
 #define VM_ANON  (1L << 6)
 #define PPN_ANON 0L
 
+typedef u8 irq_t;
+
 typedef isize result_t;
 #define is_err(result) ((result) < 0)
 #define OK          0  // Success
+/* normal logic errors */
 #define ERR_NOMEM   1  // Out of memory
 #define ERR_INVAL   2  // Invalid argument
 #define ERR_PERM    3  // Permission denied
@@ -113,6 +117,12 @@ typedef isize result_t;
 #define ERR_FAULT   6  // Bad address
 #define ERR_ABORT   7  // Operation aborted
 #define ERR_MISSMATCH 8  // Entity mismatch
+/* user exit reasons */
+#define ERR_PAGEFAULT       42 // Page fault
+#define ERR_KILLED          43 // Task killed
+#define ERR_INVALID_SYSCALL 44 // Invalid syscall
+#define ERR_PANIC           45 // Process panic
+
 
 static inline char*
 strerr(isize err) {
@@ -133,6 +143,10 @@ strerr(isize err) {
             return "Operation aborted";
         case -ERR_MISSMATCH:
             return "Entity mismatch";
+        case -ERR_PAGEFAULT:
+            return "Page fault";
+        case -ERR_KILLED:
+            return "Task killed";
         default:
             return "Unknown error";
     }
@@ -162,6 +176,7 @@ void    flush(void);
 #define SYS_P_NOTIFY    17
 #define SYS_AS_READ     18
 #define SYS_AS_WRITE    19
+#define SYS_TASK_EXIT   20
 
 
 #include <libs/log.h>

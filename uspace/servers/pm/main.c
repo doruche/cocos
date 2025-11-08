@@ -21,7 +21,7 @@ pm_init(void) {
 
 static void
 handle_msg(pm_msg_t* msg) {
-    port_t src_port = msg->header.remote;
+    port_t src_port = msg->header.local;
     msg_id_t msg_id = msg->header.id;
     printf("pm: handling message id %ld from port %ld\n",
         msg_id, src_port);
@@ -39,6 +39,7 @@ handle_msg(pm_msg_t* msg) {
         }
     }
 }
+
 
 static void
 spawn_init_tasks(void) {
@@ -62,7 +63,6 @@ spawn_init_tasks(void) {
                 inode->name,
                 strerr(ret));
         }
-        unwrap_err(sys_p_transfer(pm_port, tid, PORT_SEND));
         trace("pm: spawned init task '%s' (tid %ld)",
             inode->name, tid);
     }
@@ -77,28 +77,32 @@ main(void) {
     spawn_init_tasks();
 
     pm_msg_t msg;
-    msg.header.local = pm_port;
-    notifications_t notif;
-    notifications_t mask = NOTIF_MASK_ALL;
-    
-    loop {}
+    msg.header.local = PID_PM;
+    notif_t notif = {0};
     
     loop {
-        isize ret = sys_p_recv(
-            (msg_hdr_t*)&msg,
-            &notif,
-            mask
-        );
+        isize ret = sys_p_recv((msg_hdr_t*)&msg, &notif);
         if (is_err(ret)) {
             printf("pm: failed to receive message: %s\n",
                 strerr(ret));
-        } else if (notif != 0) {
-            printf("pm: received notification: %lx\n",
-                notif);
+        } else if (notif.type != 0) {
+            printf("pm: received notification of type %ld\n",
+                notif.type);
+            switch (notif.type) {
+                case NOTIF_TASK_EXIT:
+                    tid_t exited_tid = notif.payload.task_exited.tid;
+                    result_t exit_code = notif.payload.task_exited.exit_code;
+                    printf("pm: task %ld exited with code %ld\n", exited_tid, exit_code);
+                    break;
+                default:
+                    printf("pm: unknown notification type %ld received\n",
+                        notif.type);
+                    break;
+            }
+            notif = (notif_t){0};
         } else {
             handle_msg(&msg);
         }
-        sys_task_yield();
     }
 
     sys_p_close(pm_port);

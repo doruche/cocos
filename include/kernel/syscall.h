@@ -113,6 +113,7 @@ SYSCALL_DECLARE3(
 SYSCALL_DECLARE0(task_yield);
 SYSCALL_DECLARE1(task_block, tid_t, tid);
 SYSCALL_DECLARE1(task_resume, tid_t, tid);
+SYSCALL_DECLARE1(task_exit, result_t, exit_code);
 
 /* ipc */
 SYSCALL_DECLARE1(p_creat, port_t, req_pid);
@@ -127,13 +128,12 @@ SYSCALL_DECLARE1(p_send, msg_hdr_t*, msg);
 SYSCALL_DECLARE2(
     p_notify,
     port_t, pid,
-    notifications_t, notif
+    const notif_t*, notif
 );
-SYSCALL_DECLARE3(
+SYSCALL_DECLARE2(
     p_recv, 
     msg_hdr_t*, msg,
-    notifications_t*, notif,
-    notifications_t, mask
+    notif_t*, notif
 );
 SYSCALL_DECLARE2(
     p_stat,

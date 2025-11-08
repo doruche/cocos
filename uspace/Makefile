@@ -1,7 +1,6 @@
 LINKER := $(BUILD_DIR)/uspace/uspace.lds
 LINKER_TEMPLATE := uspace.lds.in
 
-
 .PHONY: all libc apps servers
 
 all: $(LINKER) libc apps servers

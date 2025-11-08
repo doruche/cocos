@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "kernel/task/sched.h"
-#include "libs/prelude.h"
+#include <libs/prelude.h>
+#include <kernel/task/sched.h>
 
 // kernel global port object
 typedef struct _ipc_port_t {
@@ -32,23 +32,28 @@ typedef struct _task_port_t {
     list_elem_t node; // node in task's port list
 } task_port_t;
 
+// notification object in task's notif_list
+typedef struct _knotif_t {
+    notif_t notif;
+    list_elem_t node; // node in task's notif list
+} knotif_t;
+
 void    ipc_init(void);
 
-ipc_port_t*     p_get(port_t id);
-task_port_t*    tp_get(task_t* task, port_t pid);
+result_t     p_get(port_t id, ipc_port_t** out);
+result_t     tp_get(task_t* task, port_t pid, task_port_t** out);
+result_t     tp_attach(port_t pid, task_t* owner, port_flags_t privs);
 
-port_t  p_creat(port_t req_pid, task_t* owner);
-isize   p_transfer(
+result_t   p_creat(port_t req_pid, task_t* owner, port_t* out);
+result_t   p_transfer(
     port_t pid,
     task_t* dst,
     task_t* ori,
     port_flags_t flags   
 );
-isize   p_send(const msg_hdr_t* msg);
-isize   p_notify(port_t pid, notifications_t notif);
-isize   p_recv(
-    msg_hdr_t* msg, 
-    notifications_t* notif,
-    notifications_t mask
-);
-isize   p_close(port_t pid, task_t* task);
+result_t   p_send(const msg_hdr_t* msg);
+result_t   p_notify(port_t pid, notif_t notif);
+result_t   p_recv(msg_hdr_t* msg, notif_t* notif);
+result_t   p_close(port_t pid, task_t* task);
+
+void       task_ipc_cleanup(task_t* task);

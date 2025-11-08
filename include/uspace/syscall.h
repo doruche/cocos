@@ -185,7 +185,7 @@ sys_p_send(const msg_hdr_t* msg) {
 static inline result_t
 sys_p_notify(
     port_t pid,
-    notifications_t notif
+    const notif_t* notif
 ) {
     return arch_syscall(
         SYS_P_NOTIFY,
@@ -200,14 +200,13 @@ sys_p_notify(
 static inline result_t
 sys_p_recv(
     msg_hdr_t* msg,
-    notifications_t* notif,
-    notifications_t mask
+    notif_t* notif
 ) {
     return arch_syscall(
         SYS_P_RECV,
         (u64)(msg),
         (u64)(notif),
-        (u64)(mask),
+        0,
         0,
         0
     );
@@ -250,4 +249,17 @@ sys_p_stat(
         0,
         0
     );
+}
+
+static inline void __noreturn
+sys_task_exit(result_t exit_code) {
+    arch_syscall(
+        SYS_TASK_EXIT,
+        (u64)(exit_code),
+        0,
+        0,
+        0,
+        0
+    );
+    unreachable();
 }

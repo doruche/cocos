@@ -7,20 +7,18 @@
 SYSCALL_DEFINE1(task_kill, tid_t, tid) {
     trace("sys_task_kill: called for tid=%ld", tid);
 
-    task_t* current = unwrap_null(current_task);
-    if (tid == current->tid) {
-        trace("sys_kill: task killing itself tid=%ld name=%s",
-            current->tid, current->name);
-        task_crash_exit();
-    } else {
-        result_t ret = task_kill(tid);
-        if (is_err(ret)) {
-            trace("sys_task_kill: failed to kill task tid=%ld: %s",
-                tid, strerr(ret));
-            return ret;
-        }
-        trace("sys_task_kill: successfully killed task tid=%ld", tid);
+    if (tid == current_task->tid) {
+        trace("sys_task_kill: task cannot kill itself");
+        return -ERR_INVAL;
+    } 
+
+    result_t ret = task_kill(tid);
+    if (is_err(ret)) {
+        trace("sys_task_kill: failed to kill task tid=%ld: %s",
+            tid, strerr(ret));
+        return ret;
     }
+    trace("sys_task_kill: successfully killed task tid=%ld", tid);
     return OK;
 }
 
@@ -85,4 +83,12 @@ SYSCALL_DEFINE1(task_resume, tid_t, tid) {
     }
     trace("sys_task_resume: successfully resumed task tid=%ld", tid);
     return OK;
+}
+
+SYSCALL_DEFINE1(task_exit, result_t, exit_code) {
+    task_t* current = unwrap_null(current_task);
+    trace("sys_task_exit: called by task tid=%ld name=%s with exit code %ld",
+        current->tid, current->name, exit_code);
+    task_crash_exit(exit_code);
+    unreachable();   
 }

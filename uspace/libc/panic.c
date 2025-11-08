@@ -11,10 +11,10 @@ __panic(const char* msg, ...) {
     printf("PANIC: ");
     vprintf(msg, ap);
     va_end(ap);
-    task_exit();    
+    task_exit(-ERR_PANIC);
 }
 
 void __noreturn __hook_impl
 __panic_no_msg(void) {
-    task_exit();
+    task_exit(-ERR_PANIC);
 }

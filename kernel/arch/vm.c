@@ -35,6 +35,7 @@ find_pte(arch_vm_t* vm, vpn_t vpn, bool alloc) {
             table = (arch_vm_t*)PTE2PA(*pte);
         } else if (alloc) {
             ppn_t new_table_ppn = unwrap_err(pm_alloc());
+            memset((u8*)PN2PA(new_table_ppn), 0, PAGE_SIZE);
             pgtbl_init((arch_vm_t*)PN2PA(new_table_ppn));
             *pte = (new_table_ppn << 10) | PTE_V;
             table = (arch_vm_t*)PN2PA(new_table_ppn);
@@ -133,7 +134,9 @@ freewalk(arch_vm_t* vm, usize level) {
                 assert(pm_decref(ppn));
             }
         } else {
-            assert_eq(*pte, 0);
+            // zero or invalid. if invalid, it must be a fake mapping, do nothing
+            // currently only guard pages. let's do a simple sanity check.
+            assert(*pte == 0 || PTE2PPN(*pte) == 0);
         }
         *pte = 0;
     }

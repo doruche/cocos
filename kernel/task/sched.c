@@ -18,10 +18,9 @@
  * 3. running_tasks list only contains T_READY / T_RUNNING / T_ZOMBIE tasks.
  */
 
-static list_t all_tasks; // all tasks
-// tasks in READY / RUNNING / ZOMBIE state
-// keep ZOMBIE here for simple cleanup. refine later.
+static list_t all_tasks;
 static list_t running_tasks;
+static list_t zombie_tasks;
 
 static tid_t next_tid = 1;
 
@@ -122,6 +121,15 @@ creat_first_task(u8* bootimage) {
         );
     }
 
+    // set pm port for kennel communication
+    port_t pm_port = 0;
+    unwrap_err(p_creat(
+        PID_PM,
+        init_task,
+        &pm_port
+    ));
+    assert_eq(pm_port, PID_PM);
+
     task_resume(init_task->tid);
 
     notify("first task created: tid=%ld name=%s",
@@ -133,6 +141,7 @@ void __noreturn
 sched_init(u8* init_elf) {
     list_init(&all_tasks);
     list_init(&running_tasks);
+    list_init(&zombie_tasks);
     kmem_cache_create(&task_cache, "task_cache", sizeof(task_t));
     kmem_cache_create(&arch_ctx_cache, "arch_ctx_cache", sizeof(arch_ctx_t));
 
@@ -191,8 +200,11 @@ task_spawn(
     list_push_back(&all_tasks, &task->node_all);
 
     // ipc_init
-    // should make this a separate function later.
     list_init(&task->port_list); 
+    list_init(&task->notif_list);
+    if (task->tid != TID_PM) {
+        unwrap_err(tp_attach(PID_PM, task, PORT_SEND));
+    }
 
     *out = task;
     info("task spawned: tid=%ld name=%s entry=%p",
@@ -261,16 +273,10 @@ task_resume(tid_t tid) {
 
 static void
 task_cleanup(task_t* task) {
+    assert_eq(task->state, T_ZOMBIE);
+
     list_remove(&task->node_all);
-    if (task->state != T_BLOCKED) {
-        list_remove(&task->node_running);
-    }
-
-    list_foreach_safe(iter, &task->port_list, next) {
-        task_port_t* tport = list_entry(iter, task_port_t, node);
-        unwrap_err(p_close(tport->id, task));
-    }
-
+    task_ipc_cleanup(task);
     arch_ctx_destroy(task->actx, task->as->arch_vm);
     unwrap_err(as_unbind(task->as, task));
     kmem_cache_free(&arch_ctx_cache, task->actx);
@@ -288,10 +294,23 @@ task_kill(tid_t tid) {
     }
     assert_ne(task, current_task);
     assert(task->state == T_READY || task->state == T_BLOCKED);
-    // no need to switch to T_ZOMBIE.
-    task_cleanup(task);
-    info("task gracefully killed: tid=%ld name=%s",
+    task->state = T_ZOMBIE;
+    list_remove(&task->node_running);
+    list_push_back(&zombie_tasks, &task->node_zombie);
+    trace("task_kill: task tid=%ld name=%s killed",
         task->tid, task->name);
+    unwrap_err(p_notify(
+        PID_PM,
+        (notif_t){
+            .type = NOTIF_TASK_EXIT,
+            .payload = {
+                .task_exited = {
+                    .tid = task->tid,
+                    .exit_code = -ERR_KILLED,
+                }
+            }
+        }
+    ));
     return OK;
 }
 
@@ -299,7 +318,7 @@ task_kill(tid_t tid) {
 // or task killing itself
 // should send a message to process manager later.
 void __noreturn
-task_crash_exit(void) {
+task_crash_exit(result_t exit_code) {
     task_t* current = unwrap_null(current_task);
     if (current->tid == TID_PM) {
         panic("pm server crashed!");
@@ -307,8 +326,25 @@ task_crash_exit(void) {
     
     assert_eq(current->state, T_RUNNING);
     
+    trace("task_crash_exit: task tid=%ld name=%s exiting with code %ld",
+        current->tid, current->name, exit_code);
+    unwrap_err(p_notify(
+        PID_PM,
+        (notif_t){
+            .type = NOTIF_TASK_EXIT,
+            .payload = {
+                .task_exited = {
+                    .tid = current->tid,
+                    .exit_code = exit_code,
+                }
+            }
+        }
+    ));
+
     /* CRITICAL SECTION START */
     current->state = T_ZOMBIE;
+    list_remove(&current->node_running);
+    list_push_back(&zombie_tasks, &current->node_zombie);
     arch_kctx_switch(
         &current->actx->kctx,
         scheduler_ctx
@@ -340,7 +376,8 @@ task_dump(void) {
             task->tid, task->name, task->state);
         list_foreach(port_iter, &task->port_list) {
             task_port_t* tport = list_entry(port_iter, task_port_t, node);
-            ipc_port_t* port = unwrap_null(p_get(tport->id));
+            ipc_port_t* port = NULL;
+            unwrap_err(p_get(tport->id, &port));
             info("  port id=%ld privs=%lx dead=%d tx_rc=%ld",
                 tport->id, tport->privs, port->dead, port->tx_rc);
         }
@@ -380,14 +417,20 @@ scheduler(void) {
 
 
                 assert_ne(task->state, T_RUNNING); // should be managed by various ways
-            } else if (task->state == T_ZOMBIE) {
-                task_cleanup(task);
-                trace("zombie task cleaned up: tid=%ld name=%s",
-                    task->tid, task->name);
             } else {
-                unreachable();
+                panic("sched: found non-ready task in running_tasks list");
             }
         }
+        list_foreach_safe(iter, &zombie_tasks, next) {
+            task_t* task = list_entry(iter, task_t, node_zombie);
+            trace("sched: cleaning up zombie task tid=%ld name=%s",
+                task->tid, task->name);
+            list_remove(&task->node_zombie);
+            task_cleanup(task);
+            info("sched: zombie task tid=%ld name=%s cleaned up",
+                task->tid, task->name);
+        }
+
         trace("sched: one full round done.");
         trace("free pages: %ld", pm_count_free());
         task_dump();

@@ -1,7 +1,7 @@
 
 *概要* 会发生错误的地方有三处——HAL, kernel core, syscall. 必须遵循一个明确的错误处理/传递的范式. 在此, 我们约定:
 - HAL层不做任何错误传递. 一但异常发生, 它直接panic. HAL必须"很笨", 以提供最原始和最小化的硬件原语.
-- kernel core层捕获一些异常, 并将它们转换为内核态的错误码(见[错误码](error_codes.md)). 这些错误码随后可以传递给syscall层. kernel core层不直接与用户态交互.
+- kernel core层捕获一些异常, 并将它们转换为内核态的错误码. 这些错误码随后可以传递给syscall层. kernel core层不直接与用户态交互.
 - syscall层会首先做一些比较基本的错误检查(如参数检查). 然后, 它调用kernel core层的函数. 如果kernel core层返回错误码, syscall层会将其传递给用户态调用者.
 
 我们使用result_t类型表示内核函数的结果, OK宏定义为0, 异常被定义为一系列负数错误码.

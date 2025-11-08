@@ -1,4 +1,5 @@
-APPS := $(shell ls -d */ | xargs -n 1 basename)
+APPS := \
+	hello
 
 .PHONY: all $(APPS)
 

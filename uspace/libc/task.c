@@ -1,11 +1,10 @@
-#include "libs/prelude.h"
-#include "uspace/task.h"
-#include "uspace/syscall.h"
+#include <libs/prelude.h>
+#include <uspace/task.h>
+#include <uspace/syscall.h>
 
 void __noreturn
-task_exit(void) {
-    sys_task_kill(sys_task_gettid());
-    __builtin_unreachable();
+task_exit(result_t exit_code) {
+    sys_task_exit(exit_code);
 }
 
 void

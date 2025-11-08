@@ -1,6 +1,6 @@
 # SERVERS := $(shell ls -d */ | xargs -n 1 basename)
 
-SERVERS := echo
+SERVERS := 
 BFS := bfs
 PM := pm
 

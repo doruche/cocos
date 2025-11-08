@@ -111,7 +111,7 @@ utrap() {
                         tf->x[17],
                         current->tid   
                     );
-                    task_crash_exit();
+                    task_crash_exit(-ERR_INVALID_SYSCALL);
                 }
                 // not cover all cases.
                 // actually if a syscall has changed sepc,
@@ -129,7 +129,7 @@ utrap() {
                     current->tid, current->name,
                     fault_addr, r_sepc(), exception_strs[exccode]
                 );
-                task_crash_exit();
+                task_crash_exit(-ERR_PAGEFAULT);
                 break;
             default:
                 panic("Unhandled user exception: %s (sepc=0x%lx, stval=0x%lx)",

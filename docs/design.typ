@@ -21,6 +21,12 @@
 #let indent = h(2em);
 #let hline = line(length: 30%);
 
+*NOTICE*
+
+*OBSOLETE*
+
+*本文档已经和目前的设计产生了较大的偏差, 请审慎阅读.*
+
 = 目前、OS设计概览
 == 初始进程PM
 #indent PM(Process Manager)是系统中的第一个用户态进程, 它负责创建其他用户态进程,
