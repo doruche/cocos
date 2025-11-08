@@ -1,9 +1,7 @@
-#include "kernel/mm/kmalloc.h"
-#include "libs/assert.h"
-#include "libs/log.h"
-#include "kernel/mm/slab.h"
+#include <libs/prelude.h>
+#include <kernel/mm/kmalloc.h>
+#include <kernel/mm/slab.h>
 
-#include "libs/prelude.h"
 
 static const usize kmalloc_config[] = {
     8, 16, 32, 64, 128, 256, 512, 1024

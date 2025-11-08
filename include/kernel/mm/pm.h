@@ -5,8 +5,8 @@
 
 #pragma once
 
-#include "libs/prelude.h"
-#include "kernel/boot.h"
+#include <libs/prelude.h>
+#include <kernel/arch/arch.h>
 
 typedef struct _page_run_t {
     usize ref;

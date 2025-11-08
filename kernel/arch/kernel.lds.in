@@ -1,4 +1,5 @@
-#include "ld_asm_defs.h"
+#include <kernel/arch/qemu-virt.h>
+#include <ld_asm_defs.h>
 
 OUTPUT_ARCH(riscv)
 ENTRY(_start);
@@ -36,6 +37,8 @@ SECTIONS {
 
     . = ALIGN(4K);
     .stack : {
+        __stack0_guard = .;
+        . += PAGE_SIZE;
         __stack0_bottom = .;
         . += BOOT_STACK_SIZE * NCPU;
         __stack0_top = .;

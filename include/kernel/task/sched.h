@@ -4,13 +4,11 @@
 
 #pragma once
 
-#include "libs/prelude.h"
-#include "kernel/mm/vm.h"
-#include "kernel/arch/ctx.h"
-#include "libs/list.h"
-#include "kernel/consts/params.h"
-
-typedef u64 tid_t;
+#include <libs/prelude.h>
+#include <libs/list.h>
+#include <kernel/mm/as.h>
+#include <kernel/arch/arch.h>
+#include <kernel/consts/params.h>
 
 typedef enum _task_state_t {
     T_READY = 0,
@@ -19,13 +17,13 @@ typedef enum _task_state_t {
     T_ZOMBIE,
 } task_state_t;
 
+typedef struct _addr_space_t addr_space_t; // forward declaration
 typedef struct _task_t {
     char name[TASK_NAME_MAX_LEN];
     arch_ctx_t* actx;
     tid_t tid __readonly;
     task_state_t state;
-    vm_space_t* vms; // keep this as a pointer for easy shared memory management later
-    ppn_t* alloced_pages; // for sys_pm_alloc tracking.
+    addr_space_t* as;
     u8 msg_buf[MSG_MAX_SIZE]; // ipc buffer used for sending messages
     notifications_t notif; // pending notifications
     notifications_t notif_mask; // notification mask
@@ -38,20 +36,23 @@ typedef struct _task_t {
 
 // layout
 // TRAMPOLINE
-// scheduler kstack | guard page
 // task 0 kstack | guard page
 // ...
 kaddr_t task_kstack_top(tid_t tid);
-task_t* task_get(tid_t tid);
+result_t    task_get(tid_t tid, task_t** out);
 void    task_yield(void);
-void    task_block(tid_t tid);
-void    task_resume(tid_t tid);
+result_t    task_block(tid_t tid);
+result_t    task_resume(tid_t tid);
 
-typedef struct _bootinfo_t bootinfo_t;
 void    sched_init(u8* init_elf);
 
-task_t* task_spawn(const char* name, uaddr_t entry, port_t pager);
-void    task_kill(tid_t tid);
+result_t task_spawn(
+    const char* name, 
+    uaddr_t entry, 
+    asid_t asid,
+    task_t** out
+);
+result_t    task_kill(tid_t tid);
 void    task_crash_exit(void);
 
 void    scheduler(void);

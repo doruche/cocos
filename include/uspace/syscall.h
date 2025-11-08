@@ -1,11 +1,11 @@
 #pragma once
 
-#include "libs/prelude.h"
-#include "uspace/arch_syscall.h"
+#include <libs/prelude.h>
+#include <uspace/arch_syscall.h>
 
-static inline isize
+static inline result_t
 sys_task_kill(tid_t tid) {
-    return (isize)arch_syscall(
+    return arch_syscall(
         SYS_TASK_KILL,
         (u64)(tid),
         0,
@@ -15,9 +15,9 @@ sys_task_kill(tid_t tid) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_task_gettid(void) {
-    return (isize)arch_syscall(
+    return arch_syscall(
         SYS_TASK_GETTID,
         0,
         0,
@@ -27,7 +27,7 @@ sys_task_gettid(void) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_dbg_puts(const char* str, usize len) {
     return arch_syscall(
         SYS_DBG_PUTS,
@@ -39,28 +39,26 @@ sys_dbg_puts(const char* str, usize len) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_task_spawn(
     const char* name,
     uaddr_t entry,
-    port_t pager
+    asid_t asid
 ) {
     return arch_syscall(
         SYS_TASK_SPAWN,
         (u64)(name),
         (u64)(entry),
-        (u64)(pager),
+        (u64)(asid),
         0,
         0
     );
 }
 
-static inline isize
-sys_pm_alloc(
-    tid_t tid
-) {
+static inline result_t
+sys_as_get(tid_t tid) {
     return arch_syscall(
-        SYS_PM_ALLOC,
+        SYS_AS_GET,
         (u64)(tid),
         0,
         0,
@@ -69,17 +67,17 @@ sys_pm_alloc(
     );
 }
 
-static inline isize
-sys_vm_map(
-    tid_t tid,
+static inline result_t
+sys_as_map(
+    asid_t asid,
     vpn_t vpn,
     ppn_t ppn,
     usize npages,
     vm_flags_t flags
 ) {
     return arch_syscall(
-        SYS_VM_MAP,
-        (u64)(tid),
+        SYS_AS_MAP,
+        (u64)(asid),
         (u64)(vpn),
         (u64)(ppn),
         (u64)(npages),
@@ -87,15 +85,15 @@ sys_vm_map(
     );
 }
 
-static inline isize
-sys_vm_unmap(
-    tid_t tid,
+static inline result_t
+sys_as_unmap(
+    asid_t asid,
     vpn_t vpn,
     usize npages
 ) {
     return arch_syscall(
-        SYS_VM_UNMAP,
-        (u64)(tid),
+        SYS_AS_UNMAP,
+        (u64)(asid),
         (u64)(vpn),
         (u64)(npages),
         0,
@@ -103,7 +101,24 @@ sys_vm_unmap(
     );
 }
 
-static inline isize
+static inline result_t
+sys_as_write(
+    asid_t asid,
+    vaddr_t addr,
+    const void* buf,
+    usize len
+) {
+    return arch_syscall(
+        SYS_AS_WRITE,
+        (u64)(asid),
+        (u64)(addr),
+        (u64)(buf),
+        (u64)(len),
+        0
+    );
+}
+
+static inline result_t
 sys_task_yield(void) {
     return arch_syscall(
         SYS_TASK_YIELD,
@@ -115,7 +130,7 @@ sys_task_yield(void) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_p_creat(port_t req_pid) {
     return arch_syscall(
         SYS_P_CREAT,
@@ -127,7 +142,7 @@ sys_p_creat(port_t req_pid) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_p_close(port_t pid) {
     return arch_syscall(
         SYS_P_CLOSE,
@@ -139,7 +154,7 @@ sys_p_close(port_t pid) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_p_transfer(
     port_t pid,
     tid_t dst,
@@ -155,7 +170,7 @@ sys_p_transfer(
     );
 }
 
-static inline isize
+static inline result_t
 sys_p_send(const msg_hdr_t* msg) {
     return arch_syscall(
         SYS_P_SEND,
@@ -167,7 +182,7 @@ sys_p_send(const msg_hdr_t* msg) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_p_notify(
     port_t pid,
     notifications_t notif
@@ -182,7 +197,7 @@ sys_p_notify(
     );
 }
 
-static inline isize
+static inline result_t
 sys_p_recv(
     msg_hdr_t* msg,
     notifications_t* notif,
@@ -198,7 +213,7 @@ sys_p_recv(
     );
 }
 
-static inline isize
+static inline result_t
 sys_task_block(tid_t tid) {
     return arch_syscall(
         SYS_TASK_BLOCK,
@@ -210,7 +225,7 @@ sys_task_block(tid_t tid) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_task_resume(tid_t tid) {
     return arch_syscall(
         SYS_TASK_RESUME,
@@ -222,7 +237,7 @@ sys_task_resume(tid_t tid) {
     );
 }
 
-static inline isize
+static inline result_t
 sys_p_stat(
     port_t pid,
     p_stat_t* stat

@@ -1,8 +1,8 @@
-#include "libs/prelude.h"
-#include "kernel/ipc.h"
-#include "kernel/task/sched.h"
-#include "kernel/task/processor.h"
-#include "kernel/syscall.h"
+#include <libs/prelude.h>
+#include <kernel/ipc.h>
+#include <kernel/task/sched.h>
+#include <kernel/task/processor.h>
+#include <kernel/syscall.h>
 
 SYSCALL_DEFINE1(p_creat, port_t, req_pid) {
     task_t* current = unwrap_null(current_task);
@@ -48,8 +48,9 @@ SYSCALL_DEFINE3(
     port_flags_t, flags
 ) {
     task_t* current = unwrap_null(current_task);
-    task_t* dst_task = task_get(dst);
-    if (dst_task == NULL) {
+    task_t* dst_task = NULL;
+    result_t ret = task_get(dst, &dst_task);
+    if (is_err(ret)) {
         warn("sys_p_transfer: no such destination task %d", dst);
         return -ERR_NOENT;
     }
@@ -69,7 +70,7 @@ SYSCALL_DEFINE3(
         warn("sys_p_transfer: invalid flags %lx for port %ld transfer", flags, pid);
         return -ERR_INVAL;
     }
-    isize ret = p_transfer(pid, dst_task, current, flags);
+    ret = p_transfer(pid, dst_task, current, flags);
     if (is_err(ret)) {
         warn("sys_p_transfer: failed to transfer port %ld to task %d: %s",
             pid, dst, strerr(ret));

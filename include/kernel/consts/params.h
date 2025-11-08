@@ -4,10 +4,7 @@
 
 #pragma once
 
-#include "kernel/arch/mm.h"
-#include "kernel/arch/board.h"
-
-#define INTERVAL FREQUENCY / 5 // timer interrupt interval: 0.5s
+#include <libs/prelude.h>
 
 #define BOOT_STACK_SIZE (8 * PAGE_SIZE)
 

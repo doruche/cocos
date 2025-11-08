@@ -1,8 +1,8 @@
-#include "uspace/syscall.h"
 #include "task.h"
 #include "bfs.h"
-#include "libs/prelude.h"
-#include "uspace/servers/pm.h"
+#include <libs/prelude.h>
+#include <uspace/syscall.h>
+#include <uspace/servers/pm.h>
 
 static port_t pm_port;
 
@@ -51,11 +51,20 @@ spawn_init_tasks(void) {
             break;
         }
         const u8* elf = bfs_read_inplace(inode);
-        tid_t tid = unwrap_err(hot_spawn(inode->name, elf, false));
+        tid_t tid;
+        result_t ret = proc_spawn(
+            inode->name,
+            elf,
+            &tid
+        );
+        if (is_err(ret)) {
+            panic("pm: failed to spawn init task '%s': %s",
+                inode->name,
+                strerr(ret));
+        }
         unwrap_err(sys_p_transfer(pm_port, tid, PORT_SEND));
         trace("pm: spawned init task '%s' (tid %ld)",
             inode->name, tid);
-        unwrap_err(sys_task_resume(tid));
     }
 
     trace("pm: init tasks spawned.");
@@ -71,6 +80,9 @@ main(void) {
     msg.header.local = pm_port;
     notifications_t notif;
     notifications_t mask = NOTIF_MASK_ALL;
+    
+    loop {}
+    
     loop {
         isize ret = sys_p_recv(
             (msg_hdr_t*)&msg,

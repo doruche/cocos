@@ -1,8 +1,8 @@
-# void ctx_switch(ctx_t* prev, ctx_t* next);
+# void ctx_switch(arch_kctx_t* prev, arch_kctx_t* next);
     .section .text
-    .global __ctx_switch
-    .type ctx_switch, @function
-__ctx_switch:
+    .global __kctx_switch
+    .type __kctx_switch, @function
+__kctx_switch:
     # now a0 -> prev, a1 -> next
     sd ra, 0(a0)
     sd sp, 8(a0)

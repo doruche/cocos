@@ -1,22 +1,29 @@
-#include "kernel/boot.h"
-#include "kernel/arch/csr.h"
-#include "kernel/misc/test.h"
+#include <kernel/arch/arch.h>
+#include <kernel/misc/test.h>
+#include <kernel/mm/pm.h>
+#include <kernel/mm/as.h>
+#include <kernel/mm/kmalloc.h>
+#include <kernel/ipc.h>
+#include <kernel/task/sched.h>
+
 
 void __noreturn
 kstart(bootinfo_t* bootinfo) {
     pm_init(bootinfo);
-    info("pm initialized.");
+    info("physical page allocator initialized.");
+    arch_kvm_init();
+    info("kernel virtual memory initialized.");
     kmalloc_init();
-    info("kmalloc initialized.");    
-    enable_intr();
-    info("interrupt enabled.");
-    timer_init();
-    info("timer initialized.");
-    kvms_init(bootinfo);
-    info("kernel vm space initialized.");
+    info("kernel heap allocator initialized.");
+    as_init();
+    info("address space subsystem initialized.");
     ipc_init();
     info("ipc subsystem initialized.");
-
+    arch_timer_init();
+    info("timer initialized.");
+    arch_intr_set(true);
+    info("interrupts enabled.");
+ 
     // vm_test();
 
     notify("cocos kernel booted successfully, jumping to scheduler...");

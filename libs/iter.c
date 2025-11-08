@@ -1,7 +1,7 @@
 #include "libs/prelude.h"
 #include "libs/iter.h"
 
-isize
+result_t
 range_iter(
     const range_t* range,
     usize chunk_size,
@@ -14,7 +14,7 @@ range_iter(
             align_down(current, chunk_size) + chunk_size,
             range->end
         );
-        isize ret = callback(
+        result_t ret = callback(
             &(range_t){
                 .start = current,
                 .end = end
@@ -28,5 +28,5 @@ range_iter(
         }
         current = end;
     }
-    return 0;
+    return OK;
 }

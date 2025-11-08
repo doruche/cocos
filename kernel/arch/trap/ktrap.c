@@ -1,15 +1,14 @@
 /*
  * kernel trap handling
+ * we do not handle interrupts in kernel for simplicity
  */
 
-#include "kernel/trap.h"
-#include "kernel/arch/csr.h"
-#include "libs/log.h"
-#include "libs/assert.h"
-#include "kernel/arch/timer.h"
-
-#include "kernel/task/processor.h"
-#include "kernel/task/sched.h"
+#include <libs/prelude.h>
+#include <kernel/arch/arch.h>
+#include <kernel/arch/csr.h>
+#include <kernel/arch/qemu-virt.h>
+#include <kernel/task/sched.h>
+#include <kernel/task/processor.h>
 
 static const char* const
 irq_str(u64 irq) {
@@ -41,32 +40,39 @@ static const char* const exception_strs[] = {
 u64
 ktrap(u64 prev_sp) {
     trace("kernel trap!");
-    assert_eq(intr_enabled(), false);
+    assert_eq(arch_intr_status(), false);
 
     if (scause_is_irq(r_scause())) {
         u64 irq = r_scause() & ~SCAUSE_IRQ_FLAG;
-        // trace("IRQ: %s", irq_str(irq));
-        switch (irq) {
-            case SCAUSE_IRQ_TIMER:
-                timer_intr();
-                break;
-            default:
-                panic("Unhandled IRQ: %s", irq_str(irq));
+        if (irq == SCAUSE_IRQ_TIMER) {
+            trace("ktrap: timer interrupt");
+            /* from arch/timer.c */
+            extern void set_next_timer(void);
+            set_next_timer();
+        } else {
+            /* should not reach here cz we disable external interrupts in kernel. */
+            panic("ktrap: unhandled irq %ld (%s)",
+                  irq, irq_str(irq));
         }
     } else {
         u64 exccode = r_scause();
+        /* 
+         * The invariable that
+         * "if current_task == NULL then we are on scheduler context"
+         * may be violated here. for example we may trap into here
+         * during a context switch. but if we go here it must be a
+         * serious error. we do not care about those cases for now,
+         * just panic.
+         */
         if (exccode < array_size(exception_strs) && exception_strs[exccode]) {
             if (current_task == NULL) {
                 panic("Exception in scheduler: %s (sepc=0x%lx, stval=0x%lx)",
                       exception_strs[exccode], r_sepc(), r_stval());
             } else {
-                panic("Exception in task: tid=%ld name=%s exccode=%s (sepc=0x%lx, stval=0x%lx) ksp=0x%lx",
+                panic("Exception in task: tid=%ld name=%s exccode=%s (sepc=0x%lx, stval=0x%lx)",
                       current_task->tid, current_task->name,
-                      exception_strs[exccode], r_sepc(), r_stval(), task_kstack_top(current_task->tid));
+                      exception_strs[exccode], r_sepc(), r_stval());
             }
-            
-            // panic("Exception: %s (sepc=0x%lx, stval=0x%lx)\ncurrent kstack [0x%ld, 0x%ld)",
-            //        exception_strs[exccode], r_sepc(), r_stval(), );
         } else {
             panic("Unknown Exception: %ld (sepc=0x%lx, stval=0x%lx)",
                   exccode, r_sepc(), r_stval());

@@ -1,6 +1,6 @@
-#include "kernel/syscall.h"
-#include "kernel/misc/printk.h"
-#include "libs/prelude.h"
+#include <libs/prelude.h>
+#include <kernel/syscall.h>
+#include <kernel/misc/printk.h>
 
 SYSCALL_DEFINE2(
     dbg_puts, 

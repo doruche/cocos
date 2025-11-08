@@ -2,4 +2,4 @@ obj-y :=			\
 	kmalloc.o		\
 	pm.o			\
 	slab.o			\
-	vm.o			
+	as.o			

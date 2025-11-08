@@ -2,18 +2,17 @@
  * libgeneric's hooks
  */
 
-#include "libs/hooks.h"
-#include "libs/prelude.h"
-#include "kernel/misc/printk.h"
-#include "libs/log.h"
-#include "kernel/arch/sbi.h"
-#include "kernel/mm/kmalloc.h"
+#include <libs/hooks.h>
+#include <libs/prelude.h>
+#include <kernel/misc/printk.h>
+#include <kernel/arch/arch.h>
+#include <kernel/mm/kmalloc.h>
 
 usize __hook_impl
 __puts(const char* str) {
     usize len = 0;
     while (str[len] != '\0') {
-        sbi_console_putchar(str[len]);
+        arch_dbg_write(str[len]);
         len++;
     }
     return len;
@@ -27,13 +26,13 @@ __panic(const char* msg, ...) {
     vprintk(msg, ap);
     printk("\n" COLOR_RESET);
     va_end(ap);
-    sbi_shutdown();
+    arch_shutdown();
     __builtin_unreachable();
 }
 
 void __noreturn __hook_impl
 __panic_no_msg(void) {
-    sbi_shutdown();
+    arch_shutdown();
     __builtin_unreachable();
 }
 

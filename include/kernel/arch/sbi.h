@@ -2,8 +2,7 @@
  * SBI (Supervisor Binary Interface) related definitions.
  */
 
-#ifndef _K_ARCH_SBI_H
-#define _K_ARCH_SBI_H 1
+#pragma once
 
 #include "libs/prelude.h"
 
@@ -29,7 +28,5 @@ void    sbi_set_timer(u64 timecmp);
 void    sbi_shutdown(void);
 
 
-// higher level sbi calls
+// higher level sbi calls implemented for convenience
 void    sbi_console_puts(const char* str);
-
-#endif // !_K_ARCH_SBI_H

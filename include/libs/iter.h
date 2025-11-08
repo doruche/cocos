@@ -13,11 +13,11 @@ typedef struct {
     usize start;
     usize end;
 } range_t;
-typedef isize (*range_iter_callback_t)(
+typedef result_t (*range_iter_callback_t)(
     const range_t* chunk,
     void* ctx
 );
-isize range_iter(
+result_t range_iter(
     const range_t* range,
     usize chunk_size,
     range_iter_callback_t callback,

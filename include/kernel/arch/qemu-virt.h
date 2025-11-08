@@ -15,12 +15,13 @@
 // actually i mean sbi.(x
 #define BIOS_BASE   0x80000000UL
 
-#define KERN_BASE   0x80200000 // do not use UL here cz we should include this in linker script
+#define KERN_BASE   0x80200000
 #define PHYSTOP     0x80000000UL + 128*1024*1024  // 128MB
 
 // sv39
 // reason for minus 1: avoid complexities with sign extension
 #define VIRSTOP     (1UL << (39 - 1))
+#define TRAMPOLINE  (VIRSTOP - PAGE_SIZE)
 
 #define UART0           0x10000000UL
 #define UART0_RANGE     0x1000UL

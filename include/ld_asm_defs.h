@@ -4,7 +4,9 @@
 
 #pragma once
 
-#define KERN_BASE   0x80200000
+#ifndef KERN_BASE
+    #define KERN_BASE   0x80000000
+#endif
 
 #define USER_BASE   0x12000000
 

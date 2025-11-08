@@ -80,23 +80,31 @@ typedef u64 kaddr_t;
 typedef u64 uaddr_t;
 typedef u64 ppn_t;
 typedef u64 vpn_t;
+typedef u64 pte_t;
 
 typedef usize tid_t;
 #define TID_INVALID ((tid_t)0)
 #define TID_PM      ((tid_t)1)
 
+typedef u64 asid_t;
+#define ASID_INVALID ((asid_t)-1)
+#define ASID_NEW     ((asid_t)0)
 typedef u64 vm_flags_t;
 #define VM_READ  (1L << 0)
 #define VM_WRITE (1L << 1)
 #define VM_EXEC  (1L << 2)
 #define VM_USER  (1L << 3)
-// fake mapping, e.g. for guard page. must be used with VM_RESERVED
+// fake mapping, e.g. for guard page.
 // note that when setting up fake mapping, it is necessary to set at least one PTE flag,
 // on which we rely to detect fake mapping in page fault handler.
 #define VM_FAKE  (1L << 5)
+// anonymous mapping.
+#define VM_ANON  (1L << 6)
+#define PPN_ANON 0L
 
-#define is_err(errno) ((bool)((isize)(errno) < 0))
-
+typedef isize result_t;
+#define is_err(result) ((result) < 0)
+#define OK          0  // Success
 #define ERR_NOMEM   1  // Out of memory
 #define ERR_INVAL   2  // Invalid argument
 #define ERR_PERM    3  // Permission denied
@@ -104,6 +112,7 @@ typedef u64 vm_flags_t;
 #define ERR_EXIST   5  // Entry already exists
 #define ERR_FAULT   6  // Bad address
 #define ERR_ABORT   7  // Operation aborted
+#define ERR_MISSMATCH 8  // Entity mismatch
 
 static inline char*
 strerr(isize err) {
@@ -122,6 +131,8 @@ strerr(isize err) {
             return "Bad address";
         case -ERR_ABORT:
             return "Operation aborted";
+        case -ERR_MISSMATCH:
+            return "Entity mismatch";
         default:
             return "Unknown error";
     }
@@ -135,9 +146,9 @@ void    flush(void);
 #define SYS_TASK_KILL   0
 #define SYS_TASK_GETTID 1
 #define SYS_DBG_PUTS    2
-#define SYS_PM_ALLOC    3
-#define SYS_VM_MAP      4
-#define SYS_VM_UNMAP    5
+#define SYS_AS_GET      3
+#define SYS_AS_MAP      4
+#define SYS_AS_UNMAP    5
 #define SYS_TASK_SPAWN  6
 #define SYS_TASK_YIELD  8
 #define SYS_P_CREAT     9
@@ -149,9 +160,11 @@ void    flush(void);
 #define SYS_TASK_RESUME 15
 #define SYS_P_STAT      16
 #define SYS_P_NOTIFY    17
+#define SYS_AS_READ     18
+#define SYS_AS_WRITE    19
 
 
-#include "libs/log.h"
-#include "libs/assert.h"
-#include "libs/ipc.h"
-#include "libs/string.h"
+#include <libs/log.h>
+#include <libs/assert.h>
+#include <libs/ipc.h>
+#include <libs/string.h>

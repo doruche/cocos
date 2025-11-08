@@ -4,8 +4,8 @@ MOD_OBJDIR := $(BUILD_DIR)/kernel
 TARGET := $(BUILD_DIR)/kernel.elf
 
 LIBGENERIC := $(BUILD_DIR)/libs/libgeneric.a
-LINKER := $(MOD_OBJDIR)/kernel.lds
-LINKER_TEMPLATE := $(MOD_SRCDIR)/kernel.lds.in
+LINKER := $(MOD_OBJDIR)/arch/kernel.lds
+LINKER_TEMPLATE := $(MOD_SRCDIR)/arch/kernel.lds.in
 
 CFLAGS := $(GLOBL_CFLAGS) -DKERNEL -DLOG=$(KLOG) -DNAME=\"kernel/\"
 LDFLAGS := $(GLOBL_LDFLAGS) -T $(LINKER) -Map=$(BUILD_DIR)/kernel.map
@@ -22,7 +22,7 @@ $(BUILD_DIR)/kernel.elf: $(MOD_OBJDIR)_dirs $(OBJS) $(LIBGENERIC) $(LINKER)
 	@echo "  COPY\tkernel.bin"
 	@$(OBJCOPY) -S -O binary $@ $(BUILD_DIR)/kernel.bin
 	@echo "  DUMP\tkernel.asm"
-	@$(OBJDUMP) -d $@ > $(BUILD_DIR)/kernel.asm
+	@$(OBJDUMP) -S -d $@ > $(BUILD_DIR)/kernel.asm
 
 $(LINKER): $(LINKER_TEMPLATE)
 # -E: preprocess only

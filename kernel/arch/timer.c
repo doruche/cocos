@@ -2,38 +2,26 @@
  * timer management 
  */
 
-#include "kernel/arch/timer.h"
-#include "kernel/consts/params.h"
-#include "kernel/arch/sbi.h"
-#include "kernel/arch/csr.h"
-#include "libs/log.h"
+#include <libs/prelude.h>
+#include <kernel/arch/arch.h>
+#include <kernel/arch/csr.h>
+#include <kernel/arch/sbi.h>
+#include <kernel/arch/qemu-virt.h>
+
+static const u64 INTERVAL = FREQUENCY / 10;
 
 void
 set_next_timer(void) {
-    sbi_set_timer(rdtime() + INTERVAL);
+    arch_timer_set(rdtime() + INTERVAL);
+}
+
+u64
+arch_timer_get(void) {
+    return rdtime();
 }
 
 void
-set_timer(usize cycles) {
-    sbi_set_timer(rdtime() + cycles * INTERVAL);
-}
-
-/*
- * Enable timer interrupt and set the first timer interrupt event.
- */
-void
-timer_init(void) {
+arch_timer_init(void) {
     w_sie(r_sie() | SIE_STIE);
-    set_next_timer();
-}
-
-/*
- * Timer interrupt handler.
- */
-
-void
-timer_intr(void) {
-    // todo: detect double claim
-    trace("timer interrupt!");
     set_next_timer();
 }

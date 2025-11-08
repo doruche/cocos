@@ -1,7 +1,7 @@
 #pragma once
 #include "libs/prelude.h"
 
-static inline u64
+static inline result_t
 arch_syscall(
     usize sysno,
     u64 arg0,

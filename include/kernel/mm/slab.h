@@ -10,8 +10,7 @@
 
 #pragma once
 
-#include "libs/prelude.h"
-#include "kernel/arch/mm.h"
+#include <libs/prelude.h>
 
 typedef struct _obj_t {
     struct _obj_t* next;

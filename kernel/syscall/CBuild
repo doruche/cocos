@@ -1,6 +1,6 @@
 obj-y :=			\
-	handler.o		\
+	dispatch.o		\
 	task.o			\
 	dbg.o			\
-	mm.o			\
+	as.o			\
 	ipc.o

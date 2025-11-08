@@ -1,5 +1,6 @@
-#include "kernel/arch/sbi.h"
-#include "libs/prelude.h"
+#include <libs/prelude.h>
+#include <kernel/arch/arch.h>
+#include <kernel/arch/sbi.h>
 
 /*
  * SBI (Supervisor Binary Interface) environment call.
@@ -29,25 +30,20 @@ struct sbiret sbi_ecall(i32 ext, i32 fid, u64 arg0,
 	return ret;
 }
 
+
 void
-sbi_console_putchar(char ch) {
+arch_dbg_write(char ch) {
     sbi_ecall(SBI_EXT_0_1_CONSOLE_PUTCHAR, 0, (u64)(ch),
           0, 0, 0, 0, 0);
 }
 
 void
-sbi_console_puts(const char* str) {
-    while (*str) {
-        sbi_console_putchar(*str++);
-    }
-}
-
-void
-sbi_set_timer(u64 timecmp) {
+arch_timer_set(u64 timecmp) {
 	sbi_ecall(SBI_EXT_0_1_SET_TIMER, 0, timecmp, 0, 0, 0, 0, 0);
 }
 
 void
-sbi_shutdown(void) {
+arch_shutdown(void) {
     sbi_ecall(SBI_EXT_0_1_SHUTDOWN, 0, 0, 0, 0, 0, 0, 0);
 }
+

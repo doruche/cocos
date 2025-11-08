@@ -11,7 +11,7 @@ _start:
     # set up boot stack
     # a0 -> mhartid
     # a1 -> dtb
-    la sp, __boot_stacks_bottom
+    la sp, __stack0_bottom
     addi a0, a0, 1
     li a1, BOOT_STACK_SIZE
     mul a0, a0, a1

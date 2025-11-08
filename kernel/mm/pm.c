@@ -2,13 +2,9 @@
  * physical page allocator
  */
 
-#include "kernel/boot.h"
-#include "libs/log.h"
-#include "libs/assert.h"
-#include "kernel/mm/pm.h"
-#include "libs/prelude.h"
-#include "kernel/boot.h"
-#include "kernel/arch/mm.h"
+#include <libs/prelude.h>
+#include <kernel/arch/arch.h>
+#include <kernel/mm/pm.h>
 
 // simple linked list based physical page allocator
 // used to try buddy system but gave up due to complexity

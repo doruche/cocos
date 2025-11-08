@@ -3,14 +3,11 @@
  * of the kernel
  */
 
-#ifndef _K_MISC_TEST_H
-#define _K_MISC_TEST_H 1
+#pragma once
 
 void    printk_test(void);
 void    panic_test(void);
 void    pm_test(void);
 void    slab_test(void);
-void    pgtbl_test(void);
 void    vm_test(void);
-
-#endif
+void    as_test(void);

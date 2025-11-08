@@ -4,18 +4,18 @@
 
 #pragma once
 
-#include "libs/prelude.h"
-#include "kernel/arch/ctx.h"
-#include "kernel/task/sched.h"
-#include "kernel/task/processor.h"
+#include <libs/prelude.h>
+#include <kernel/arch/arch.h>
+#include <kernel/task/sched.h>
+#include <kernel/task/processor.h>
 
 typedef u64 (*syscall_ptr_t)(
     u64, u64, u64, u64, u64
 );
 
-bool    do_syscall(
+result_t    syscall_dispatch(
     u64 syscall_no, 
-    trapframe_t* tf
+    arch_trapframe_t* tf
 );
 
 /* helpers */
@@ -108,7 +108,7 @@ SYSCALL_DECLARE3(
     task_spawn, 
     const char*, name, 
     uaddr_t, entry, 
-    port_t, pager
+    asid_t, asid
 );
 SYSCALL_DECLARE0(task_yield);
 SYSCALL_DECLARE1(task_block, tid_t, tid);
@@ -141,21 +141,35 @@ SYSCALL_DECLARE2(
     p_stat_t*, stat
 );
 
-/* mm */
-SYSCALL_DECLARE1(pm_alloc, tid_t, tid);
+/* as */
+SYSCALL_DECLARE1(as_get, tid_t, tid);
 SYSCALL_DECLARE5(
-    vm_map,
-    tid_t, tid,
+    as_map,
+    asid_t, asid,
     vpn_t, vpn,
     ppn_t, ppn,
     usize, npages,
     vm_flags_t, flags
 );
 SYSCALL_DECLARE3(
-    vm_unmap,
-    tid_t, tid,
+    as_unmap,
+    asid_t, asid,
     vpn_t, vpn,
     usize, npages
+);
+// SYSCALL_DECLARE4(
+//     as_read,
+//     asid_t, asid,
+//     vaddr_t, addr,
+//     void*, buf,
+//     usize, len
+// );
+SYSCALL_DECLARE4(
+    as_write,
+    asid_t, asid,
+    vaddr_t, addr,
+    const u8*, buf,
+    usize, len
 );
 
 /* dbg */

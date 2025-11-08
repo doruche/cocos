@@ -81,7 +81,7 @@ ktrap_trampoline:
     .type u_trampoline_entry, @function
     .balign 4096
 u_trampoline_entry:
-    # we hold pointer to arch_task_t in sscratch
+    # we hold pointer to arch_ctx_t in sscratch
     csrrw sp, sscratch, sp
     # now sp -> arch_task_t, sscratch -> user sp
     

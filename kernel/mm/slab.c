@@ -1,7 +1,6 @@
-#include "kernel/mm/pm.h"
-#include "kernel/mm/slab.h"
-#include "kernel/consts/params.h"
-#include "libs/prelude.h"
+#include <libs/prelude.h>
+#include <kernel/mm/pm.h>
+#include <kernel/mm/slab.h>
 
 #define sentinel_init(name) ((slab_t){ &(name), &(name), 0, 0, 0, NULL })
 

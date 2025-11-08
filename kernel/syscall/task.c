@@ -1,27 +1,27 @@
-#include "kernel/task/processor.h"
-#include "kernel/ipc.h"
-#include "libs/prelude.h"
-#include "kernel/syscall.h"
-#include "kernel/task/sched.h"
+#include <kernel/task/processor.h>
+#include <kernel/ipc.h>
+#include <libs/prelude.h>
+#include <kernel/syscall.h>
+#include <kernel/task/sched.h>
 
 SYSCALL_DEFINE1(task_kill, tid_t, tid) {
     trace("sys_task_kill: called for tid=%ld", tid);
 
-    task_t* task = task_get(tid);
-    if (task == NULL) {
-        return -ERR_NOENT;
-    }
-    tid_t current_tid = (unwrap_null(current_task))->tid;
-    if (tid == current_tid) {
+    task_t* current = unwrap_null(current_task);
+    if (tid == current->tid) {
         trace("sys_kill: task killing itself tid=%ld name=%s",
-            task->tid, task->name);
+            current->tid, current->name);
         task_crash_exit();
     } else {
-        trace("sys_kill: killing task tid=%ld name=%s",
-            task->tid, task->name);
-        task_kill(tid);
+        result_t ret = task_kill(tid);
+        if (is_err(ret)) {
+            trace("sys_task_kill: failed to kill task tid=%ld: %s",
+                tid, strerr(ret));
+            return ret;
+        }
+        trace("sys_task_kill: successfully killed task tid=%ld", tid);
     }
-    return 0;
+    return OK;
 }
 
 SYSCALL_DEFINE0(task_gettid) {
@@ -29,16 +29,16 @@ SYSCALL_DEFINE0(task_gettid) {
     return (unwrap_null(current_task))->tid;
 }
 
-SYSCALL_DEFINE3(task_spawn, const char*, name, uaddr_t, entry, port_t, pager) {
-    trace("sys_task_spawn: called name=%s entry=0x%lx pager=%ld",
-        name, entry, pager);
-
-    // todo: validate pager port
-
-    task_t* task = task_spawn(name, entry, pager);
-    trace("sys_task_spawn: spawned task tid=%ld name=%s entry=0x%lx pager=%ld",
-        task->tid, task->name, entry, pager);
-
+SYSCALL_DEFINE3(task_spawn, const char*, name, uaddr_t, entry, asid_t, asid) {
+    task_t* task = NULL;
+    result_t ret = task_spawn(name, entry, asid, &task);
+    if (is_err(ret)) {
+        warn("sys_task_spawn: failed to spawn task %s: %s",
+            name, strerr(ret));
+        return ret;
+    }
+    trace("sys_task_spawn: successfully spawned task %s with tid=%ld",
+        name, task->tid);
     return task->tid;
 }
 
@@ -47,7 +47,7 @@ SYSCALL_DEFINE0(task_yield) {
     trace("sys_task_yield: called by task tid=%ld name=%s",
         current->tid, current->name);
     task_yield();
-    return 0;
+    return OK;
 }
 
 SYSCALL_DEFINE1(task_block, tid_t, tid) {
@@ -59,12 +59,14 @@ SYSCALL_DEFINE1(task_block, tid_t, tid) {
         return -ERR_INVAL;
     }
 
-    if (task_get(tid) == NULL) {
-        trace("sys_task_block: no such task tid=%ld", tid);
-        return -ERR_NOENT;
+    result_t ret = task_block(tid);
+    if (is_err(ret)) {
+        warn("sys_task_block: failed to block task tid=%ld: %s",
+            tid, strerr(ret));
+        return ret;
     }
-    task_block(tid);
-    return 0;
+    trace("sys_task_block: successfully blocked task tid=%ld", tid);
+    return OK;
 }
 
 SYSCALL_DEFINE1(task_resume, tid_t, tid) {
@@ -75,10 +77,12 @@ SYSCALL_DEFINE1(task_resume, tid_t, tid) {
         trace("sys_task_resume: task cannot resume itself");
         return -ERR_INVAL;
     }
-    if (task_get(tid) == NULL) {
-        trace("sys_task_resume: no such task tid=%ld", tid);
-        return -ERR_NOENT;
+    result_t ret = task_resume(tid);
+    if (is_err(ret)) {
+        warn("sys_task_resume: failed to resume task tid=%ld: %s",
+            tid, strerr(ret));
+        return ret;
     }
-    task_resume(tid);
-    return 0;
+    trace("sys_task_resume: successfully resumed task tid=%ld", tid);
+    return OK;
 }

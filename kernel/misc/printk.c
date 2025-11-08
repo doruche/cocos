@@ -4,19 +4,18 @@
  * to avoid messy outputs.
  */
 
-#include "kernel/misc/printk.h"
-#include "kernel/arch/sbi.h"
-#include "libs/prelude.h"
-#include "kernel/arch/csr.h"
+#include <libs/prelude.h>
+#include <kernel/arch/arch.h>
+#include <kernel/misc/printk.h>
 #include <stdarg.h>
 
 isize
 vprintk(const char* fmt, va_list ap) {
-    bool pre_intr_enabled = intr_enabled();
-    disable_intr();
+    bool pre_intr_enabled = arch_intr_status();
+    arch_intr_set(false);
     isize ret = vprintf(fmt, ap);
     if (pre_intr_enabled) {
-        enable_intr();
+        arch_intr_set(true);
     }
     return ret;
 }
@@ -29,14 +28,12 @@ printk(const char* fmt, ...) {
     // as printk will also be called in early booting stage,
     // when processor_init() is not called yet.
     
-    bool pre_intr_enabled = intr_enabled();
-    disable_intr();
+    bool pre_intr_enabled = arch_intr_status();
+    arch_intr_set(false);
     va_list ap;
     va_start(ap, fmt);
     isize ret = vprintf(fmt, ap);
     va_end(ap);
-    if (pre_intr_enabled) {
-        enable_intr();
-    }
+    arch_intr_set(pre_intr_enabled);
     return ret;
 }

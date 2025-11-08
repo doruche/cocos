@@ -1,3 +1,4 @@
 obj-y :=			\
+	trapframe.o		\
 	ktrap.o			\
 	utrap.o

@@ -1,17 +1,15 @@
 /*
  * risc-v CSR accessors
  */
-#ifndef _K_ARCH_CSR_H
-#define _K_ARCH_CSR_H
+#pragma once
 
-#include "libs/prelude.h"
+#include <libs/prelude.h>
 
-#define IMPL_CSR_ACCESS(csr) \
+#define impl_csr_access(csr) \
     static inline void \
     w_##csr(u64 x) { \
       asm volatile("csrw " #csr ", %0" : : "r" (x)); \
     } \
-    \
     static inline u64 \
     r_##csr() { \
       u64 x; \
@@ -19,14 +17,14 @@
       return x; \
     }
 
-IMPL_CSR_ACCESS(stvec)
-IMPL_CSR_ACCESS(sstatus)
-IMPL_CSR_ACCESS(sscratch)
-IMPL_CSR_ACCESS(sie)
-IMPL_CSR_ACCESS(sepc)
-IMPL_CSR_ACCESS(scause)
-IMPL_CSR_ACCESS(stval)
-IMPL_CSR_ACCESS(satp)
+impl_csr_access(stvec)
+impl_csr_access(sstatus)
+impl_csr_access(sscratch)
+impl_csr_access(sie)
+impl_csr_access(sepc)
+impl_csr_access(scause)
+impl_csr_access(stval)
+impl_csr_access(satp)
 
 #define STVEC_MODE_DIRECT 0
 #define STVEC_MODE_VECTORED 1
@@ -93,5 +91,3 @@ static inline bool
 scause_is_irq(u64 scause) {
     return (scause & SCAUSE_IRQ_FLAG) != 0;
 }
-
-#endif

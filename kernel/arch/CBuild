@@ -1,8 +1,8 @@
 obj-y :=			\
 	ctx.o			\
-	ctx_switch.o	\
+	kctx_switch.o	\
 	init.o			\
-	pgtbl.o			\
+	vm.o			\
 	timer.o			\
 	trampoline.o	\
 	sbi.o			\

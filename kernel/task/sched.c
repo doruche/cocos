@@ -1,20 +1,22 @@
-#include "kernel/arch/ctx.h"
-#include "kernel/task/sched.h"
-#include "kernel/ipc.h"
-#include "libs/prelude.h"
-#include "libs/list.h"
-#include "kernel/mm/slab.h"
-#include "kernel/mm/vm.h"
-#include "kernel/consts/params.h"
-#include "kernel/arch/board.h"
-#include "kernel/task/processor.h"
-#include "kernel/arch/timer.h"
-#include "kernel/arch/csr.h"
-#include "kernel/trap.h"
-#include "kernel/boot.h"
-#include "kernel/mm/pm.h"
-#include "libs/elf.h"
-#include "kernel/mm/kmalloc.h"
+#include <libs/prelude.h>
+#include <libs/list.h>
+#include <libs/elf.h>
+#include <kernel/arch/arch.h>
+#include <kernel/task/sched.h>
+#include <kernel/ipc.h>
+#include <kernel/mm/slab.h>
+#include <kernel/mm/as.h>
+#include <kernel/consts/params.h>
+#include <kernel/task/processor.h>
+#include <kernel/mm/pm.h>
+#include <kernel/mm/kmalloc.h>
+
+/*
+ * Invariable we should keep during scheduling:
+ * 1. current_task != NULL  <=>  cpu is in task context, not scheduler context.
+ * 2. current_task cannot be a T_BLOCKED or T_ZOMBIE task.
+ * 3. running_tasks list only contains T_READY / T_RUNNING / T_ZOMBIE tasks.
+ */
 
 static list_t all_tasks; // all tasks
 // tasks in READY / RUNNING / ZOMBIE state
@@ -24,8 +26,7 @@ static list_t running_tasks;
 static tid_t next_tid = 1;
 
 static kmem_cache_t task_cache;
-static kmem_cache_t task_vms_cache;
-static kmem_cache_t task_actx_cache;
+static kmem_cache_t arch_ctx_cache;
 
 static tid_t
 alloc_tid() {
@@ -34,25 +35,23 @@ alloc_tid() {
     return next_tid++;
 }
 
-__maybe_unused
-task_t*
-task_get(tid_t tid) {
+result_t
+task_get(tid_t tid, task_t** out) {
     list_foreach(iter, &all_tasks) {
         task_t* task = list_entry(iter, task_t, node_all);
         if (task->tid == tid) {
-            return task;
+            *out = task;
+            return OK;
         }
     }
-    return NULL;
+    return -ERR_NOENT;
 }
 
-kaddr_t
+vpn_t
 task_kstack_top(tid_t tid) {
-    kaddr_t top = TRAMPOLINE;
-    // scheduler
-    top -= (KSTACK_SIZE + PAGE_SIZE);
-    // tasks
-    top -= tid * (KSTACK_SIZE + PAGE_SIZE);
+    kaddr_t top = arch_vm_topaddr();
+    // kstack with guard page
+    top -= tid * (KSTACK_SIZE + PAGE_SIZE) / PAGE_SIZE;
     return top;
 }
 
@@ -65,7 +64,13 @@ creat_first_task(u8* bootimage) {
         panic("creat_first_task: invalid elf magic");
     }
 
-    task_t* init_task = task_spawn("pm", elf_header->e_entry, 0);
+    task_t* init_task = NULL;
+    unwrap_err(task_spawn(
+        "pm", 
+        elf_header->e_entry, 
+        ASID_NEW,
+        &init_task
+    ));
 
     // load program segments
     elf_phdr_t* phdrs = (elf_phdr_t*)(bootimage + elf_header->e_phoff);
@@ -75,7 +80,7 @@ creat_first_task(u8* bootimage) {
             continue;
         }
 
-        vm_flags_t flags = VM_USER;
+        vm_flags_t flags = VM_USER | VM_ANON;
         if (phdr->p_flags & PF_R) {
             flags |= VM_READ;
         }
@@ -90,20 +95,21 @@ creat_first_task(u8* bootimage) {
         usize filesz = phdr->p_filesz;
         usize npages = PGUP(memsz) / PAGE_SIZE;
         
-        unwrap_err(vm_alloc(
-            init_task->vms,
+        unwrap_err(as_map(
+            init_task->as,
             (vpn_t)PA2PN(phdr->p_vaddr),
+            (ppn_t)PPN_ANON,
             npages,
             flags
         ));
-        unwrap_err(vm_memcpy(
-            init_task->vms,
+        unwrap_err(as_memcpy(
+            init_task->as,
             phdr->p_vaddr,
-            (kaddr_t)(bootimage + phdr->p_offset),
+            bootimage + phdr->p_offset,
             filesz
         ));
-        unwrap_err(vm_memset(
-            init_task->vms,
+        unwrap_err(as_memset(
+            init_task->as,
             phdr->p_vaddr + filesz,
             0,
             memsz - filesz
@@ -123,23 +129,19 @@ creat_first_task(u8* bootimage) {
     notify("free pages after creating first task: %ld", pm_count_free());
 }
 
-void
+void __noreturn
 sched_init(u8* init_elf) {
     list_init(&all_tasks);
     list_init(&running_tasks);
     kmem_cache_create(&task_cache, "task_cache", sizeof(task_t));
-    kmem_cache_create(&task_vms_cache, "task_vms_cache", sizeof(vm_space_t));
-    kmem_cache_create(&task_actx_cache, "task_actx_cache", sizeof(arch_ctx_t));
+    kmem_cache_create(&arch_ctx_cache, "arch_ctx_cache", sizeof(arch_ctx_t));
 
-    // must init processor before creating first task.
-    // there are dependencies between their mappings.
     processor_init();
     notify("free pages after processor init: %ld", pm_count_free());
     creat_first_task(init_elf);
 
-    // declare an unused ctx on boot stack
-    ctx_t place_holder;
-    ctx_switch(&place_holder, scheduler_ctx);
+    arch_kctx_load(scheduler_ctx);
+    unreachable();
 }
 
 // create a new task, pushing it into all_tasks.
@@ -149,47 +151,41 @@ sched_init(u8* init_elf) {
 // they will be done by process manager.:P
 // p.s. user stacks should be allocated by process manager too.
 // refine later.
-task_t*
-task_spawn(const char* name, uaddr_t entry, port_t pager) {
+result_t
+task_spawn(
+    const char* name, 
+    uaddr_t entry, 
+    asid_t asid,
+    task_t** out
+) {
     task_t* task = unwrap_null(kmem_cache_alloc(&task_cache));
     memset(task, 0, sizeof(task_t));
 
     task->tid = alloc_tid();
     strncpy(task->name, name, TASK_NAME_MAX_LEN);
     task->state = T_BLOCKED;
+
+    if (asid == ASID_NEW) {
+        as_creat(task);
+    } else {
+        addr_space_t* as = NULL;
+        if (is_err(as_get(asid, &as))) {
+            kmem_cache_free(&task_cache, task);
+            warn("task_spawn: no such address space %ld", asid);
+            return -ERR_NOENT;
+        }
+        as_bind(as, task);
+    }
     
-    // W.I.P. pager
-
-    task->vms = unwrap_null(kmem_cache_alloc(&task_vms_cache));
-    vm_init(task->vms);
-    // important point:
-    // we copy scheduler page table as the base of new task page table.
-    // this is convenient, as well as easy for kernel to access user space memory.
-    // this include:
-    // 1. kernel code   necessary
-    // 2. free memory   necessary
-    // 3. trampoline    necessary
-    // 4. scheduler kstack. can be avoided by assembly tricks, but whatever.
-    kvms_derive(task->vms);
-
     // initialize arch context
-    task->actx = unwrap_null(kmem_cache_alloc(&task_actx_cache));
-    kaddr_t mapped_kstack_top = task_kstack_top(task->tid);
-    actx_init(
+    task->actx = unwrap_null(kmem_cache_alloc(&arch_ctx_cache));
+    vpn_t kstack_top = task_kstack_top(task->tid);
+    arch_ctx_init(
         task->actx,
-        task->vms,
-        mapped_kstack_top,
-        (kaddr_t)utrap_ret,
-        entry
-    );
-
-    task->alloced_pages = unwrap_null(
-        kmalloc(sizeof(ppn_t) * TASK_MAX_PHYS_PAGES)
-    );
-    memset(
-        task->alloced_pages,
-        0,
-        sizeof(ppn_t) * TASK_MAX_PHYS_PAGES
+        task->as->arch_vm,
+        (kaddr_t)arch_utrap_ret,
+        entry,
+        kstack_top
     );
 
     list_push_back(&all_tasks, &task->node_all);
@@ -198,41 +194,58 @@ task_spawn(const char* name, uaddr_t entry, port_t pager) {
     // should make this a separate function later.
     list_init(&task->port_list); 
 
-
+    *out = task;
     info("task spawned: tid=%ld name=%s entry=%p",
         task->tid, task->name, (void*)entry);
 
-    return task;
+    return OK;
 }
 
 // block a task.
 // if the task is the caller itself, yield cpu immediately.
-void
+result_t
 task_block(tid_t tid) {
-    task_t* task = unwrap_null(task_get(tid));
+    task_t* task = NULL;
+    if (is_err(task_get(tid, &task))) {
+        warn("task_block: no such task %ld", tid);
+        return -ERR_NOENT;
+    }
     trace("task_block: blocking task tid=%ld name=%s",
         task->tid, task->name);
+
+    /* CRITICAL SECTION START */
     assert_ne(task->state, T_BLOCKED);
     task->state = T_BLOCKED;
     list_remove(&task->node_running);
-
     if (task == current_task) {
-        ctx_switch(
-            &task->actx->ctx,
+        arch_kctx_switch(
+            &task->actx->kctx,
             scheduler_ctx
         );
     }
+    /* CRITICAL SECTION END */
+
+    return OK;
 }
 
 
-void
+result_t
 task_resume(tid_t tid) {
-    task_t* task = unwrap_null(task_get(tid));
+    task_t* task = NULL;
+    if (is_err(task_get(tid, &task))) {
+        warn("task_resume: no such task %ld", tid);
+        return -ERR_NOENT;
+    }
+    if (task->state != T_BLOCKED) {
+        warn("task_resume: task tid=%ld name=%s not blocked",
+            task->tid, task->name);
+        return -ERR_INVAL;
+    }
     trace("task_resume: resuming task tid=%ld name=%s",
         task->tid, task->name);
-    assert_eq(task->state, T_BLOCKED);
     task->state = T_READY;
     list_push_back(&running_tasks, &task->node_running);
+    return OK;
 }
 
 /*
@@ -253,39 +266,39 @@ task_cleanup(task_t* task) {
         list_remove(&task->node_running);
     }
 
-    for (usize i = 0; i < TASK_MAX_PHYS_PAGES; i++) {
-        ppn_t ppn = task->alloced_pages[i];
-        if (ppn != 0) {
-            assert(pm_decref(ppn));
-        }
+    list_foreach_safe(iter, &task->port_list, next) {
+        task_port_t* tport = list_entry(iter, task_port_t, node);
+        unwrap_err(p_close(tport->id, task));
     }
 
-    // todo: port cleanup
-
-    actx_destroy(task->actx, task->vms);
-    vm_destroy(task->vms);
-    kmem_cache_free(&task_vms_cache, task->vms);
-    kmem_cache_free(&task_actx_cache, task->actx);
+    arch_ctx_destroy(task->actx, task->as->arch_vm);
+    unwrap_err(as_unbind(task->as, task));
+    kmem_cache_free(&arch_ctx_cache, task->actx);
     kmem_cache_free(&task_cache, task);
 }
 
 // from process manager's sys_kill
 // way to finish a task gracefully
-void
+result_t
 task_kill(tid_t tid) {
-    task_t* task = unwrap_null(task_get(tid));
+    task_t* task = NULL;
+    if (is_err(task_get(tid, &task))) {
+        warn("task_kill: no such task %ld", tid);
+        return -ERR_NOENT;
+    }
     assert_ne(task, current_task);
     assert(task->state == T_READY || task->state == T_BLOCKED);
     // no need to switch to T_ZOMBIE.
     task_cleanup(task);
     info("task gracefully killed: tid=%ld name=%s",
         task->tid, task->name);
+    return OK;
 }
 
 // from illegal behavior
 // or task killing itself
 // should send a message to process manager later.
-void
+void __noreturn
 task_crash_exit(void) {
     task_t* current = unwrap_null(current_task);
     if (current->tid == TID_PM) {
@@ -293,11 +306,14 @@ task_crash_exit(void) {
     }
     
     assert_eq(current->state, T_RUNNING);
+    
+    /* CRITICAL SECTION START */
     current->state = T_ZOMBIE;
-    ctx_switch(
-        &current->actx->ctx,
+    arch_kctx_switch(
+        &current->actx->kctx,
         scheduler_ctx
     );
+    unreachable();
 }
 
 // called on process context.
@@ -307,10 +323,12 @@ task_yield(void) {
     task_t* current = unwrap_null(current_task);
     assert_eq(current->state, T_RUNNING);
     current->state = T_READY;
-    ctx_switch(
-        &current->actx->ctx,
+    /* CRITICAL SECTION START */
+    arch_kctx_switch(
+        &current->actx->kctx,
         scheduler_ctx
     );
+    /* CRITICAL SECTION END */
 }
 
 static void
@@ -332,30 +350,35 @@ task_dump(void) {
 
 void
 scheduler(void) {
-    // currently just simple round-robin
-    assert(intr_enabled());
+    info("scheduler started.");
 
+    // currently just simple round-robin
     loop {
         list_foreach_safe(iter, &running_tasks, next) {
+            assert(current_task == NULL);
             task_t* task = list_entry(iter, task_t, node_running);
             trace("sched: considering task tid=%ld name=%s state=%d",
                 task->tid, task->name, task->state);
             if (task->state == T_READY) {
                 task->state = T_RUNNING;
-                current_task = task;
 
-                vm_activate(task->vms);
+                /* CRITICAL SECTION START */ 
+                current_task = task;
+                arch_vm_activate(task->as->arch_vm);
                 trace("sched: switching to task tid=%ld name=%s",
                     task->tid, task->name);
-                ctx_switch(
+                arch_kctx_switch(
                     scheduler_ctx,
-                    &task->actx->ctx
+                    &task->actx->kctx
                 );
-
-                // returned from task
-                extern vm_space_t kernel_vms;
-                vm_activate(&kernel_vms);
+                arch_vm_deactivate();
                 current_task = NULL;
+                /*
+                 * CRITICAL SECTION END
+                 * Now we are back to scheduler context.
+                 */
+
+
                 assert_ne(task->state, T_RUNNING); // should be managed by various ways
             } else if (task->state == T_ZOMBIE) {
                 task_cleanup(task);
@@ -367,8 +390,6 @@ scheduler(void) {
         }
         trace("sched: one full round done.");
         trace("free pages: %ld", pm_count_free());
-        set_timer(5);
-        wait_for_intr();
         task_dump();
     }
 }
