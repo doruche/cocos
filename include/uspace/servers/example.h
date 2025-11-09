@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "libs/prelude.h"
+#include <libs/prelude.h>
 
 typedef enum _example_msg_id_t {
     EXAMPLE_REQ_FOO = 0,

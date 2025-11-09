@@ -117,6 +117,7 @@ typedef isize result_t;
 #define ERR_FAULT   6  // Bad address
 #define ERR_ABORT   7  // Operation aborted
 #define ERR_MISSMATCH 8  // Entity mismatch
+#define ERR_NOSPC   9  // No space left
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed

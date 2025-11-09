@@ -51,6 +51,7 @@ tp_attach(port_t pid, task_t* owner, port_flags_t privs) {
     tport->id = pid;
     list_push_back(&owner->port_list, &tport->node);
 
+
     if (privs & PORT_RECV) {
         if (port->rx.task != NULL) {
             warn("tp_attach: port %ld already has a receiver task %ld",
@@ -61,7 +62,6 @@ tp_attach(port_t pid, task_t* owner, port_flags_t privs) {
         port->rx.task = owner;
     }
     if (privs & PORT_SEND) {
-        list_push_back(&port->tx.tasks, &owner->node_port_tx);
         port->tx_rc++;
     }
     trace("tp_attach: port %ld attached to task %ld with flags %lx"
@@ -96,17 +96,21 @@ tp_detach(
     task_port_t* tport = NULL;
     unwrap_err(p_get(pid, &port));
     unwrap_err(tp_get(owner, pid, &tport));
-    
+
+
     flags = tport->privs & flags;
 
     if (port_has_send(flags)) {
         // a task waiting to send message cannot be detached.
-        assert(!list_contains(&port->tx.waiting_tasks, &owner->node_port_wtx));
-        list_remove(&owner->node_port_tx);
+        trace("tp_detach: removing tx right on port %ld from task %ld",
+            pid, owner->tid);
+        assert(!list_contains(&port->wtx, &owner->node_port_wtx));
         port->tx_rc--;
     }
 
     if (port_has_recv(flags)) {
+        trace("tp_detach: removing rx right on port %ld from task %ld",
+            pid, owner->tid);
         assert(!port->rx.is_receiving);
         port->rx.task = NULL;
         if (close) {
@@ -116,7 +120,7 @@ tp_detach(
             // we do not remove senders' tport.
             // it will be done when they call p_close later.
             port->dead = true;
-            list_foreach_safe(iter, &port->tx.waiting_tasks, next) {
+            list_foreach_safe(iter, &port->wtx, next) {
                 task_t* sender = list_entry(iter, task_t, node_port_wtx);
                 list_remove(&sender->node_port_wtx);
                 
@@ -146,8 +150,7 @@ tp_detach(
             pid);
         list_remove(&port->node);
         assert(port->rx.task == NULL);
-        assert(list_is_empty(&port->tx.tasks));
-        assert(list_is_empty(&port->tx.waiting_tasks));
+        assert(list_is_empty(&port->wtx));
         kmem_cache_free(&port_cache, port);
     }
 
@@ -158,8 +161,7 @@ tp_detach(
 static void
 ipc_port_init(ipc_port_t* port, port_t id, task_t* creator) {
     port->id = id;
-    list_init(&port->tx.tasks);
-    list_init(&port->tx.waiting_tasks);
+    list_init(&port->wtx);
     port->rx.task = NULL;
     port->rx.is_receiving = false;
     port->dead = false;
@@ -191,6 +193,18 @@ p_get(port_t id, ipc_port_t** out) {
         }
     }
     return -ERR_NOENT;
+}
+
+static bool
+task_own_port(port_t pid, port_flags_t privs, task_t* task) {
+    task_port_t* tport = NULL;
+    if (is_err(tp_get(task, pid, &tport))) {
+        return false;
+    }
+    if ((tport->privs & privs) != port_privs(privs)) {
+        return false;
+    }
+    return true;
 }
 
 // note that this function should only be used directly at process boot stage
@@ -300,10 +314,37 @@ p_send(const msg_hdr_t* msg) {
         warn("p_send: port %ld is dead", remote);
         return -ERR_ABORT;
     }
+    if (msg->aux_xfer.port != PID_INVALID &&
+        msg->aux_xfer.flags != 0) {
+        if (msg->remote == msg->aux_xfer.port) {
+            warn("p_send: cannot transfer the same port %ld being sent to",
+                msg->aux_xfer.port);
+            return -ERR_INVAL;
+        }
+        if (!task_own_port(msg->aux_xfer.port, msg->aux_xfer.flags, current)) {
+            warn("p_send: current task does not have port %ld with privs %lx",
+                msg->aux_xfer.port, msg->aux_xfer.flags);
+            return -ERR_PERM;
+        }
+        if (task_own_port(msg->aux_xfer.port, 0, port->rx.task)) {
+            warn("p_send: receiver task %ld already owns port %ld",
+                port->rx.task->tid, msg->aux_xfer.port);
+            return -ERR_EXIST;
+        }
+        // transfer the port
+        if (is_err(p_transfer(
+            msg->aux_xfer.port,
+            port->rx.task,
+            current,
+            msg->aux_xfer.flags
+        ))) {
+            panic("p_send: port transfer failed unexpectedly");
+        }
+    }
     
     memcpy(current->msg_buf, msg, MSG_MAX_SIZE);
-    
-    list_push_back(&port->tx.waiting_tasks, &current->node_port_wtx);
+
+    list_push_back(&port->wtx, &current->node_port_wtx);
     if (port->rx.is_receiving) {
         // wake up the receiver
         trace("p_send: receiver task %ld is waiting on port %ld, resuming it",
@@ -334,27 +375,28 @@ p_send(const msg_hdr_t* msg) {
     return OK;
 }
 
-// called by both user tasks and kernel
-result_t
-p_notify(port_t pid, notif_t notif) {
+static result_t
+p_notify_inner(port_t pid, notif_t notif, bool perm_check) {
     ipc_port_t* port = NULL;
     if (is_err(p_get(pid, &port))) {
         warn("p_notify: no such port %ld", pid);
         return -ERR_NOENT;
     }
-    task_t* current = unwrap_null(current_task);
-    task_port_t* tport = NULL;
-    if (is_err(tp_get(current, pid, &tport))) {
-        warn("p_notify: current task has no such port %ld", pid);
-        return -ERR_NOENT;
-    }
-    if (!port_has_send(tport->privs)) {
-        warn("p_notify: current task has no send right on port %ld", pid);
-        return -ERR_PERM;
-    }
-    if (port_has_recv(tport->privs)) {
-        warn("p_notify: cannot notify to receive-owning port %ld", pid);
-        return -ERR_INVAL;
+    if (perm_check) {
+        task_t* current = unwrap_null(current_task);
+        task_port_t* tport = NULL;
+        if (is_err(tp_get(current, pid, &tport))) {
+            warn("p_notify: current task has no such port %ld", pid);
+            return -ERR_NOENT;
+        }
+        if (!port_has_send(tport->privs)) {
+            warn("p_notify: current task has no send right on port %ld", pid);
+            return -ERR_PERM;
+        }
+        if (port_has_recv(tport->privs)) {
+            warn("p_notify: cannot notify to receive-owning port %ld", pid);
+            return -ERR_INVAL;
+        }
     }
     if (port->dead) {
         warn("p_notify: port %ld is dead", pid);
@@ -373,110 +415,177 @@ p_notify(port_t pid, notif_t notif) {
         port->rx.is_receiving = false;
         task_resume(rx_task->tid);
     }
-
-    trace("p_notify: sender task %ld sent notification on port %ld",
-        current->tid, pid);
+    if (perm_check) {
+        trace("p_notify: sender task %ld sent notification on port %ld",
+            current_task->tid, pid);
+    }
     return OK;
+}
+
+result_t
+p_notify(port_t pid, notif_t notif) {
+    return p_notify_inner(pid, notif, true);
+}
+
+result_t
+p_knotify(port_t pid, notif_t notif) {
+    return p_notify_inner(pid, notif, false);
+}
+
+static result_t
+try_recv(ipc_port_t* port, msg_hdr_t* msg, notif_t* notif) {
+    task_t* current = unwrap_null(current_task);
+
+    if (!list_is_empty(&port->wtx)) {
+        task_t* sender = list_entry(
+            list_pop_front(&port->wtx),
+            task_t,
+            node_port_wtx
+        );
+        msg_hdr_t *send_msg = (msg_hdr_t*)sender->msg_buf;
+        assert_eq(send_msg->remote, port->id);
+        memcpy(msg, send_msg, MSG_MAX_SIZE);
+        task_resume(sender->tid);
+        trace("try_recv: message received on port %ld by task %ld from task %ld",
+            port->id, current->tid, sender->tid);
+        return OK;
+    }
+
+    if (!list_is_empty(&current->notif_list)) {
+        knotif_t* knotif = list_entry(
+            list_pop_front(&current->notif_list),
+            knotif_t,
+            node
+        );
+        *notif = knotif->notif;
+        kmem_cache_free(&knotif_cache, knotif);
+        trace("try_recv: notification received on port %ld by task %ld: %lx",
+            port->id, current->tid, notif->type);
+        return OK;
+    }
+
+    return -ERR_NOENT;
 }
 
 result_t
 p_recv(msg_hdr_t* msg, notif_t* notif) {
     port_t local = msg->local;
-    ipc_port_t* port = NULL;
-    if (is_err(p_get(local, &port))) {
-        warn("p_recv: no such port %ld", local);
-        return -ERR_NOENT;
-    }
     task_t* current = unwrap_null(current_task);
-    task_port_t* tport = NULL;
-    if (is_err(tp_get(current, local, &tport))) {
-        warn("p_recv: current task has no such port %ld", local);
-        return -ERR_NOENT;
-    }
-    if (!port_has_recv(tport->privs)) {
-        warn("p_recv: current task has no recv right on port %ld", local);
-        return -ERR_PERM;
-    }
-
-    if (!list_is_empty(&port->tx.waiting_tasks)) {
-        task_t* sender = list_entry(
-            list_pop_front(&port->tx.waiting_tasks),
-            task_t,
-            node_port_wtx
-        );
-        msg_hdr_t *send_msg = (msg_hdr_t*)sender->msg_buf;
-        assert_eq(send_msg->remote, local);
-        memcpy(msg, send_msg, MSG_MAX_SIZE);
-        task_resume(sender->tid);
-        trace("p_recv: message received on port %ld by task %ld from task %ld",
-            local, current->tid, sender->tid);
-        goto done;
-    }
-
-    if (!list_is_empty(&current->notif_list)) {
-        knotif_t* knotif = list_entry(
-            list_pop_front(&current->notif_list),
-            knotif_t,
-            node
-        );
-        *notif = knotif->notif;
-        kmem_cache_free(&knotif_cache, knotif);
-        trace("p_recv: notification received on port %ld by task %ld: %lx",
-            local, current->tid, notif->type);
-        goto done;
-    }
-
-    // oops. seems no message or notification available.
-    // block the receiver.
-    trace("p_recv: no message or notification on port %ld, blocking receiver task %ld",
-        local, current->tid);
-    port->rx.is_receiving = true;
-    task_block(current->tid);
-    // come back
-    trace("p_recv: receiver task %ld resumed on port %ld",
-        current->tid, local);
-    assert_eq(port->rx.is_receiving, false);
-
-    // just pasteing from above. too tedious, should refactor later.
     
-    if (!list_is_empty(&port->tx.waiting_tasks)) {
-        task_t* sender = list_entry(
-            list_pop_front(&port->tx.waiting_tasks),
-            task_t,
-            node_port_wtx
-        );
-        msg_hdr_t *send_msg = (msg_hdr_t*)sender->msg_buf;
-        assert_eq(send_msg->remote, local);
-        memcpy(msg, send_msg, MSG_MAX_SIZE);
-        task_resume(sender->tid);
-        trace("p_recv: message received on port %ld by task %ld from task %ld",
-            local, current->tid, sender->tid);
-        goto done;
-    }
+    if (local == PID_ANY) {
+        bool found = false;
+        list_foreach(iter, &current->port_list) {
+            task_port_t* tport = list_entry(iter, task_port_t, node);
+            if (port_has_recv(tport->privs)) {
+                ipc_port_t* port = NULL;
+                unwrap_err(p_get(tport->id, &port));
+                if (try_recv(port, msg, notif) == OK) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (found) {
+            return OK;
+        }
+        
+        trace("p_recv: no message or notification on any port, blocking receiver task %ld",
+            current->tid);
+        list_foreach(iter, &current->port_list) {
+            task_port_t* tport = list_entry(iter, task_port_t, node);
+            if (port_has_recv(tport->privs)) {
+                ipc_port_t* port = NULL;
+                unwrap_err(p_get(tport->id, &port));
+                port->rx.is_receiving = true;
+                trace("p_recv: task %ld listening on port %ld",
+                    current->tid, tport->id);
+            }
+        }
+        task_block(current->tid);
+        // come back
+        trace("p_recv: receiver task %ld resumed from any port",
+            current->tid);
+        // note that we may have multiple ports with available messages/notifications now.
+        // just pick the first one. and reset all other ports' is_receiving flag.
+        list_foreach(iter, &current->port_list) {
+            task_port_t* tport = list_entry(iter, task_port_t, node);
+            if (port_has_recv(tport->privs)) {
+                ipc_port_t* port = NULL;
+                unwrap_err(p_get(tport->id, &port));
+                if (try_recv(port, msg, notif) == OK) {
+                    assert_eq(port->rx.is_receiving, false);
+                    trace("p_recv: message/notification received on port %ld by task %ld",
+                        port->id, current->tid);
+                    // reset other ports' is_receiving flag
+                    list_foreach(iter2, &current->port_list) {
+                        task_port_t* tport2 = list_entry(iter2, task_port_t, node);
+                        if (tport2->id == tport->id) {
+                            continue;
+                        }
+                        if (port_has_recv(tport2->privs)) {
+                            ipc_port_t* port2 = NULL;
+                            unwrap_err(p_get(tport2->id, &port2));
+                            if (!port2->rx.is_receiving) {
+                                trace("p_recv: during any-port recv, port %ld has also been"
+                                " send a message/notification.", port2->id);
+                            } else {
+                                port2->rx.is_receiving = false;
+                            }
+                        }
+                    }
+                    return OK;
+                }
+            }
+        }
 
-    if (!list_is_empty(&current->notif_list)) {
-        knotif_t* knotif = list_entry(
-            list_pop_front(&current->notif_list),
-            knotif_t,
-            node
-        );
-        *notif = knotif->notif;
-        kmem_cache_free(&knotif_cache, knotif);
-        trace("p_recv: notification received on port %ld by task %ld: %lx",
-            local, current->tid, notif->type);
-        goto done;
+        panic("p_recv: receiver task %ld resumed from any port but no message or notification found",
+            current->tid);
+    } else {
+        ipc_port_t* port = NULL;
+        if (is_err(p_get(local, &port))) {
+            warn("p_recv: no such port %ld", local);
+            return -ERR_NOENT;
+        }
+        task_port_t* tport = NULL;
+        if (is_err(tp_get(current, local, &tport))) {
+            warn("p_recv: current task has no such port %ld", local);
+            return -ERR_NOENT;
+        }
+        if (!port_has_recv(tport->privs)) {
+            warn("p_recv: current task has no recv right on port %ld", local);
+            return -ERR_PERM;
+        }
+
+        if (try_recv(port, msg, notif) == OK) {
+            return OK;
+        }
+
+        // oops. seems no message or notification available.
+        // block the receiver.
+        trace("p_recv: no message or notification on port %ld, blocking receiver task %ld",
+            local, current->tid);
+        port->rx.is_receiving = true;
+        task_block(current->tid);
+        // come back
+        trace("p_recv: receiver task %ld resumed on port %ld",
+            current->tid, local);
+        assert_eq(port->rx.is_receiving, false);
+
+        if (try_recv(port, msg, notif) == OK) {
+            return OK;
+        }
     }
 
     panic("p_recv: receiver task %ld resumed on port %ld but no message or notification found",
         current->tid, local);
-
-done:
-    return OK;
 }
 
 void
 task_ipc_cleanup(task_t* task) {
     list_foreach_safe(iter, &task->port_list, next) {
+        trace("task_ipc_cleanup: closing port %ld for task %ld",
+            list_entry(iter, task_port_t, node)->id,
+            task->tid);
         task_port_t* tport = list_entry(iter, task_port_t, node);
         unwrap_err(p_close(tport->id, task));
     }

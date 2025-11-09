@@ -19,10 +19,7 @@ typedef struct _ipc_port_t {
         task_t* task;
         bool is_receiving;
     } rx;
-    struct {
-        list_t tasks;
-        list_t waiting_tasks;
-    } tx;
+    list_t wtx; /* waiting tasks */
 } ipc_port_t;
 
 // in-tcb port object
@@ -53,6 +50,7 @@ result_t   p_transfer(
 );
 result_t   p_send(const msg_hdr_t* msg);
 result_t   p_notify(port_t pid, notif_t notif);
+result_t   p_knotify(port_t pid, notif_t notif);
 result_t   p_recv(msg_hdr_t* msg, notif_t* notif);
 result_t   p_close(port_t pid, task_t* task);
 

@@ -202,9 +202,6 @@ task_spawn(
     // ipc_init
     list_init(&task->port_list); 
     list_init(&task->notif_list);
-    if (task->tid != TID_PM) {
-        unwrap_err(tp_attach(PID_PM, task, PORT_SEND));
-    }
 
     *out = task;
     info("task spawned: tid=%ld name=%s entry=%p",
@@ -299,7 +296,7 @@ task_kill(tid_t tid) {
     list_push_back(&zombie_tasks, &task->node_zombie);
     trace("task_kill: task tid=%ld name=%s killed",
         task->tid, task->name);
-    unwrap_err(p_notify(
+    unwrap_err(p_knotify(
         PID_PM,
         (notif_t){
             .type = NOTIF_TASK_EXIT,
@@ -316,7 +313,6 @@ task_kill(tid_t tid) {
 
 // from illegal behavior
 // or task killing itself
-// should send a message to process manager later.
 void __noreturn
 task_crash_exit(result_t exit_code) {
     task_t* current = unwrap_null(current_task);
@@ -328,7 +324,7 @@ task_crash_exit(result_t exit_code) {
     
     trace("task_crash_exit: task tid=%ld name=%s exiting with code %ld",
         current->tid, current->name, exit_code);
-    unwrap_err(p_notify(
+    unwrap_err(p_knotify(
         PID_PM,
         (notif_t){
             .type = NOTIF_TASK_EXIT,

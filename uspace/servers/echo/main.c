@@ -1,49 +1,57 @@
-#include "libs/prelude.h"
-#include "uspace/syscall.h"
-#include "uspace/servers/echo.h"
+#include <libs/prelude.h>
+#include <uspace/ipc.h>
+#include <uspace/servers/pns.h>
+#include <uspace/servers/echo.h>
 
-static port_t port = 2; // hardcoded for debugging
+static port_t echo_port;
 
-isize
+result_t
 main(void) {
-    echo_msg_t msg;
-    msg.header.local = port;
-    notifications_t notif;
-    
-    usize time = 7;
+    unwrap_err(p_creat(PID_ANY, &echo_port));
+    pns_msg_t pns_msg = {0};
+    pns_msg.header.remote = PID_PNS;
+    pns_msg.header.id = PNS_REQ_PUBLISH;
+    pns_msg.header.aux_xfer.port = echo_port;
+    pns_msg.header.aux_xfer.flags = PORT_SEND;
+    strcpy(pns_msg.body.publish.name, "echo");
+    result_t ret = p_call(
+        (untyped_msg_t*)&pns_msg,
+        (untyped_msg_t*)&pns_msg,
+        NULL
+    );
+    if (is_err(ret)) {
+        panic("echo: failed to publish echo service: %s", strerr(ret));
+    }
+    if (!pns_msg.body.publish_resp.success) {
+        panic("echo: pns refused to publish echo service");
+    }
+
+    printf("echo: listening on port %ld\n", echo_port);
 
     loop {
-        isize ret = sys_p_recv(
-            (msg_hdr_t*)&msg,
-            &notif,
-            NOTIF_MASK_ALL
-        );
+        echo_msg_t msg = {0};
+        notif_t notif = {0};
+        result_t ret = p_recv((untyped_msg_t*)&msg, &notif);
         if (is_err(ret)) {
-            printf("echo: sys_p_recv failed: %s\n",
-                strerr(ret));
-        } else if (notif != 0) {
-            printf("echo: received notification: 0x%lx\n",
-                notif);
+            warn("echo: p_recv failed: %s", strerr(ret));
+            continue;
+        } else if (notif.type != 0) {
+            warn("echo: received unexpected notification type %ld", notif.type);
+            continue;
         } else {
-            static char buf[ECHO_MSG_MAX_LEN];
-            assert_eq(msg.header.id, ECHO_REQ_ECHO);
-            memcpy(
-                buf,
-                msg.body.echo.data,
-                msg.body.echo.len
-            );
-            buf[msg.body.echo.len] = '\0';
-            printf("echo: received echo request: \"%s\"\n",
-                buf);
+            switch (msg.header.id) {
+                case ECHO_REQ_ECHO:
+                    char buf[ECHO_MSG_MAX_LEN] = {0};
+                    usize len = min(msg.body.echo.len, ECHO_MSG_MAX_LEN - 1);
+                    memcpy(buf, msg.body.echo.data, len);
+                    printf("echo: received message: '%s'\n", buf);
+                    break;
+                default:
+                    printf("echo: received unknown message id %ld\n", msg.header.id);
+            }
         }
-        sys_task_yield();
-        time--;
-        if (time == 0) {
-            break;
-        }
+        
     }
-    sys_p_close(port);
-    loop {}
 
-    return 0;
+    return OK;
 }

@@ -78,8 +78,8 @@ utrap() {
     prepare_utrap_entry();
 
     if (scause_is_irq(r_scause())) {
-        u64 irq = r_scause() & ~SCAUSE_IRQ_FLAG;
-        switch (irq) {
+        irq_t irqno = r_scause() & ~SCAUSE_IRQ_FLAG;
+        switch (irqno) {
             case SCAUSE_IRQ_TIMER: 
                 extern void timer_intr(void);
                 timer_intr();
@@ -87,8 +87,8 @@ utrap() {
             case SCAUSE_IRQ_EXT: 
                 trace("utrap: external interrupt");
                 // todo: plic
-                extern void dev_intr(u8 irq);
-                dev_intr(irq);
+                extern void dev_intr(irq_t irqno);
+                dev_intr(irqno);
                 break;
             case SCAUSE_IRQ_SOFT:
                 unreachable();
@@ -152,6 +152,7 @@ arch_utrap_ret() {
         current->tid, current->name);
 
     prepare_utrap_ret();
+
     flush(); // flush console output buffer before returning to user space
 
     vaddr_t hook = TRAMPOLINE + 

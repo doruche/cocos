@@ -123,14 +123,14 @@ SYSCALL_DEFINE2(
     trace("sys_p_stat: task %d querying stat of port %ld",
         current->tid, pid);
     task_port_t* tport = NULL;
-    if (is_err(tp_get(current, pid, &tport))) {
-        warn("sys_p_stat: no such port %ld in current task %d",
-            pid, current->tid);
-        return -ERR_NOENT;
-    }
+    tp_get(current, pid, &tport);
     
     stat->id = pid;
-    stat->privs = port_privs(tport->privs);
+    if (tport == NULL) {
+        stat->privs = 0;
+    } else {
+        stat->privs = port_privs(tport->privs);
+    }
 
     return OK;
 }

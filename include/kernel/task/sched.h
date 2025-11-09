@@ -27,7 +27,6 @@ typedef struct _task_t {
     
     /* ipc */
     u8 msg_buf[MSG_MAX_SIZE]; // ipc buffer used for sending messages
-    list_elem_t node_port_tx; // node in port's tx list
     list_elem_t node_port_wtx; // node in port's tx waitlist
     list_t port_list; // list of task_port_t owned by this task
     list_t notif_list; // list of knotif_t

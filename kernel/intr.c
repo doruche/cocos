@@ -32,8 +32,8 @@ timer_intr(void) {
 }
 
 void
-dev_intr(u8 irq) {
-    warn("dev_intr: external interrupt: irq %d", irq);
+dev_intr(irq_t irqno) {
+    warn("dev_intr: external interrupt: irq %d", irqno);
     warn("dev_intr: currently not implemented");
 }
 

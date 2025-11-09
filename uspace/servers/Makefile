@@ -1,12 +1,13 @@
 # SERVERS := $(shell ls -d */ | xargs -n 1 basename)
 
-SERVERS := 
+SERVERS := echo
 BFS := bfs
 PM := pm
 
 BFS_PATH := $(ROOT_DIR)/build/uspace/bfs.img
 BFS_ELFS := \
-	$(ROOT_DIR)/build/uspace/apps/hello/hello 
+	$(ROOT_DIR)/build/uspace/apps/hello/hello \
+	$(ROOT_DIR)/build/uspace/servers/echo/echo
 
 MKFS := $(ROOT_DIR)/scripts/mkfs.bfs.py
 

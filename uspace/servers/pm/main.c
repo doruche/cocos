@@ -1,45 +1,11 @@
 #include "task.h"
 #include "bfs.h"
+#include "pns.h"
 #include <libs/prelude.h>
+#include <uspace/ipc.h>
 #include <uspace/syscall.h>
 #include <uspace/servers/pm.h>
-
-static port_t pm_port;
-
-static void
-pm_init(void) {
-    trace("pm: initializing...");
-    pm_port = sys_p_creat(PID_ANY);
-    if (is_err(pm_port)) {
-        panic("pm: failed to create pm port: %s",
-            strerr((isize)pm_port));
-    }
-    bfs_probe();
-    trace("pm: created pm port %ld", pm_port);
-    trace("pm: initialized.");
-}
-
-static void
-handle_msg(pm_msg_t* msg) {
-    port_t src_port = msg->header.local;
-    msg_id_t msg_id = msg->header.id;
-    printf("pm: handling message id %ld from port %ld\n",
-        msg_id, src_port);
-    
-    switch (msg->header.id) {
-        case PM_REQ_PING: {
-            printf("pm: ping received with val=%ld\n",
-                msg->body.ping.val);
-            break;
-        }
-        default: {
-            printf("pm: unknown message id %ld received\n",
-                msg->header.id);
-            break;
-        }
-    }
-}
-
+#include <uspace/servers/pns.h>
 
 static void
 spawn_init_tasks(void) {
@@ -63,6 +29,11 @@ spawn_init_tasks(void) {
                 inode->name,
                 strerr(ret));
         }
+
+        /* set up initial IPC ports */
+        // unwrap_err(sys_p_transfer(PID_PM, tid, PORT_SEND));
+        unwrap_err(sys_p_transfer(PID_PNS, tid, PORT_SEND));
+
         trace("pm: spawned init task '%s' (tid %ld)",
             inode->name, tid);
     }
@@ -70,44 +41,66 @@ spawn_init_tasks(void) {
     trace("pm: init tasks spawned.");
 }
 
-isize
+static result_t
+pm_handle_msg(pm_msg_t* msg) {
+    todo()
+}
+
+static result_t
+msg_dispatch(untyped_msg_t* msg) {
+    switch (msg->header.local) {
+        case PID_PM: return pm_handle_msg((pm_msg_t*)msg);
+        case PID_PNS: return pns_handle_msg((pns_msg_t*)msg);
+        default:
+            warn("pm: received message for unknown port %ld",
+                msg->header.local);
+            return -ERR_NOENT;
+    }
+}
+
+static result_t
+handle_notif(notif_t* notif) {
+    switch (notif->type) {
+        case NOTIF_TASK_EXIT:
+            trace("pm: task %ld exited with code %ld",
+                notif->payload.task_exited.tid,
+                notif->payload.task_exited.exit_code);
+            /* TODO: cleanup resources */
+            return OK;
+        default:
+            warn("pm: received unknown notification type %ld",
+                notif->type);
+            return -ERR_NOENT;
+    }
+}
+
+result_t __noreturn
 main(void) {
-    pm_init();
+    bfs_probe();
+    pns_init();
 
     spawn_init_tasks();
 
-    pm_msg_t msg;
-    msg.header.local = PID_PM;
-    notif_t notif = {0};
-    
     loop {
-        isize ret = sys_p_recv((msg_hdr_t*)&msg, &notif);
+        untyped_msg_t msg = {0};
+        msg.header.local = PID_ANY;
+        notif_t notif = {0};
+        result_t ret = p_recv(&msg, &notif);
         if (is_err(ret)) {
-            printf("pm: failed to receive message: %s\n",
-                strerr(ret));
+            warn("pm: sys_p_recv failed: %s", strerr(ret));
+            continue;
         } else if (notif.type != 0) {
-            printf("pm: received notification of type %ld\n",
-                notif.type);
-            switch (notif.type) {
-                case NOTIF_TASK_EXIT:
-                    tid_t exited_tid = notif.payload.task_exited.tid;
-                    result_t exit_code = notif.payload.task_exited.exit_code;
-                    printf("pm: task %ld exited with code %ld\n", exited_tid, exit_code);
-                    break;
-                default:
-                    printf("pm: unknown notification type %ld received\n",
-                        notif.type);
-                    break;
+            ret = handle_notif(&notif);
+            if (is_err(ret)) {
+                warn("pm: notification handling failed: %s", strerr(ret));
             }
-            notif = (notif_t){0};
         } else {
-            handle_msg(&msg);
+            ret = msg_dispatch(&msg);
+            if (is_err(ret)) {
+                warn("pm: message dispatch failed: %s", strerr(ret));
+            }
         }
     }
 
-    sys_p_close(pm_port);
-
-    loop {}
-
-    return 0;
+    panic("pm: pm should not exit main loop");
 }

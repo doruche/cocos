@@ -171,7 +171,7 @@ sys_p_transfer(
 }
 
 static inline result_t
-sys_p_send(const msg_hdr_t* msg) {
+sys_p_send(const untyped_msg_t* msg) {
     return arch_syscall(
         SYS_P_SEND,
         (u64)(msg),
@@ -199,7 +199,7 @@ sys_p_notify(
 
 static inline result_t
 sys_p_recv(
-    msg_hdr_t* msg,
+    untyped_msg_t* msg,
     notif_t* notif
 ) {
     return arch_syscall(

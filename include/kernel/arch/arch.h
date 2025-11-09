@@ -18,7 +18,7 @@
  * functions instead.
  * We could just declare these structs in arch.h and
  * define them in arch-specific headers, but for simplicity
- * we define them here directly.
+ * we define them here directly now. remove later.
  */
 
 typedef struct _arch_kctx_t {

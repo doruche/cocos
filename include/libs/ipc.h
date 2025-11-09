@@ -4,7 +4,13 @@
 typedef u64 port_t;
 #define PID_ANY     ((port_t)-2)
 #define PID_INVALID ((port_t)-1)
+
+/* kernel defined */
 #define PID_PM      ((port_t)0)
+/* pm defined */
+#define PID_PNS     ((port_t)53)
+
+
 typedef u64 port_flags_t;
 #define PORT_SEND       (1L << 0)
 #define PORT_RECV       (1L << 1)
@@ -17,24 +23,37 @@ typedef u64 port_flags_t;
 
 #define MSG_MAX_SIZE 256
 typedef u64 msg_id_t;
+/* synchronous message */
 typedef struct _msg_hdr_t {
     union {
-        port_t  local; // for senders, local port
-        port_t  remote; // for receivers, remote port
+        /* for receivers */
+        port_t  local; 
+        /* for senders */
+        port_t  remote;
     };
     struct {
-        port_t  port; // auxiliary port to transfer
-        port_flags_t flags; // transfer flags
+        /* auxiliary port to transfer */
+        port_t  port;
+        /* transfer flags */
+        port_flags_t flags;
     } aux_xfer;
-    msg_id_t id;            // custom message id. used by user
-    u8 body[0];              // message body follows
+    /* custom message id. */
+    msg_id_t id;
+    /* convenience access for following message body */
+    u8 body[0];
 } msg_hdr_t;
+
+typedef struct _untyped_msg_t {
+    msg_hdr_t header;
+    u8       data[MSG_MAX_SIZE - sizeof(msg_hdr_t)];
+} untyped_msg_t;
 
 typedef struct _p_stat_t {
     port_t  id;
     port_flags_t privs;
 } p_stat_t; 
 
+/* asynchronous notification */
 typedef struct _notif_t {
     union {
         /* port that was closed causing the aborted notification */
@@ -51,9 +70,7 @@ typedef struct _notif_t {
     } payload;
     u64 type;
 } notif_t;
-#define NOTIF_ABORTED   1L // message send aborted due to port closed
-#define NOTIF_IRQ       2L // interrupt notification
-#define NOTIF_TASK_EXIT 3L // task exited notification
-#define NOTIF_USER0     16L // user defined notification bits start from bit 16
-#define NOTIF_MASK_ALL  ((u64)(-1))
-
+#define NOTIF_ABORTED   1L /* message send aborted due to port closed */
+#define NOTIF_IRQ       2L /* interrupt notification */
+#define NOTIF_TASK_EXIT 3L /* task exited notification */
+#define NOTIF_USER0     42L /* user defined notification number start here */
