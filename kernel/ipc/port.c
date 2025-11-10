@@ -288,8 +288,9 @@ p_close(port_t pid, task_t* task) {
 
 // only called by user tasks.
 result_t
-p_send(const msg_hdr_t* msg) {
-    port_t remote = msg->remote;
+p_send(const untyped_msg_t* msg) {
+    msg_hdr_t* hdr = &msg->header;
+    port_t remote = hdr->remote;
     ipc_port_t* port = NULL;
     if (is_err(p_get(remote, &port))) {
         warn("p_send: no such port %ld", remote);
@@ -314,35 +315,28 @@ p_send(const msg_hdr_t* msg) {
         warn("p_send: port %ld is dead", remote);
         return -ERR_ABORT;
     }
-    if (msg->aux_xfer.port != PID_INVALID &&
-        msg->aux_xfer.flags != 0) {
-        if (msg->remote == msg->aux_xfer.port) {
+    if (hdr->aux_xfer.port != PID_INVALID &&
+        hdr->aux_xfer.flags != 0) {
+        if (remote == hdr->aux_xfer.port) {
             warn("p_send: cannot transfer the same port %ld being sent to",
-                msg->aux_xfer.port);
+                hdr->aux_xfer.port);
             return -ERR_INVAL;
         }
-        if (!task_own_port(msg->aux_xfer.port, msg->aux_xfer.flags, current)) {
+        if (!task_own_port(hdr->aux_xfer.port, hdr->aux_xfer.flags, current)) {
             warn("p_send: current task does not have port %ld with privs %lx",
-                msg->aux_xfer.port, msg->aux_xfer.flags);
+                hdr->aux_xfer.port, hdr->aux_xfer.flags);
             return -ERR_PERM;
         }
-        if (task_own_port(msg->aux_xfer.port, 0, port->rx.task)) {
+        if (task_own_port(hdr->aux_xfer.port, 0, port->rx.task)) {
             warn("p_send: receiver task %ld already owns port %ld",
-                port->rx.task->tid, msg->aux_xfer.port);
+                port->rx.task->tid, hdr->aux_xfer.port);
             return -ERR_EXIST;
         }
-        // transfer the port
-        if (is_err(p_transfer(
-            msg->aux_xfer.port,
-            port->rx.task,
-            current,
-            msg->aux_xfer.flags
-        ))) {
-            panic("p_send: port transfer failed unexpectedly");
-        }
+        trace("p_send: ok to transfer port %ld from task %ld to receiver task %ld",
+            hdr->aux_xfer.port, current->tid, port->rx.task->tid);
     }
     
-    memcpy(current->msg_buf, msg, MSG_MAX_SIZE);
+    memcpy(current->msg_buf, msg, MSG_SIZE);
 
     list_push_back(&port->wtx, &current->node_port_wtx);
     if (port->rx.is_receiving) {
@@ -433,7 +427,7 @@ p_knotify(port_t pid, notif_t notif) {
 }
 
 static result_t
-try_recv(ipc_port_t* port, msg_hdr_t* msg, notif_t* notif) {
+try_recv(ipc_port_t* port, untyped_msg_t* msg, notif_t* notif) {
     task_t* current = unwrap_null(current_task);
 
     if (!list_is_empty(&port->wtx)) {
@@ -444,7 +438,25 @@ try_recv(ipc_port_t* port, msg_hdr_t* msg, notif_t* notif) {
         );
         msg_hdr_t *send_msg = (msg_hdr_t*)sender->msg_buf;
         assert_eq(send_msg->remote, port->id);
-        memcpy(msg, send_msg, MSG_MAX_SIZE);
+        memcpy(msg, send_msg, MSG_SIZE);
+
+        msg_hdr_t* hdr = &msg->header;
+        if (hdr->aux_xfer.port != PID_INVALID &&
+            hdr->aux_xfer.flags != 0) {
+                /*
+                 * receiver now owns the transferred port.
+                 * we already checked the validity in p_send.
+                 */
+                unwrap_err(p_transfer(
+                    hdr->aux_xfer.port,
+                    current,
+                    sender,
+                    hdr->aux_xfer.flags
+                ));
+                trace("try_recv: port %ld transferred from sender task %ld to receiver task %ld",
+                    hdr->aux_xfer.port, sender->tid, current->tid);
+            }
+
         task_resume(sender->tid);
         trace("try_recv: message received on port %ld by task %ld from task %ld",
             port->id, current->tid, sender->tid);
@@ -468,8 +480,8 @@ try_recv(ipc_port_t* port, msg_hdr_t* msg, notif_t* notif) {
 }
 
 result_t
-p_recv(msg_hdr_t* msg, notif_t* notif) {
-    port_t local = msg->local;
+p_recv(untyped_msg_t* msg, notif_t* notif) {
+    port_t local = msg->header.local;
     task_t* current = unwrap_null(current_task);
     
     if (local == PID_ANY) {

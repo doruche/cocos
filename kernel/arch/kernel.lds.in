@@ -1,5 +1,5 @@
 #include <kernel/arch/qemu-virt.h>
-#include <ld_asm_defs.h>
+#include <kernel/consts/params.h>
 
 OUTPUT_ARCH(riscv)
 ENTRY(_start);

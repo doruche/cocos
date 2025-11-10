@@ -2,8 +2,8 @@
  * risc-v page table management (sv39)
  */
 
+#include "arch.h"
 #include <libs/prelude.h>
-#include <kernel/arch/arch.h>
 #include <kernel/arch/pgtbl.h>
 #include <kernel/arch/csr.h>
 #include <kernel/arch/qemu-virt.h>

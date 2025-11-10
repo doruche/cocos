@@ -16,38 +16,12 @@
  * Note that other parts of the kernel should not directly
  * access fields of these structures. Use the provided
  * functions instead.
- * We could just declare these structs in arch.h and
- * define them in arch-specific headers, but for simplicity
- * we define them here directly now. remove later.
  */
 
-typedef struct _arch_kctx_t {
-    kaddr_t ra;
-    kaddr_t sp;
-    u64     s[12];
-} arch_kctx_t;
-
-typedef struct _arch_trapframe_t {
-    // asm & c access
-    u64     x[32]; 
-    // kernel sp, will not change after initialized
-    __readonly kaddr_t ksp;
-
-    // c access
-    uaddr_t sepc;
-    u64     sstatus;
-} arch_trapframe_t;
-
-typedef struct _arch_ctx_t {
-    // put this first for assembly access
-    arch_trapframe_t tf; 
-    arch_kctx_t kctx;
-} arch_ctx_t;
-
-typedef struct _arch_vm_t {
-    // page table entries
-    pte_t entries[512];
-} arch_vm_t;
+typedef struct _arch_kctx_t arch_kctx_t;
+typedef struct _arch_trapframe_t arch_trapframe_t;
+typedef struct _arch_ctx_t arch_ctx_t;
+typedef struct _arch_vm_t arch_vm_t;
 
 #define NMEMZONE_MAX    8
 
@@ -104,15 +78,16 @@ void    arch_set_pc(
     uaddr_t pc
 );
 
-void    arch_ctx_init(
-    arch_ctx_t* ctx,
+/* ctx needs dynamic memory allocation */
+void arch_ctx_mm_init(void);
+arch_ctx_t* arch_ctx_creat(
     arch_vm_t* vm,
     kaddr_t kentry,
     uaddr_t uentry,
     vpn_t kstack_top
 );
 void    arch_ctx_destroy(
-    arch_ctx_t* actx,
+    arch_ctx_t* ctx,
     arch_vm_t* vm
 );
 arch_kctx_t* arch_ctx_kctx(arch_ctx_t* ctx);

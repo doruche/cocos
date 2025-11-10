@@ -2,13 +2,14 @@
  * uspace trap handling
  */
 
+#include "../arch.h"
 #include <libs/prelude.h>
-#include <kernel/arch/arch.h>
 #include <kernel/arch/csr.h>
 #include <kernel/arch/trap.h>
 #include <kernel/arch/qemu-virt.h>
 #include <kernel/task/sched.h>
 #include <kernel/task/processor.h>
+#include <kernel/misc/printk.h>
 #include <kernel/syscall.h>
 
 __maybe_unused
@@ -73,6 +74,7 @@ prepare_utrap_ret(void) {
 
 void
 utrap() {
+    printk("\n");
     trace("user trap!");
 
     prepare_utrap_entry();

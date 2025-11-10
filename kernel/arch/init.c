@@ -2,8 +2,8 @@
  * architecture-specific initialization code.
  */
 
+#include "arch.h"
 #include <libs/prelude.h>
-#include <kernel/arch/arch.h>
 #include <kernel/arch/csr.h>
 #include <kernel/arch/qemu-virt.h>
 #include <kernel/arch/trap.h>

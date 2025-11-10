@@ -1,5 +1,5 @@
-LINKER := $(BUILD_DIR)/uspace/uspace.lds
-LINKER_TEMPLATE := uspace.lds.in
+LINKER := $(BUILD_DIR)/uspace/libc/arch/uspace.lds
+LINKER_TEMPLATE := libc/arch/uspace.lds.in
 
 .PHONY: all libc apps servers
 
@@ -19,7 +19,7 @@ apps: libc $(LINKER)
 	@$(MAKE) -C $@ all
 
 $(LINKER): $(LINKER_TEMPLATE)
-	@echo "  PP\t$(shell realpath --relative-to=$(BUILD_DIR) $@)"
+	@echo "  PP\t$(shell realpath -m --relative-to=$(BUILD_DIR) $@)"
 	@$(CC) \
 		-E \
 		-P \

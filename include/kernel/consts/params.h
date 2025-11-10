@@ -4,7 +4,15 @@
 
 #pragma once
 
-#include <libs/prelude.h>
+#ifndef PAGE_SIZE
+    #define PAGE_SIZE   0x1000
+#endif
+
+#ifndef NCPU
+    #define NCPU    1
+#elif NCPU > 1
+    #error "SMP is not supported yet"
+#endif
 
 #define BOOT_STACK_SIZE (8 * PAGE_SIZE)
 

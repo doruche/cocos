@@ -2,13 +2,24 @@
  * context related definitions
  */
 
+#include "arch.h"
 #include <libs/prelude.h>
-#include <kernel/arch/arch.h>
 #include <kernel/arch/csr.h>
 #include <kernel/arch/trap.h>
 #include <kernel/arch/qemu-virt.h>
 #include <kernel/consts/params.h>
 #include <kernel/mm/pm.h>
+#include <kernel/mm/slab.h>
+
+static kmem_cache_t arch_ctx_cache;
+
+/* see processor.c */
+arch_kctx_t sched_ctx = {0};
+
+void
+arch_ctx_mm_init(void) {
+    kmem_cache_create(&arch_ctx_cache, "arch_ctx_cache", sizeof(arch_ctx_t));
+}
 
 void
 arch_kctx_init(
@@ -53,14 +64,15 @@ arch_kctx_switch(
  * as user stack allocation is the responsibility
  * of process manager. refine later.
  */
-void
-arch_ctx_init(
-    arch_ctx_t* ctx,
+arch_ctx_t*
+arch_ctx_creat(
     arch_vm_t* vm,
     kaddr_t kentry, 
     uaddr_t uentry,
     vpn_t kstack_top
 ) {
+    arch_ctx_t* ctx = unwrap_null(kmem_cache_alloc(&arch_ctx_cache));
+
     memset(ctx, 0, sizeof(arch_ctx_t));
     
     arch_kctx_init(&ctx->kctx, kentry, kstack_top);
@@ -101,19 +113,22 @@ arch_ctx_init(
         0,
         VM_USER | VM_READ | VM_WRITE | VM_FAKE
     );
+
+    return ctx;
 }
 
 void
 arch_ctx_destroy(
-    arch_ctx_t* actx,
+    arch_ctx_t* ctx,
     arch_vm_t* vm
 ) {
     // currently nothing to do here
     // user memory will be freed when addr_space_t is destroyed
     // however if we want to extend our design to support threads,
     // we may need to unmap and free those kernel stacks here
-    // immediately when a thread is destroyed.
+    // immediately when a thread is destroyed to save memory.
     trace("arch_ctx_destroy: called");
+    kmem_cache_free(&arch_ctx_cache, ctx);
 }
 
 arch_kctx_t*

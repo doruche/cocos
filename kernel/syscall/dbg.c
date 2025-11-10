@@ -14,7 +14,11 @@ SYSCALL_DEFINE2(
     trace("dbg_puts: str=%p, len=%ld", str, len); 
     memcpy(buf, str, len);
     buf[len] = '\0';
-    printk("%s", buf);
 
-    return 0;
+    /* do not use printk to avoid confusion between kernel and user space */
+    for (usize i = 0; i < len; i++) {
+        arch_dbg_write(buf[i]);
+    }
+    
+    return OK;
 }

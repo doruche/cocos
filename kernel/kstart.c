@@ -13,6 +13,8 @@ kstart(bootinfo_t* bootinfo) {
     info("physical page allocator initialized.");
     arch_kvm_init();
     info("kernel virtual memory initialized.");
+    arch_ctx_mm_init();
+    info("architecture-specific context subsystem initialized.");
     kmalloc_init();
     info("kernel heap allocator initialized.");
     as_init();

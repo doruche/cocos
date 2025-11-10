@@ -99,8 +99,7 @@ pm_alloc(void) {
             return run2ppn(zone, run);
         }
     }
-    warn("pm_alloc: out of memory");
-    return -ERR_NOMEM;
+    panic("pm_alloc: out of memory");
 }
 
 bool

@@ -3,12 +3,13 @@
  * we do not handle interrupts in kernel for simplicity
  */
 
+#include "../arch.h"
 #include <libs/prelude.h>
-#include <kernel/arch/arch.h>
 #include <kernel/arch/csr.h>
 #include <kernel/arch/qemu-virt.h>
 #include <kernel/task/sched.h>
 #include <kernel/task/processor.h>
+#include <kernel/misc/printk.h>
 
 static const char* const
 irq_str(u64 irq) {
@@ -39,13 +40,11 @@ static const char* const exception_strs[] = {
 
 u64
 ktrap(u64 prev_sp) {
-    trace("kernel trap!");
     assert_eq(arch_intr_status(), false);
 
     if (scause_is_irq(r_scause())) {
         u64 irq = r_scause() & ~SCAUSE_IRQ_FLAG;
         if (irq == SCAUSE_IRQ_TIMER) {
-            trace("ktrap: timer interrupt");
             /* from arch/timer.c */
             extern void set_next_timer(void);
             set_next_timer();

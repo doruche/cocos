@@ -18,9 +18,9 @@
 #define PNS_MAX_NAME_LEN 64
 
 typedef enum _pns_msg_id_t {
-    PNS_REQ_RESOLVE = 0,
-    PNS_REQ_PUBLISH = 1,
-    PNS_REQ_UNPUBLISH = 2,
+    PNS_RESOLVE = 0,
+    PNS_PUBLISH = 1,
+    PNS_UNPUBLISH = 2,
 } pns_msg_id_t;
 
 typedef union _pns_msgbody_t {
@@ -67,9 +67,9 @@ typedef struct _pns_msg_t {
             msg_hdr_t header;
             pns_msgbody_t body;
         };
-        u8 padding[MSG_MAX_SIZE];
+        u8 padding[MSG_SIZE];
     };
 } pns_msg_t;
 
-static_assert(sizeof(pns_msg_t) == MSG_MAX_SIZE);
+static_assert(sizeof(pns_msg_t) == MSG_SIZE);
 static_assert(offset_of(pns_msg_t, header) == 0);

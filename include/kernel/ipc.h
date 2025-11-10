@@ -48,10 +48,10 @@ result_t   p_transfer(
     task_t* ori,
     port_flags_t flags   
 );
-result_t   p_send(const msg_hdr_t* msg);
+result_t   p_send(const untyped_msg_t* msg);
 result_t   p_notify(port_t pid, notif_t notif);
 result_t   p_knotify(port_t pid, notif_t notif);
-result_t   p_recv(msg_hdr_t* msg, notif_t* notif);
+result_t   p_recv(untyped_msg_t* msg, notif_t* notif);
 result_t   p_close(port_t pid, task_t* task);
 
 void       task_ipc_cleanup(task_t* task);

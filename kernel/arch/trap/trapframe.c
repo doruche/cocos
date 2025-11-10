@@ -1,5 +1,5 @@
+#include "../arch.h"
 #include <libs/prelude.h>
-#include <kernel/arch/arch.h>
 
 u64
 arch_syscall_arg(

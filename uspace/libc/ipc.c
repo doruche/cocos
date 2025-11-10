@@ -1,6 +1,7 @@
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
 #include <uspace/syscall.h>
+#include <uspace/servers/pns.h>
 
 result_t
 p_creat(port_t req_pid, port_t* out) {
@@ -32,13 +33,8 @@ p_recv(untyped_msg_t* msg, notif_t* notif) {
 }
 
 result_t
-p_call(
-    untyped_msg_t* req,
-    untyped_msg_t* resp,
-    notif_t* notif
-) {
-    assert_eq(req->header.aux_xfer.port, PID_INVALID);
-    assert_eq(resp->header.local, PID_INVALID);
+p_call(untyped_msg_t* msg, notif_t* notif) {
+    assert(msg->header.aux_xfer.flags == 0);
 
     result_t ret = OK;
     port_t aux_port = 0;
@@ -47,14 +43,14 @@ p_call(
     if (is_err(ret)) {
         goto done;
     }
-    req->header.aux_xfer.port = aux_port;
-    req->header.aux_xfer.flags = PORT_SEND | PORT_TRANSFER_DISCARD;
-    ret = p_send(req);
+    msg->header.aux_xfer.port = aux_port;
+    msg->header.aux_xfer.flags = PORT_SEND | PORT_TRANSFER_DISCARD;
+    ret = p_send(msg);
     if (is_err(ret)) {
         goto done;
     }
-    resp->header.local = aux_port;
-    ret = p_recv(resp, notif);
+    msg->header.local = aux_port;
+    ret = p_recv(msg, notif);
     if (is_err(ret)) {
         goto done;
     }

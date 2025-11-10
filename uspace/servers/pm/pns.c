@@ -81,7 +81,6 @@ pns_init(void) {
     assert_eq(pns_port, PID_PNS);
 }
 
-
 result_t
 pns_handle_msg(pns_msg_t* msg) {
     port_t reply_port = msg->header.aux_xfer.port;
@@ -100,7 +99,7 @@ pns_handle_msg(pns_msg_t* msg) {
     result_t ret = OK;
 
     switch (msg->header.id) {
-        case PNS_REQ_RESOLVE:
+        case PNS_RESOLVE:
             const char* name = msg->body.resolve.name;
             port_t resolve_port;
             ret = pns_resolve(name, &resolve_port);
@@ -114,7 +113,7 @@ pns_handle_msg(pns_msg_t* msg) {
             /* as pns, we should send asynchronously. but now we just reply directly */
             unwrap_err(p_send((untyped_msg_t*)&resp_msg));
             return OK;
-        case PNS_REQ_PUBLISH:
+        case PNS_PUBLISH:
             const char* pub_name = msg->body.publish.name;
             port_t pub_port = msg->header.aux_xfer.port;
             u64 pub_key;
@@ -128,7 +127,7 @@ pns_handle_msg(pns_msg_t* msg) {
             }
             unwrap_err(p_send((untyped_msg_t*)&resp_msg));
             return OK;
-        case PNS_REQ_UNPUBLISH:
+        case PNS_UNPUBLISH:
             const char* unpub_name = msg->body.unpublish.name;
             u64 unpub_key = msg->body.unpublish.key;
             ret = pns_unpublish(unpub_name, unpub_key);

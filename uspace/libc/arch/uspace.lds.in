@@ -1,7 +1,8 @@
-#include "ld_asm_defs.h"
+#include <kernel/arch/qemu-virt.h>
+#include <kernel/consts/params.h>
 
 OUTPUT_ARCH(riscv)
-ENTRY(crt0);
+ENTRY(_start);
 
 SECTIONS {
     . = USER_BASE;
@@ -36,7 +37,6 @@ SECTIONS {
     }
 
     . = ALIGN(4K);
-    __sheap = .;
 
     /DISCARD/ : {
         *(.comment)

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <libs/prelude.h>
-#include <uspace/arch_syscall.h>
+#include <uspace/arch/syscall.h>
 
 static inline result_t
 sys_task_kill(tid_t tid) {

@@ -21,7 +21,7 @@ typedef u64 port_flags_t;
 #define port_has_recv(privs) (((privs) & PORT_RECV) != 0)
 
 
-#define MSG_MAX_SIZE 256
+#define MSG_SIZE 256
 typedef u64 msg_id_t;
 /* synchronous message */
 typedef struct _msg_hdr_t {
@@ -45,7 +45,7 @@ typedef struct _msg_hdr_t {
 
 typedef struct _untyped_msg_t {
     msg_hdr_t header;
-    u8       data[MSG_MAX_SIZE - sizeof(msg_hdr_t)];
+    u8       data[MSG_SIZE - sizeof(msg_hdr_t)];
 } untyped_msg_t;
 
 typedef struct _p_stat_t {

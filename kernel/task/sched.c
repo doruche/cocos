@@ -25,7 +25,6 @@ static list_t zombie_tasks;
 static tid_t next_tid = 1;
 
 static kmem_cache_t task_cache;
-static kmem_cache_t arch_ctx_cache;
 
 static tid_t
 alloc_tid() {
@@ -143,7 +142,6 @@ sched_init(u8* init_elf) {
     list_init(&running_tasks);
     list_init(&zombie_tasks);
     kmem_cache_create(&task_cache, "task_cache", sizeof(task_t));
-    kmem_cache_create(&arch_ctx_cache, "arch_ctx_cache", sizeof(arch_ctx_t));
 
     processor_init();
     notify("free pages after processor init: %ld", pm_count_free());
@@ -187,15 +185,13 @@ task_spawn(
     }
     
     // initialize arch context
-    task->actx = unwrap_null(kmem_cache_alloc(&arch_ctx_cache));
     vpn_t kstack_top = task_kstack_top(task->tid);
-    arch_ctx_init(
-        task->actx,
+    task->actx = unwrap_null(arch_ctx_creat(
         task->as->arch_vm,
         (kaddr_t)arch_utrap_ret,
         entry,
         kstack_top
-    );
+    ));
 
     list_push_back(&all_tasks, &task->node_all);
 
@@ -228,7 +224,7 @@ task_block(tid_t tid) {
     list_remove(&task->node_running);
     if (task == current_task) {
         arch_kctx_switch(
-            &task->actx->kctx,
+            arch_ctx_kctx(current_task->actx),
             scheduler_ctx
         );
     }
@@ -276,7 +272,6 @@ task_cleanup(task_t* task) {
     task_ipc_cleanup(task);
     arch_ctx_destroy(task->actx, task->as->arch_vm);
     unwrap_err(as_unbind(task->as, task));
-    kmem_cache_free(&arch_ctx_cache, task->actx);
     kmem_cache_free(&task_cache, task);
 }
 
@@ -342,7 +337,7 @@ task_crash_exit(result_t exit_code) {
     list_remove(&current->node_running);
     list_push_back(&zombie_tasks, &current->node_zombie);
     arch_kctx_switch(
-        &current->actx->kctx,
+        arch_ctx_kctx(current->actx),
         scheduler_ctx
     );
     unreachable();
@@ -357,7 +352,7 @@ task_yield(void) {
     current->state = T_READY;
     /* CRITICAL SECTION START */
     arch_kctx_switch(
-        &current->actx->kctx,
+        arch_ctx_kctx(current->actx),
         scheduler_ctx
     );
     /* CRITICAL SECTION END */
@@ -402,7 +397,7 @@ scheduler(void) {
                     task->tid, task->name);
                 arch_kctx_switch(
                     scheduler_ctx,
-                    &task->actx->kctx
+                    arch_ctx_kctx(task->actx)
                 );
                 arch_vm_deactivate();
                 current_task = NULL;

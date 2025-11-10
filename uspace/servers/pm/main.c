@@ -43,7 +43,26 @@ spawn_init_tasks(void) {
 
 static result_t
 pm_handle_msg(pm_msg_t* msg) {
-    todo()
+    switch (msg->header.id) {
+        case PM_PING:
+            trace("pm: received ping request");
+            msg->body.ping_resp.val = msg->body.ping.val;
+            msg->header.remote = msg->header.aux_xfer.port;
+            msg->header.aux_xfer.port = PID_INVALID;
+            msg->header.aux_xfer.flags = 0;
+            result_t ret = p_send((untyped_msg_t*)msg);
+            if (is_err(ret)) {
+                warn("pm: failed to send ping response: %s", strerr(ret));
+                return ret;
+            }
+            p_close(msg->header.remote);
+            trace("pm: sent ping response");
+            return OK;
+        default:
+            warn("pm: received unknown pm message id %ld",
+                msg->header.id);
+            return -ERR_NOENT;
+    }
 }
 
 static result_t
