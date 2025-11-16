@@ -14,6 +14,7 @@
 #pragma once
 
 #include <libs/prelude.h>
+#include <uspace/rpc.h>
 
 #define PNS_MAX_NAME_LEN 64
 
@@ -23,53 +24,48 @@ typedef enum _pns_msg_id_t {
     PNS_UNPUBLISH = 2,
 } pns_msg_id_t;
 
-typedef union _pns_msgbody_t {
-    /* 
-     * Ask pns to resolve a name to a port id.
-     * On success, pns will return a port with PORT_SEND right
-     * to the requester.
-     */
-    struct {
-        char name[PNS_MAX_NAME_LEN];
-    } resolve;
-    struct {
-        port_t port;
-    } resolve_resp;
-    /*
-     * Ask pns to publish a name to a port id.
-     * Port with PORT_SEND right should be attached
-     * in message header.
-     * On success, pns will return a secret key to
-     * the publisher, which can be used to unpublish later.
-     */
-    struct {
-        char name[PNS_MAX_NAME_LEN];
-    } publish;
-    struct {
-        u64 key;
-        bool success;
-    } publish_resp;
-    /*
-     * Ask pns to unpublish a name.
-     */
-    struct {
-        char name[PNS_MAX_NAME_LEN];
-        u64 key;
-    } unpublish;
-    struct {
-        bool success;
-    } unpublish_resp;
-} pns_msgbody_t;
-
-typedef struct _pns_msg_t {
+typedef union _pns_msg_t {
     union {
         struct {
-            msg_hdr_t header;
-            pns_msgbody_t body;
+            /* 
+             * Ask pns to resolve a name to a port id.
+             * On success, pns will return a port with PORT_SEND right
+             * to the requester.
+             */
+            struct {
+                char name[PNS_MAX_NAME_LEN];
+            } resolve;
+            struct {
+                port_t port;
+            } resolve_resp;
+            /*
+             * Ask pns to publish a name to a port id.
+             * Port with PORT_SEND right should be attached
+             * in message header.
+             * On success, pns will return a secret key to
+             * the publisher, which can be used to unpublish later.
+             */
+            struct {
+                char name[PNS_MAX_NAME_LEN];
+            } publish;
+            struct {
+                u64 key;
+                bool success;
+            } publish_resp;
+            /*
+             * Ask pns to unpublish a name.
+             */
+            struct {
+                char name[PNS_MAX_NAME_LEN];
+                u64 key;
+            } unpublish;
+            struct {
+                bool success;
+            } unpublish_resp;
         };
-        u8 padding[MSG_SIZE];
+        u8 padding[RPC_MSG_SIZE]; 
     };
+
 } pns_msg_t;
 
-static_assert(sizeof(pns_msg_t) == MSG_SIZE);
-static_assert(offset_of(pns_msg_t, header) == 0);
+static_assert(sizeof(pns_msg_t) == RPC_MSG_SIZE);

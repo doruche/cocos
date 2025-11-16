@@ -154,28 +154,16 @@ sys_p_close(port_t pid) {
     );
 }
 
-static inline result_t
-sys_p_transfer(
-    port_t pid,
-    tid_t dst,
-    port_flags_t flags
-) {
-    return arch_syscall(
-        SYS_P_TRANSFER,
-        (u64)(pid),
-        (u64)(dst),
-        (u64)(flags),
-        0,
-        0
-    );
-}
 
 static inline result_t
-sys_p_send(const untyped_msg_t* msg) {
+sys_p_send(
+    port_t remote,
+    const untyped_msg_t* msg
+) {
     return arch_syscall(
         SYS_P_SEND,
+        (u64)(remote),
         (u64)(msg),
-        0,
         0,
         0,
         0
@@ -199,14 +187,15 @@ sys_p_notify(
 
 static inline result_t
 sys_p_recv(
+    port_t local,
     untyped_msg_t* msg,
     notif_t* notif
 ) {
     return arch_syscall(
         SYS_P_RECV,
+        (u64)(local),
         (u64)(msg),
         (u64)(notif),
-        0,
         0,
         0
     );

@@ -10,48 +10,15 @@ typedef u64 port_t;
 /* pm defined */
 #define PID_PNS     ((port_t)53)
 
-
-typedef u64 port_flags_t;
-#define PORT_SEND       (1L << 0)
-#define PORT_RECV       (1L << 1)
-// after 12 bits are special options for port transfer
-#define PORT_TRANSFER_DISCARD   (1L << 12)
-#define port_privs(flags) ((flags) & 0xFFF)
-#define port_has_send(privs) (((privs) & PORT_SEND) != 0)
-#define port_has_recv(privs) (((privs) & PORT_RECV) != 0)
-
-
-#define MSG_SIZE 256
-typedef u64 msg_id_t;
-/* synchronous message */
-typedef struct _msg_hdr_t {
-    union {
-        /* for receivers */
-        port_t  local; 
-        /* for senders */
-        port_t  remote;
-    };
-    struct {
-        /* auxiliary port to transfer */
-        port_t  port;
-        /* transfer flags */
-        port_flags_t flags;
-    } aux_xfer;
-    /* custom message id. */
-    msg_id_t id;
-    /* convenience access for following message body */
-    u8 body[0];
-} msg_hdr_t;
-
+#define MSG_SIZE 512
 typedef struct _untyped_msg_t {
-    msg_hdr_t header;
-    u8       data[MSG_SIZE - sizeof(msg_hdr_t)];
+    u8 raw[MSG_SIZE];
 } untyped_msg_t;
 
 typedef struct _p_stat_t {
-    port_t  id;
-    port_flags_t privs;
-} p_stat_t; 
+    port_t id;
+    tid_t owner;
+} p_stat_t;
 
 /* asynchronous notification */
 typedef struct _notif_t {

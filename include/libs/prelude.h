@@ -118,6 +118,7 @@ typedef isize result_t;
 #define ERR_ABORT   7  // Operation aborted
 #define ERR_MISSMATCH 8  // Entity mismatch
 #define ERR_NOSPC   9  // No space left
+#define ERR_MSG_TOOLONG 10 // Message too long
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
@@ -168,7 +169,6 @@ void    flush(void);
 #define SYS_TASK_YIELD  8
 #define SYS_P_CREAT     9
 #define SYS_P_CLOSE     10
-#define SYS_P_TRANSFER  11
 #define SYS_P_SEND      12
 #define SYS_P_RECV      13
 #define SYS_TASK_BLOCK  14

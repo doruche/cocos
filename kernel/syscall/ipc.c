@@ -23,55 +23,21 @@ SYSCALL_DEFINE1(p_close, port_t, pid) {
     return p_close(pid, current);
 }
 
-// so ugly...
-// so many checks here...
-SYSCALL_DEFINE3(
-    p_transfer,
-    port_t, pid,
-    tid_t, dst,
-    port_flags_t, flags
+SYSCALL_DEFINE2(
+    p_send, 
+    port_t, remote,
+    const untyped_msg_t*, msg
 ) {
     task_t* current = unwrap_null(current_task);
-    task_t* dst_task = NULL;
-    result_t ret = task_get(dst, &dst_task);
-    if (is_err(ret)) {
-        warn("sys_p_transfer: no such destination task %d", dst);
-        return -ERR_NOENT;
-    }
-    if (dst_task == current) {
-        warn("sys_p_transfer: cannot transfer port %ld to self", pid);
-        return -ERR_INVAL;
-    }
-    if (flags == 0) {
-        warn("sys_p_transfer: no privileges specified for port %ld transfer", pid);
-        return -ERR_INVAL;
-    }
-    if ((flags & ~(PORT_SEND | PORT_RECV | PORT_TRANSFER_DISCARD)) != 0) {
-        warn("sys_p_transfer: invalid flags %lx for port %ld transfer", flags, pid);
-        return -ERR_INVAL;
-    }
-    ret = p_transfer(pid, dst_task, current, flags);
-    if (is_err(ret)) {
-        warn("sys_p_transfer: failed to transfer port %ld to task %d: %s",
-            pid, dst, strerr(ret));
-    } else {
-        trace("sys_p_transfer: task %d successfully transferred port %ld to task %d with flags %lx",
-            current->tid, pid, dst, flags);
-    }
-    return ret;
-}
-
-SYSCALL_DEFINE1(p_send, msg_hdr_t*, msg) {
-    task_t* current = unwrap_null(current_task);
     trace("sys_p_send: task %d sending message to port %ld",
-        current->tid, msg->remote);
-    result_t ret = p_send(msg);
+        current->tid, remote);
+    result_t ret = p_send(remote, msg);
     if (is_err(ret)) {
         warn("sys_p_send: failed to send message to port %ld: %s",
-            msg->remote, strerr(ret));
+            remote, strerr(ret));
     } else {
         trace("sys_p_send: task %d successfully sent message to port %ld",
-            current->tid, msg->remote);
+            current->tid, remote);
     }
     return ret;
 }
@@ -95,21 +61,26 @@ SYSCALL_DEFINE2(
     return ret;
 }
 
-SYSCALL_DEFINE2(
-    p_recv, 
-    msg_hdr_t*, msg,
+SYSCALL_DEFINE3(
+    p_recv,
+    port_t, local, 
+    untyped_msg_t*, msg,
     notif_t*, notif
 ) {
     task_t* current = unwrap_null(current_task);
     trace("sys_p_recv: task %d receiving message on port %ld",
-        current->tid, msg->local);
-    result_t ret = p_recv(msg, notif);
+        current->tid, local);
+    result_t ret = p_recv(
+        local,
+        msg,
+        notif
+    );
     if (is_err(ret)) {
         warn("sys_p_recv: failed to receive message on port %ld: %s",
-            msg->local, strerr(ret));
+            local, strerr(ret));
     } else {
         trace("sys_p_recv: task %d successfully received message on port %ld",
-            current->tid, msg->local);
+            current->tid, local);
     }
     return ret;
 }
@@ -122,15 +93,18 @@ SYSCALL_DEFINE2(
     task_t* current = unwrap_null(current_task);
     trace("sys_p_stat: task %d querying stat of port %ld",
         current->tid, pid);
-    task_port_t* tport = NULL;
-    tp_get(current, pid, &tport);
-    
-    stat->id = pid;
-    if (tport == NULL) {
-        stat->privs = 0;
+
+    ipc_port_t* port = NULL;
+    result_t ret = p_get(pid, &port);
+    if (is_err(ret)) {
+        warn("sys_p_stat: failed to get port %ld: %s",
+            pid, strerr(ret));
     } else {
-        stat->privs = port_privs(tport->privs);
+        stat->id = pid;
+        stat->owner = port->rx.task->tid;
+        trace("sys_p_stat: task %d successfully queried stat of port %ld",
+            current->tid, pid);
     }
 
-    return OK;
+    return ret;
 }

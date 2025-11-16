@@ -5,6 +5,7 @@
 #pragma once
 
 #include <libs/prelude.h>
+#include <uspace/rpc.h>
 
 typedef enum _echo_msg_id_t {
     ECHO_ECHO = 0,
@@ -12,26 +13,20 @@ typedef enum _echo_msg_id_t {
 
 #define ECHO_MSG_MAX_LEN 128
 
-typedef union _echo_msgbody_t {
-    struct {
-        char data[ECHO_MSG_MAX_LEN];
-        usize len;
-    } echo;
-    struct {
-        char data[ECHO_MSG_MAX_LEN];
-        usize len;
-    } echo_resp;
-} echo_msgbody_t;
-
 typedef struct _echo_msg_t {
     union {
         struct {
-            msg_hdr_t header;
-            echo_msgbody_t body;
+            struct {
+                char data[ECHO_MSG_MAX_LEN];
+                usize len;
+                } echo;
+            struct {
+                char data[ECHO_MSG_MAX_LEN];
+                usize len;
+                } echo_resp;
         };
-        u8 padding[MSG_SIZE];
+        u8 padding[RPC_MSG_SIZE];
     };
 } echo_msg_t;
 
-static_assert(sizeof(echo_msg_t) == MSG_SIZE);
-static_assert(offset_of(echo_msg_t, header) == 0);
+static_assert(sizeof(echo_msg_t) == RPC_MSG_SIZE);

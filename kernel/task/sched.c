@@ -196,7 +196,6 @@ task_spawn(
     list_push_back(&all_tasks, &task->node_all);
 
     // ipc_init
-    list_init(&task->port_list); 
     list_init(&task->notif_list);
 
     *out = task;
@@ -273,6 +272,19 @@ task_cleanup(task_t* task) {
     arch_ctx_destroy(task->actx, task->as->arch_vm);
     unwrap_err(as_unbind(task->as, task));
     kmem_cache_free(&task_cache, task);
+
+    unwrap_err(k_notify(
+        TID_PM,
+        (notif_t){
+            .type = NOTIF_TASK_EXIT,
+            .payload = {
+                .task_exited = {
+                    .tid = task->tid,
+                    .exit_code = task->exit_code,
+                }
+            }
+        }
+    ));
 }
 
 // from process manager's sys_kill
@@ -287,22 +299,11 @@ task_kill(tid_t tid) {
     assert_ne(task, current_task);
     assert(task->state == T_READY || task->state == T_BLOCKED);
     task->state = T_ZOMBIE;
+    task->exit_code = -ERR_KILLED;
     list_remove(&task->node_running);
     list_push_back(&zombie_tasks, &task->node_zombie);
     trace("task_kill: task tid=%ld name=%s killed",
         task->tid, task->name);
-    unwrap_err(p_knotify(
-        PID_PM,
-        (notif_t){
-            .type = NOTIF_TASK_EXIT,
-            .payload = {
-                .task_exited = {
-                    .tid = task->tid,
-                    .exit_code = -ERR_KILLED,
-                }
-            }
-        }
-    ));
     return OK;
 }
 
@@ -319,21 +320,10 @@ task_crash_exit(result_t exit_code) {
     
     trace("task_crash_exit: task tid=%ld name=%s exiting with code %ld",
         current->tid, current->name, exit_code);
-    unwrap_err(p_knotify(
-        PID_PM,
-        (notif_t){
-            .type = NOTIF_TASK_EXIT,
-            .payload = {
-                .task_exited = {
-                    .tid = current->tid,
-                    .exit_code = exit_code,
-                }
-            }
-        }
-    ));
 
     /* CRITICAL SECTION START */
     current->state = T_ZOMBIE;
+    current->exit_code = exit_code;
     list_remove(&current->node_running);
     list_push_back(&zombie_tasks, &current->node_zombie);
     arch_kctx_switch(
@@ -364,14 +354,7 @@ task_dump(void) {
     list_foreach(iter, &all_tasks) {
         task_t* task = list_entry(iter, task_t, node_all);
         info("task tid=%ld name=%s state=%d",
-            task->tid, task->name, task->state);
-        list_foreach(port_iter, &task->port_list) {
-            task_port_t* tport = list_entry(port_iter, task_port_t, node);
-            ipc_port_t* port = NULL;
-            unwrap_err(p_get(tport->id, &port));
-            info("  port id=%ld privs=%lx dead=%d tx_rc=%ld",
-                tport->id, tport->privs, port->dead, port->tx_rc);
-        }
+            task->tid, task->name, task->state);        
     }
     info("==== task dump end ====");
 }
@@ -406,7 +389,6 @@ scheduler(void) {
                  * Now we are back to scheduler context.
                  */
 
-
                 assert_ne(task->state, T_RUNNING); // should be managed by various ways
             } else {
                 panic("sched: found non-ready task in running_tasks list");
@@ -422,8 +404,9 @@ scheduler(void) {
                 task->tid, task->name);
         }
 
-        trace("sched: one full round done.");
-        trace("free pages: %ld", pm_count_free());
+        info("sched: one full round done.");
+        info("free pages: %ld", pm_count_free());
         task_dump();
+        ipc_port_dump();
     }
 }

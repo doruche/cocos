@@ -117,23 +117,23 @@ SYSCALL_DECLARE1(task_exit, result_t, exit_code);
 
 /* ipc */
 SYSCALL_DECLARE1(p_creat, port_t, req_pid);
-SYSCALL_DECLARE3(
-    p_transfer,
-    port_t, pid,
-    tid_t, dst,
-    port_flags_t, flags
-);
 SYSCALL_DECLARE1(p_close, port_t, pid);
-SYSCALL_DECLARE1(p_send, msg_hdr_t*, msg);
+SYSCALL_DECLARE2(
+    p_send,
+    port_t, remote,
+    const untyped_msg_t*, msg
+);
 SYSCALL_DECLARE2(
     p_notify,
     port_t, pid,
     const notif_t*, notif
 );
-SYSCALL_DECLARE2(
+SYSCALL_DECLARE4(
     p_recv, 
-    msg_hdr_t*, msg,
-    notif_t*, notif
+    port_t, local,
+    untyped_msg_t*, msg,
+    notif_t*, notif,
+    tid_t*, sender_tid
 );
 SYSCALL_DECLARE2(
     p_stat,

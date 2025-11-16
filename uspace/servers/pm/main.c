@@ -2,7 +2,7 @@
 #include "bfs.h"
 #include "pns.h"
 #include <libs/prelude.h>
-#include <uspace/ipc.h>
+#include <uspace/rpc.h>
 #include <uspace/syscall.h>
 #include <uspace/servers/pm.h>
 #include <uspace/servers/pns.h>
@@ -29,10 +29,6 @@ spawn_init_tasks(void) {
                 inode->name,
                 strerr(ret));
         }
-
-        /* set up initial IPC ports */
-        // unwrap_err(sys_p_transfer(PID_PM, tid, PORT_SEND));
-        unwrap_err(sys_p_transfer(PID_PNS, tid, PORT_SEND));
 
         trace("pm: spawned init task '%s' (tid %ld)",
             inode->name, tid);
@@ -102,22 +98,31 @@ main(void) {
 
     loop {
         untyped_msg_t msg = {0};
-        msg.header.local = PID_ANY;
         notif_t notif = {0};
-        result_t ret = p_recv(&msg, &notif);
+        result_t ret = OK;
+        port_t remote = PID_INVALID;
+
+        ret = rpc_recv(
+            PID_PM,
+            &msg,
+            &remote,
+            &notif
+        );
         if (is_err(ret)) {
-            warn("pm: sys_p_recv failed: %s", strerr(ret));
+            warn("pm: rpc_recv failed: %s", strerr(ret));
             continue;
         } else if (notif.type != 0) {
             ret = handle_notif(&notif);
             if (is_err(ret)) {
-                warn("pm: notification handling failed: %s", strerr(ret));
+                warn("pm: handle_notif failed: %s", strerr(ret));
             }
+            continue;
         } else {
             ret = msg_dispatch(&msg);
             if (is_err(ret)) {
-                warn("pm: message dispatch failed: %s", strerr(ret));
+                warn("pm: msg_dispatch failed: %s", strerr(ret));
             }
+            continue;
         }
     }
 

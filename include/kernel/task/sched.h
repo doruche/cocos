@@ -26,12 +26,13 @@ typedef struct _task_t {
     addr_space_t* as;
     
     /* ipc */
-    u8 msg_buf[MSG_MAX_SIZE]; // ipc buffer used for sending messages
+    u8 msg_buf[MSG_SIZE]; // ipc buffer used for sending messages
     list_elem_t node_port_wtx; // node in port's tx waitlist
-    list_t port_list; // list of task_port_t owned by this task
     list_t notif_list; // list of knotif_t
+    /* TODO: add task_port_t to avoid searching the whole global port list */
 
     /* scheduling */
+    result_t exit_code;
     list_elem_t node_all; // node in all tasks list
     list_elem_t node_running; // node in running tasks list
     list_elem_t node_zombie; // node in zombie tasks list
