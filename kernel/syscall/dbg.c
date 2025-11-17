@@ -11,7 +11,7 @@ SYSCALL_DEFINE2(
     if (len > array_size(buf) - 1) {
         panic("dbg_puts: len too large %ld", len);
     }
-    trace("dbg_puts: str=%p, len=%ld", str, len); 
+    pr_trace("dbg_puts: str=%p, len=%ld", str, len); 
     memcpy(buf, str, len);
     buf[len] = '\0';
 

@@ -29,7 +29,7 @@ proc_spawn(
 ) {
     elf_hdr_t* elf_hdr = (elf_hdr_t*)elf;
     if (memcmp(elf_hdr->e_ident, ELF_MAGIC, 4) != 0) {
-        warn("proc_spawn: invalid elf magic");
+        pr_warn("proc_spawn: invalid elf magic");
         return -ERR_INVAL;
     }
 
@@ -39,7 +39,7 @@ proc_spawn(
         ASID_NEW
     );
     if (is_err(tid)) {
-        warn("proc_spawn: sys_task_spawn failed: %s",
+        pr_warn("proc_spawn: sys_task_spawn failed: %s",
             strerr(tid));
         return tid;
     }
@@ -64,7 +64,7 @@ proc_spawn(
         );
 
         if (is_err(ret)) {
-            warn("proc_spawn: sys_as_map failed: %s",
+            pr_warn("proc_spawn: sys_as_map failed: %s",
                 strerr(ret));
             return ret;
         }
@@ -77,7 +77,7 @@ proc_spawn(
             phdr->p_filesz
         );
         if (is_err(ret)) {
-            warn("proc_spawn: sys_as_write failed: %s",
+            pr_warn("proc_spawn: sys_as_write failed: %s",
                 strerr(ret));
             return ret;
         }
@@ -85,7 +85,7 @@ proc_spawn(
 
     unwrap_err(sys_task_resume(tid));
     *out_tid = tid;
-    info("proc_spawn: spawned process '%s' (tid %ld)",
+    pr_info("proc_spawn: spawned process '%s' (tid %ld)",
         name, tid);
     return OK;
 }

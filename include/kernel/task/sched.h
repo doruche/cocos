@@ -17,7 +17,7 @@ typedef enum _task_state_t {
     T_ZOMBIE,
 } task_state_t;
 
-typedef struct _addr_space_t addr_space_t; // forward declaration
+typedef struct _addr_space_t addr_space_t; /* forward declaration */
 typedef struct _task_t {
     char name[TASK_NAME_MAX_LEN];
     tid_t tid __readonly;
@@ -26,16 +26,22 @@ typedef struct _task_t {
     addr_space_t* as;
     
     /* ipc */
-    u8 msg_buf[MSG_SIZE]; // ipc buffer used for sending messages
-    list_elem_t node_port_wtx; // node in port's tx waitlist
-    list_t notif_list; // list of knotif_t
-    /* TODO: add task_port_t to avoid searching the whole global port list */
+    msg_t msg; /* ipc buffer used for sending messages */
+    notif_t notifs; /* notifications bitmap */
+    /* 
+     * which task this task is willing to receive messages from 
+     * can be a specific tid, IPC_OPEN or IPC_DENY (except TID_KERNEL,
+     * which is used only in message headers to indicate kernel source).
+     */
+    tid_t listen_on;
+    list_t sender_list; /* tasks blocking on sending to this task */
+    list_elem_t node_sender; /* node in sender list of another task */
 
     /* scheduling */
-    result_t exit_code;
-    list_elem_t node_all; // node in all tasks list
-    list_elem_t node_running; // node in running tasks list
-    list_elem_t node_zombie; // node in zombie tasks list
+    result_t exit_code; /* user space exit code */
+    list_elem_t node_all; /* node in all tasks list */
+    list_elem_t node_running; /* node in running tasks list */
+    list_elem_t node_zombie; /* node in zombie tasks list */
 } task_t;
 
 // layout
@@ -56,7 +62,8 @@ result_t task_spawn(
     asid_t asid,
     task_t** out
 );
-result_t    task_kill(tid_t tid);
-void    task_crash_exit(result_t exit_code);
+void __noreturn task_exit(result_t exit_code);
+result_t    task_destroy(tid_t tid);
+result_t    task_getzombie(zombie_task_t* out);
 
 void    scheduler(void);

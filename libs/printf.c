@@ -5,7 +5,7 @@ static char buf[256];
 static usize buf_index = 0;
 
 void
-flush(void) {
+printf_flush(void) {
     usize len = buf_index;
     if (len > 0) {
         buf[buf_index] = '\0';
@@ -17,11 +17,11 @@ flush(void) {
 static usize
 putc(char c) {
     if (buf_index >= sizeof(buf) - 1) {
-        flush();
+        printf_flush();
     }
     buf[buf_index++] = c;
     if (c == '\n') {
-        flush();
+        printf_flush();
     }
     return 1;
 }
@@ -172,7 +172,6 @@ vprintf(const char* fmt, va_list ap)  {
             printed += putc(fmt[i]);
         }
     }
-    flush();
     return printed;
 }
 

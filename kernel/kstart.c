@@ -10,25 +10,23 @@
 void __noreturn
 kstart(bootinfo_t* bootinfo) {
     pm_init(bootinfo);
-    info("physical page allocator initialized.");
+    pr_info("physical page allocator initialized.");
     arch_kvm_init();
-    info("kernel virtual memory initialized.");
+    pr_info("kernel virtual memory initialized.");
     arch_ctx_mm_init();
-    info("architecture-specific context subsystem initialized.");
+    pr_info("architecture-specific context subsystem initialized.");
     kmalloc_init();
-    info("kernel heap allocator initialized.");
+    pr_info("kernel heap allocator initialized.");
     as_init();
-    info("address space subsystem initialized.");
-    ipc_init();
-    info("ipc subsystem initialized.");
+    pr_info("ipc subsystem initialized.");
     arch_timer_init();
-    info("timer initialized.");
+    pr_info("timer initialized.");
     arch_intr_set(true);
-    info("interrupts enabled.");
+    pr_info("interrupts enabled.");
  
     // vm_test();
 
-    notify("cocos kernel booted successfully, jumping to scheduler...");
+    pr_notify("cocos kernel booted successfully, jumping to scheduler...");
     sched_init(bootinfo->bootimage);
 
     unreachable()

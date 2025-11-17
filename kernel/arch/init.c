@@ -42,7 +42,7 @@ arch_init(void) {
     clear_bss();
     platform_bootinfo_ctor(&bootinfo);
 
-    info("arch init...");
+    pr_info("arch init...");
 
     disable_intr();
     w_sstatus(r_sstatus() | SPP_USER);

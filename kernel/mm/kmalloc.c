@@ -25,7 +25,7 @@ kmalloc(usize size) {
             return kmem_cache_alloc(&caches[i]);
         }
     }
-    warn("kmalloc: size %d too large", size);
+    pr_warn("kmalloc: size %d too large", size);
     return NULL;
 }
 

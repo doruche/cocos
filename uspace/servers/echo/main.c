@@ -1,56 +1,53 @@
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
-#include <uspace/servers/pns.h>
 #include <uspace/servers/echo.h>
-
-static port_t echo_port;
 
 result_t
 main(void) {
-    unwrap_err(p_creat(PID_ANY, &echo_port));
-    pns_msg_t pns_msg = {0};
-    pns_msg.header.remote = PID_PNS;
-    pns_msg.header.id = PNS_REQ_PUBLISH;
-    pns_msg.header.aux_xfer.port = echo_port;
-    pns_msg.header.aux_xfer.flags = PORT_SEND;
-    strcpy(pns_msg.body.publish.name, "echo");
-    result_t ret = p_call(
-        (untyped_msg_t*)&pns_msg,
-        (untyped_msg_t*)&pns_msg,
-        NULL
-    );
-    if (is_err(ret)) {
-        panic("echo: failed to publish echo service: %s", strerr(ret));
-    }
-    if (!pns_msg.body.publish_resp.success) {
-        panic("echo: pns refused to publish echo service");
-    }
+    unwrap_err(tns_publish("echo"));
 
-    printf("echo: listening on port %ld\n", echo_port);
+    pr_info("echo server started.");
 
     loop {
-        echo_msg_t msg = {0};
-        notif_t notif = {0};
-        result_t ret = p_recv((untyped_msg_t*)&msg, &notif);
+        msg_t msg = {0};
+        result_t ret = ipc_recv(IPC_OPEN, &msg);
         if (is_err(ret)) {
-            warn("echo: p_recv failed: %s", strerr(ret));
+            pr_warn("echo: ipc_recv failed: %s",
+                strerr(ret));
             continue;
-        } else if (notif.type != 0) {
-            warn("echo: received unexpected notification type %ld", notif.type);
+        }
+        if (msg.type != MSG_ECHO) {
+            pr_warn("echo: received unknown msg type %ld from %ld",
+                msg.type, msg.src);
             continue;
-        } else {
-            switch (msg.header.id) {
-                case ECHO_REQ_ECHO:
-                    char buf[ECHO_MSG_MAX_LEN] = {0};
-                    usize len = min(msg.body.echo.len, ECHO_MSG_MAX_LEN - 1);
-                    memcpy(buf, msg.body.echo.data, len);
-                    printf("echo: received message: '%s'\n", buf);
-                    break;
-                default:
-                    printf("echo: received unknown message id %ld\n", msg.header.id);
-            }
         }
         
+        msg_t resp = {0};
+        resp.type = MSG_ECHO;
+        switch (msg.echo.type) {
+            case ECHO_ECHO: {
+                msg.echo.echo.data[
+                    msg.echo.echo.len - 1
+                ] = '\0';
+                pr_trace("echo: received echo msg from %ld: '%s'",
+                    msg.src,
+                    msg.echo.echo.data);
+                resp.echo.type = ECHO_ECHO_RESP;
+                strncpy(
+                    resp.echo.echo_resp.data,
+                    msg.echo.echo.data,
+                    msg.echo.echo.len
+                );
+                resp.echo.echo_resp.len = msg.echo.echo.len;
+                rpc_reply(msg.src, &resp);
+                break;
+            }
+            default: {
+                pr_warn("echo: received unknown echo msg type %ld from %ld",
+                    msg.echo.type, msg.src);
+                break;
+            }
+        }
     }
 
     return OK;

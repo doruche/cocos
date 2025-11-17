@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "libs/prelude.h"
+#include <libs/prelude.h>
 
 #define BFS_MAGIC       0x00736662 // "bfs\0"
 

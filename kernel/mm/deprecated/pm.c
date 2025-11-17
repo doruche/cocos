@@ -141,7 +141,7 @@ pm_zone_init(pm_zone_t* zone, memzone_t* freemem) {
             cur_npages += unit_size;
         }
 
-        trace("pm_zone_init: order %d, free unit_idx [%ld , %ld)",
+        pr_trace("pm_zone_init: order %d, free unit_idx [%ld , %ld)",
             order,
             sunit_idx,
             unit_idx + 1
@@ -334,18 +334,18 @@ void
 pm_dump(void) {
     // a top-down dump
 
-    info("pm zones:");
+    pr_info("pm zones:");
 
     for (usize i = 0; i < npmzones; i++) {
         pm_zone_t* zone = &pmzones[i];
-        info("zone %d: start ppn = 0x%lx, npages = %ld, nfree = %ld", 
+        pr_info("zone %d: start ppn = 0x%lx, npages = %ld, nfree = %ld", 
             i, zone->start, zone->npages, zone->nfree);
         buddy_bitmap_t* cur = get_bitmap(zone, BUDDY_MAX_ORDER);
         loop {
             bit_traverse(cur->bitmap, cur->nunits, byte_idx, bit_idx) {
                 usize unit_idx = byte_idx * 8 + bit_idx;
                 if (!bm_test(cur, unit_idx)) {
-                    info("  order %d: free unit %ld, ppn 0x%lx", 
+                    pr_info("  order %d: free unit %ld, ppn 0x%lx", 
                         cur->order, unit_idx, zone->salloc + unit_idx * (1 << cur->order));
                 }
             }
@@ -355,7 +355,7 @@ pm_dump(void) {
             cur = next_bitmap(cur);
         }    
     }
-    info("end of pm dump.");
+    pr_info("end of pm dump.");
 }
 
 usize

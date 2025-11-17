@@ -1,1 +1,1 @@
-obj-y := kstart.o intr.o
+obj-y := kstart.o intr.o ipc.o

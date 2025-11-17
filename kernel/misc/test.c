@@ -13,7 +13,7 @@
 
 void
 printk_test(void) {
-    notify("------ test printk ------");
+    pr_notify("------ test printk ------");
     printk("1. basic string:\n");
     printk("\the quick brown fox jumps over the lazy dog\n");
     printk("\tlorem ipsum dolor sit amet, consectetur adipiscing elit\n");
@@ -33,7 +33,7 @@ printk_test(void) {
     printk("5. mixed:\n");
     printk("\tHello, %s! Your score is %d/%d (0x%x, %b, %o)\n", "Alice", 95, 100, 95, 95, 95);
     printk("6. percent sign: %%\n");
-    notify("------ test printk end ------");
+    pr_notify("------ test printk end ------");
 }
 
 void
@@ -47,10 +47,10 @@ panic_test(void) {
 
 void
 pm_test(void) {
-    notify("------ test physical memory allocator ------");
+    pr_notify("------ test physical memory allocator ------");
 
     usize nfree_pages_before = pm_count_free();
-    info("nfree pages before test: %d", nfree_pages_before);
+    pr_info("nfree pages before test: %d", nfree_pages_before);
 
     ppn_t pages[10];
 
@@ -72,7 +72,7 @@ pm_test(void) {
     }
 
     pm_dump();
-    info("nfree pages after allocating multiple pages: %d", pm_count_free());
+    pr_info("nfree pages after allocating multiple pages: %d", pm_count_free());
 
     for (int i = 0; i < 10; i++) {
         assert(pm_decref(pages[i]));
@@ -81,19 +81,19 @@ pm_test(void) {
 
     usize nfree_pages_after = pm_count_free();
     assert_eq(nfree_pages_before, nfree_pages_after);
-    info("nfree pages after freeing multiple pages: %d", nfree_pages_after);
+    pr_info("nfree pages after freeing multiple pages: %d", nfree_pages_after);
 
     pm_dump();
 
-    notify("------ test physical memory allocator end ------");
+    pr_notify("------ test physical memory allocator end ------");
 }
 
 void
 slab_test(void) {
-    notify("------ test slab allocator ------");
+    pr_notify("------ test slab allocator ------");
 
     usize nfree_pages_before = pm_count_free();
-    info("nfree pages before test: %d", nfree_pages_before);
+    pr_info("nfree pages before test: %d", nfree_pages_before);
 
     kmem_cache_t cache;
     kmem_cache_create(&cache, "test_cache", 64);
@@ -101,27 +101,27 @@ slab_test(void) {
     for (int i = 0; i < 1000; i++) {
         objs[i] = kmem_cache_alloc(&cache);
         assert(objs[i] != NULL);
-        trace("allocated object %d: %p\n", i, objs[i]);
+        pr_trace("allocated object %d: %p\n", i, objs[i]);
     }
     kmem_cache_dump(&cache);
     for (int i = 0; i < 1000; i++) {
         kmem_cache_free(&cache, objs[i]);
-        trace("freed object %d: %p\n", i, objs[i]);
+        pr_trace("freed object %d: %p\n", i, objs[i]);
     }
     kmem_cache_dump(&cache);
 
     usize nfree_pages_after = pm_count_free();
-    info("nfree pages after test: %d", nfree_pages_after);
+    pr_info("nfree pages after test: %d", nfree_pages_after);
 
-    notify("------ test slab allocator end ------");
+    pr_notify("------ test slab allocator end ------");
 }
 
 void
 vm_test(void) {
-    notify("------ test vm ------");
+    pr_notify("------ test vm ------");
 
     usize nfree_pages_before = pm_count_free();
-    info("nfree pages before test: %d", nfree_pages_before);
+    pr_info("nfree pages before test: %d", nfree_pages_before);
 
     arch_vm_t* vm = arch_vm_creat();    
 
@@ -136,7 +136,7 @@ vm_test(void) {
         );
     }
 
-    info("nfree pages after mapping: %d", pm_count_free());
+    pr_info("nfree pages after mapping: %d", pm_count_free());
 
     // check mappings
     for (vpn_t vpn = 0; vpn < PA2PN(PHYSTOP) - PA2PN(KERN_BASE); vpn++) {
@@ -144,23 +144,23 @@ vm_test(void) {
         assert_eq(ppn, vpn + PA2PN(KERN_BASE));
         arch_vm_unmap(vm, vpn);
     }
-    info("nfree pages after unmapping: %d", pm_count_free());
+    pr_info("nfree pages after unmapping: %d", pm_count_free());
     arch_vm_destroy(vm);
 
     usize nfree_pages_after = pm_count_free();
 
     assert_eq(nfree_pages_before, nfree_pages_after);
-    info("nfree pages after test: %d", nfree_pages_after);
+    pr_info("nfree pages after test: %d", nfree_pages_after);
 
-    notify("------ test pgtbl end ------");
+    pr_notify("------ test pgtbl end ------");
 }
 
 void
 as_test(void) {
-    notify("------ test vm ------");
+    pr_notify("------ test vm ------");
 
     usize nfree_pages_before = pm_count_free();
-    info("nfree pages before test: %d", nfree_pages_before);
+    pr_info("nfree pages before test: %d", nfree_pages_before);
 
 //    vm_space_t test_vms;
 //    vm_init(&test_vms);
@@ -192,7 +192,7 @@ as_test(void) {
 //        VM_READ | VM_WRITE | VM_EXEC
 //    );
 //
-//    info("nfree pages after mapping: %d", pm_count_free());
+//    pr_info("nfree pages after mapping: %d", pm_count_free());
 //
 //    vm_activate(&test_vms);
 //
@@ -239,8 +239,8 @@ as_test(void) {
 //    usize nfree_pages_after = pm_count_free();
 //    // we use kmem_cache in vm, so the number of free pages may not be the same
 //    // but should be close
-//    info("nfree pages after test: %d", nfree_pages_after);
+//    pr_info("nfree pages after test: %d", nfree_pages_after);
 //    assert_eq(nfree_pages_before, nfree_pages_after);
 //
-    notify("------ test vm end ------");
+    pr_notify("------ test vm end ------");
 }

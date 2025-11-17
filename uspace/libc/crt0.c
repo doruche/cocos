@@ -9,5 +9,6 @@ extern result_t __main(isize argc, char* argv[]);
 void
 crt0(void) {
     result_t ret = __main(0, NULL);
+    printf_flush();
     task_exit(ret);
 }

@@ -4,107 +4,51 @@
 #include <kernel/task/processor.h>
 #include <kernel/syscall.h>
 
-SYSCALL_DEFINE1(p_creat, port_t, req_pid) {
-    task_t* current = unwrap_null(current_task);
-    port_t port;
-    result_t ret = p_creat(req_pid, current, &port);
-    if (is_err(ret)) {
-        warn("sys_p_creat: failed to create port: %s",
-            strerr(ret));
-    } else {
-        trace("sys_p_creat: task %d successfully created port %ld",
-            current->tid, port);
-    }
-    return is_err(ret) ? ret : port;
-}
-
-SYSCALL_DEFINE1(p_close, port_t, pid) {
-    task_t* current = unwrap_null(current_task);
-    return p_close(pid, current);
-}
-
-SYSCALL_DEFINE2(
-    p_send, 
-    port_t, remote,
-    const untyped_msg_t*, msg
+SYSCALL_DEFINE4(
+    ipc,
+    tid_t, send_to,
+    tid_t, recv_from,
+    msg_t*, msg,
+    ipc_flags_t, flags
 ) {
-    task_t* current = unwrap_null(current_task);
-    trace("sys_p_send: task %d sending message to port %ld",
-        current->tid, remote);
-    result_t ret = p_send(remote, msg);
-    if (is_err(ret)) {
-        warn("sys_p_send: failed to send message to port %ld: %s",
-            remote, strerr(ret));
-    } else {
-        trace("sys_p_send: task %d successfully sent message to port %ld",
-            current->tid, remote);
+    if (flags & IPC_KERN) {
+        pr_warn("sys_ipc: user task trying to use IPC_KERN flag");
+        return -ERR_PERM;
     }
-    return ret;
-}
-
-SYSCALL_DEFINE2(
-    p_notify,
-    port_t, pid,
-    const notif_t*, notif
-) {
-    task_t* current = unwrap_null(current_task);
-    trace("sys_p_notify: task %d sending notification to port %ld",
-        current->tid, pid);
-    result_t ret = p_notify(pid, *notif);
-    if (is_err(ret)) {
-        warn("sys_p_notify: failed to send notification to port %ld: %s",
-            pid, strerr(ret));
-    } else {
-        trace("sys_p_notify: task %d successfully sent notification to port %ld",
-            current->tid, pid);
+    if (send_to == current_task->tid ||
+    recv_from == current_task->tid) {
+        pr_warn("sys_ipc: task tid=%ld name=%s trying to ipc with itself",
+            current_task->tid, current_task->name);
+        return -ERR_INVAL;
     }
-    return ret;
-}
 
-SYSCALL_DEFINE3(
-    p_recv,
-    port_t, local, 
-    untyped_msg_t*, msg,
-    notif_t*, notif
-) {
-    task_t* current = unwrap_null(current_task);
-    trace("sys_p_recv: task %d receiving message on port %ld",
-        current->tid, local);
-    result_t ret = p_recv(
-        local,
+    task_t* send_task = NULL;
+    if (flags & IPC_SEND) {
+        result_t ret = task_get(send_to, &send_task);
+        if (is_err(ret)) {
+            pr_warn("sys_ipc: no such task %ld", send_to);
+            return ret;
+        }
+    }
+
+    return ipc(
+        send_task,
+        recv_from,
         msg,
-        notif
+        flags
     );
-    if (is_err(ret)) {
-        warn("sys_p_recv: failed to receive message on port %ld: %s",
-            local, strerr(ret));
-    } else {
-        trace("sys_p_recv: task %d successfully received message on port %ld",
-            current->tid, local);
-    }
-    return ret;
 }
 
 SYSCALL_DEFINE2(
-    p_stat,
-    port_t, pid,
-    p_stat_t*, stat
+    notify,
+    tid_t, dst,
+    notif_t, notifs
 ) {
-    task_t* current = unwrap_null(current_task);
-    trace("sys_p_stat: task %d querying stat of port %ld",
-        current->tid, pid);
-
-    ipc_port_t* port = NULL;
-    result_t ret = p_get(pid, &port);
+    task_t* dst_task = NULL;
+    result_t ret = task_get(dst, &dst_task);
     if (is_err(ret)) {
-        warn("sys_p_stat: failed to get port %ld: %s",
-            pid, strerr(ret));
-    } else {
-        stat->id = pid;
-        stat->owner = port->rx.task->tid;
-        trace("sys_p_stat: task %d successfully queried stat of port %ld",
-            current->tid, pid);
+        pr_warn("sys_notify: no such task %ld", dst);
+        return ret;
     }
-
-    return ret;
+    return notify(dst_task, notifs);
 }

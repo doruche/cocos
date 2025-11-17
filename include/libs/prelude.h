@@ -83,28 +83,6 @@ typedef u64 ppn_t;
 typedef u64 vpn_t;
 typedef u64 pte_t;
 
-typedef usize tid_t;
-#define TID_INVALID ((tid_t)0)
-#define TID_PM      ((tid_t)1)
-
-typedef u64 asid_t;
-#define ASID_INVALID ((asid_t)-1)
-#define ASID_NEW     ((asid_t)0)
-typedef u64 vm_flags_t;
-#define VM_READ  (1L << 0)
-#define VM_WRITE (1L << 1)
-#define VM_EXEC  (1L << 2)
-#define VM_USER  (1L << 3)
-// fake mapping, e.g. for guard page.
-// note that when setting up fake mapping, it is necessary to set at least one PTE flag,
-// on which we rely to detect fake mapping in page fault handler.
-#define VM_FAKE  (1L << 5)
-// anonymous mapping.
-#define VM_ANON  (1L << 6)
-#define PPN_ANON 0L
-
-typedef u8 irq_t;
-
 typedef isize result_t;
 #define is_err(result) ((result) < 0)
 #define OK          0  // Success
@@ -119,12 +97,13 @@ typedef isize result_t;
 #define ERR_MISSMATCH 8  // Entity mismatch
 #define ERR_NOSPC   9  // No space left
 #define ERR_MSG_TOOLONG 10 // Message too long
+#define ERR_DEAD_TASK 11 // Destination task is dead
+#define ERR_WOULD_BLOCK 12 // Ipc would block
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
 #define ERR_INVALID_SYSCALL 44 // Invalid syscall
 #define ERR_PANIC           45 // Process panic
-
 
 static inline char*
 strerr(isize err) {
@@ -145,21 +124,61 @@ strerr(isize err) {
             return "Operation aborted";
         case -ERR_MISSMATCH:
             return "Entity mismatch";
+        case -ERR_NOSPC:
+            return "No space left";
+        case -ERR_MSG_TOOLONG:
+            return "Message too long";
+        case -ERR_DEAD_TASK:
+            return "Destination task is dead";
+        case -ERR_WOULD_BLOCK:
+            return "Ipc would block";
         case -ERR_PAGEFAULT:
             return "Page fault";
         case -ERR_KILLED:
             return "Task killed";
+        case -ERR_INVALID_SYSCALL:
+            return "Invalid syscall";
+        case -ERR_PANIC:
+            return "Process panic";
         default:
             return "Unknown error";
     }
 }
 
+typedef usize tid_t;
+#define TID_INVALID ((tid_t)-2)
+/* -1 for IPC_OPEN */
+#define TID_KERNEL  ((tid_t)0)
+#define TID_PM      ((tid_t)1)
+
+typedef struct _zombie_task_t {
+    tid_t tid;
+    result_t exit_code;
+} zombie_task_t;
+
+typedef u64 asid_t;
+#define ASID_INVALID ((asid_t)-1)
+#define ASID_NEW     ((asid_t)0)
+typedef u64 vm_flags_t;
+#define VM_READ  (1L << 0)
+#define VM_WRITE (1L << 1)
+#define VM_EXEC  (1L << 2)
+#define VM_USER  (1L << 3)
+// fake mapping, e.g. for guard page.
+// note that when setting up fake mapping, it is necessary to set at least one PTE flag,
+// on which we rely to detect fake mapping in page fault handler.
+#define VM_FAKE  (1L << 5)
+// anonymous mapping.
+#define VM_ANON  (1L << 6)
+#define PPN_ANON 0L
+
+typedef u8 irq_t;
 
 isize   vprintf(const char *fmt, va_list ap);
 isize   printf(const char *fmt, ...);
-void    flush(void);
+void    printf_flush(void);
 
-#define SYS_TASK_KILL   0
+#define SYS_TASK_DESTROY 0
 #define SYS_TASK_GETTID 1
 #define SYS_DBG_PUTS    2
 #define SYS_AS_GET      3
@@ -167,17 +186,14 @@ void    flush(void);
 #define SYS_AS_UNMAP    5
 #define SYS_TASK_SPAWN  6
 #define SYS_TASK_YIELD  8
-#define SYS_P_CREAT     9
-#define SYS_P_CLOSE     10
-#define SYS_P_SEND      12
-#define SYS_P_RECV      13
+#define SYS_IPC         9
+#define SYS_NOTIFY      10
 #define SYS_TASK_BLOCK  14
 #define SYS_TASK_RESUME 15
-#define SYS_P_STAT      16
-#define SYS_P_NOTIFY    17
 #define SYS_AS_READ     18
 #define SYS_AS_WRITE    19
 #define SYS_TASK_EXIT   20
+#define SYS_TASK_GETZOMBIE  21
 
 
 #include <libs/log.h>

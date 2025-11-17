@@ -66,6 +66,14 @@ list_remove(list_elem_t* elem) {
 }
 
 list_elem_t*
+list_peak_front(list_t* list) {
+    if (list_is_empty(list)) {
+        return NULL;
+    }
+    return headof(list);
+}
+
+list_elem_t*
 list_pop_front(list_t* list) {
     if (list_is_empty(list)) {
         return NULL;

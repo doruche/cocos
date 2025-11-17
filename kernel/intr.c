@@ -27,14 +27,14 @@
 
 void
 timer_intr(void) {
-    trace("timer_intr: user timer interrupt");
+    pr_trace("timer_intr: user timer interrupt");
     task_yield();
 }
 
 void
 dev_intr(irq_t irqno) {
-    warn("dev_intr: external interrupt: irq %d", irqno);
-    warn("dev_intr: currently not implemented");
+    pr_warn("dev_intr: external interrupt: irq %d", irqno);
+    pr_warn("dev_intr: currently not implemented");
 }
 
 

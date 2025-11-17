@@ -68,10 +68,10 @@ slab_init(kmem_cache_t* cache, slab_t* slab) {
 
 
 #ifdef DEBUG
-    info("slab_init: initialized slab %p for cache %s", slab, cache->name);
-    info("slab_init: addr=%p, data_size=%d, nobj=%d", slab, data_size, nobj);
-    info("slab_init: first obj at %p", alloc_start);
-    info("slab_init: last obj at %p", alloc_start + (nobj - 1) * aligned_obj_size);
+    pr_info("slab_init: initialized slab %p for cache %s", slab, cache->name);
+    pr_info("slab_init: addr=%p, data_size=%d, nobj=%d", slab, data_size, nobj);
+    pr_info("slab_init: first obj at %p", alloc_start);
+    pr_info("slab_init: last obj at %p", alloc_start + (nobj - 1) * aligned_obj_size);
 #endif
 }
 
@@ -87,7 +87,7 @@ kmem_cache_create(kmem_cache_t* cache, const char* name, usize data_size) {
     cache->free_slabs = sentinel_init(cache->free_slabs);
     cache->full_slabs = sentinel_init(cache->full_slabs);
 
-    trace("kmem_cache_create: cache %s created data_size %d", cache->name, cache->data_size);
+    pr_trace("kmem_cache_create: cache %s created data_size %d", cache->name, cache->data_size);
 }
 
 void*
@@ -104,7 +104,7 @@ kmem_cache_alloc(kmem_cache_t* cache) {
         slab = slab_pop_front(&cache->partial_slabs);
     } else {
         // need to allocate a new slab
-        warn("kmem_cache_alloc: allocating new slab");
+        pr_warn("kmem_cache_alloc: allocating new slab");
         ppn_t ppn = unwrap_err(pm_alloc());
         slab = (slab_t*)PN2PA(ppn);
         slab_init(cache, slab);
@@ -179,6 +179,6 @@ kmem_cache_dump(kmem_cache_t* cache) {
         cur = cur->next;
     }
 
-    info("kmem_cache_dump: data_size=%d, free_slabs=%d, partial_slabs=%d, full_slabs=%d",
+    pr_info("kmem_cache_dump: data_size=%d, free_slabs=%d, partial_slabs=%d, full_slabs=%d",
         cache->data_size, nfree, npartial, nfull);
 }

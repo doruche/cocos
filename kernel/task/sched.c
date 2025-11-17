@@ -22,14 +22,17 @@ static list_t all_tasks;
 static list_t running_tasks;
 static list_t zombie_tasks;
 
-static tid_t next_tid = 1;
+static tid_t next_tid = TID_PM;
 
 static kmem_cache_t task_cache;
 
+static task_t* pm = NULL;
+
 static tid_t
 alloc_tid() {
-    // reserve zero for non-existent task
-    // refine later to avoid tid overflow
+    if (next_tid == TID_INVALID) {
+        panic("alloc_tid: out of tids");
+    }
     return next_tid++;
 }
 
@@ -112,7 +115,7 @@ creat_first_task(u8* bootimage) {
             0,
             memsz - filesz
         ));
-        info("loaded init task segment: vaddr=%p memsz=%ld filesz=%ld flags=%c%c%c",
+        pr_info("loaded init task segment: vaddr=%p memsz=%ld filesz=%ld flags=%c%c%c",
             phdr->p_vaddr, memsz, filesz,
             (flags & VM_READ) ? 'r' : '-',
             (flags & VM_WRITE) ? 'w' : '-',
@@ -120,20 +123,12 @@ creat_first_task(u8* bootimage) {
         );
     }
 
-    // set pm port for kennel communication
-    port_t pm_port = 0;
-    unwrap_err(p_creat(
-        PID_PM,
-        init_task,
-        &pm_port
-    ));
-    assert_eq(pm_port, PID_PM);
-
     task_resume(init_task->tid);
+    pm = init_task;
 
-    notify("first task created: tid=%ld name=%s",
+    pr_notify("first task created: tid=%ld name=%s",
         init_task->tid, init_task->name);
-    notify("free pages after creating first task: %ld", pm_count_free());
+    pr_notify("free pages after creating first task: %ld", pm_count_free());
 }
 
 void __noreturn
@@ -144,7 +139,7 @@ sched_init(u8* init_elf) {
     kmem_cache_create(&task_cache, "task_cache", sizeof(task_t));
 
     processor_init();
-    notify("free pages after processor init: %ld", pm_count_free());
+    pr_notify("free pages after processor init: %ld", pm_count_free());
     creat_first_task(init_elf);
 
     arch_kctx_load(scheduler_ctx);
@@ -178,7 +173,7 @@ task_spawn(
         addr_space_t* as = NULL;
         if (is_err(as_get(asid, &as))) {
             kmem_cache_free(&task_cache, task);
-            warn("task_spawn: no such address space %ld", asid);
+            pr_warn("task_spawn: no such address space %ld", asid);
             return -ERR_NOENT;
         }
         as_bind(as, task);
@@ -196,10 +191,11 @@ task_spawn(
     list_push_back(&all_tasks, &task->node_all);
 
     // ipc_init
-    list_init(&task->notif_list);
+    list_init(&task->sender_list);
+    task->listen_on = TID_INVALID;
 
     *out = task;
-    info("task spawned: tid=%ld name=%s entry=%p",
+    pr_info("task spawned: tid=%ld name=%s entry=%p",
         task->tid, task->name, (void*)entry);
 
     return OK;
@@ -211,10 +207,10 @@ result_t
 task_block(tid_t tid) {
     task_t* task = NULL;
     if (is_err(task_get(tid, &task))) {
-        warn("task_block: no such task %ld", tid);
+        pr_warn("task_block: no such task %ld", tid);
         return -ERR_NOENT;
     }
-    trace("task_block: blocking task tid=%ld name=%s",
+    pr_trace("task_block: blocking task tid=%ld name=%s",
         task->tid, task->name);
 
     /* CRITICAL SECTION START */
@@ -237,15 +233,15 @@ result_t
 task_resume(tid_t tid) {
     task_t* task = NULL;
     if (is_err(task_get(tid, &task))) {
-        warn("task_resume: no such task %ld", tid);
+        pr_warn("task_resume: no such task %ld", tid);
         return -ERR_NOENT;
     }
     if (task->state != T_BLOCKED) {
-        warn("task_resume: task tid=%ld name=%s not blocked",
+        pr_warn("task_resume: task tid=%ld name=%s not blocked",
             task->tid, task->name);
         return -ERR_INVAL;
     }
-    trace("task_resume: resuming task tid=%ld name=%s",
+    pr_trace("task_resume: resuming task tid=%ld name=%s",
         task->tid, task->name);
     task->state = T_READY;
     list_push_back(&running_tasks, &task->node_running);
@@ -253,77 +249,74 @@ task_resume(tid_t tid) {
 }
 
 /*
- * we have 2 ways to exit a task:
- * 1. sys_exit() called by process manager.
- *    in this case, we can free all resources immediately.
- * 2. task itself crashes (illegal instruction, page fault, etc).
- *    in this case, we cannot free resources right now,
- *    as we're still on the task's kernel stack.
- *    we just mark the task as ZOMBIE here,
- *    and let the scheduler free it later.
+ * the way we handle task exiting:
+ * 1. a task called sys_task_exit.
+ *  kernel then reclaims almost all resources of the task,
+ *  but leaves a minimal task structure as a zombie with
+ *  necessary metadata (tid, exit code) for the process manager to collect.
+ *  finally, the kernel sends a exception message to the pm task.
+ * 2. pm task receives the exit message, collects all the data
+ *  it needs, then calls sys_task_destroy on the exited task.
+ * 3. kernel reclaims all remaining resources of the task.
  */
 
-static void
-task_cleanup(task_t* task) {
-    assert_eq(task->state, T_ZOMBIE);
+result_t
+task_destroy(tid_t tid) {
+    task_t* task = NULL;
+    if (is_err(task_get(tid, &task))) {
+        pr_warn("task_destroy: no such task %ld", tid);
+        return -ERR_NOENT;
+    }
 
+    assert_eq(task->state, T_ZOMBIE);
     list_remove(&task->node_all);
-    task_ipc_cleanup(task);
+    list_remove(&task->node_zombie);
+
+    if (task->listen_on != TID_INVALID) {
+        pr_warn("task_destroy: destroying task tid=%ld name=%s which is waiting for ipc",
+            task->tid, task->name);
+        list_remove(&task->node_sender);
+    }
+    
+    /* ipc clean up */
+    list_foreach_safe(iter, &task->sender_list, next) {
+        task_t* sender = list_entry(
+            iter,
+            task_t,
+            node_sender
+        );
+        list_remove(&sender->node_sender);
+        unwrap_err(notify(sender, NOTIF_IPC_ABORT));
+        unwrap_err(task_resume(sender->tid));
+        pr_trace("task_destroy: aborted sender task tid=%ld name=%s sending to destroyed task tid=%ld name=%s",
+            sender->tid, sender->name, task->tid, task->name);
+    }
+
     arch_ctx_destroy(task->actx, task->as->arch_vm);
     unwrap_err(as_unbind(task->as, task));
     kmem_cache_free(&task_cache, task);
 
-    unwrap_err(k_notify(
-        TID_PM,
-        (notif_t){
-            .type = NOTIF_TASK_EXIT,
-            .payload = {
-                .task_exited = {
-                    .tid = task->tid,
-                    .exit_code = task->exit_code,
-                }
-            }
-        }
-    ));
-}
-
-// from process manager's sys_kill
-// way to finish a task gracefully
-result_t
-task_kill(tid_t tid) {
-    task_t* task = NULL;
-    if (is_err(task_get(tid, &task))) {
-        warn("task_kill: no such task %ld", tid);
-        return -ERR_NOENT;
-    }
-    assert_ne(task, current_task);
-    assert(task->state == T_READY || task->state == T_BLOCKED);
-    task->state = T_ZOMBIE;
-    task->exit_code = -ERR_KILLED;
-    list_remove(&task->node_running);
-    list_push_back(&zombie_tasks, &task->node_zombie);
-    trace("task_kill: task tid=%ld name=%s killed",
-        task->tid, task->name);
     return OK;
 }
 
-// from illegal behavior
-// or task killing itself
 void __noreturn
-task_crash_exit(result_t exit_code) {
+task_exit(result_t exit_code) {
     task_t* current = unwrap_null(current_task);
     if (current->tid == TID_PM) {
         panic("pm server crashed!");
     }
     
     assert_eq(current->state, T_RUNNING);
-    
-    trace("task_crash_exit: task tid=%ld name=%s exiting with code %ld",
-        current->tid, current->name, exit_code);
+    assert_eq(current->listen_on, TID_INVALID);
 
+    pr_trace("task_exit: task tid=%ld name=%s exiting with code %ld",
+        current->tid, current->name, exit_code);
+    
+    current->exit_code = exit_code;
+    unwrap_err(notify(pm, NOTIF_TASK_EXIT));
+    
     /* CRITICAL SECTION START */
     current->state = T_ZOMBIE;
-    current->exit_code = exit_code;
     list_remove(&current->node_running);
     list_push_back(&zombie_tasks, &current->node_zombie);
     arch_kctx_switch(
@@ -331,6 +324,18 @@ task_crash_exit(result_t exit_code) {
         scheduler_ctx
     );
     unreachable();
+}
+
+result_t
+task_getzombie(zombie_task_t *out) {
+    list_elem_t* elem = list_peak_front(&zombie_tasks);
+    if (elem == NULL) {
+        return -ERR_NOENT;
+    }
+    task_t* task = list_entry(elem, task_t, node_zombie);
+    out->tid = task->tid;
+    out->exit_code = task->exit_code;
+    return OK;
 }
 
 // called on process context.
@@ -350,25 +355,25 @@ task_yield(void) {
 
 static void
 task_dump(void) {
-    info("==== task dump start ====");
+    pr_info("==== task dump start ====");
     list_foreach(iter, &all_tasks) {
         task_t* task = list_entry(iter, task_t, node_all);
-        info("task tid=%ld name=%s state=%d",
+        pr_info("task tid=%ld name=%s state=%d",
             task->tid, task->name, task->state);        
     }
-    info("==== task dump end ====");
+    pr_info("==== task dump end ====");
 }
 
 void
 scheduler(void) {
-    info("scheduler started.");
+    pr_info("scheduler started.");
 
     // currently just simple round-robin
     loop {
         list_foreach_safe(iter, &running_tasks, next) {
             assert(current_task == NULL);
             task_t* task = list_entry(iter, task_t, node_running);
-            trace("sched: considering task tid=%ld name=%s state=%d",
+            pr_trace("sched: considering task tid=%ld name=%s state=%d",
                 task->tid, task->name, task->state);
             if (task->state == T_READY) {
                 task->state = T_RUNNING;
@@ -376,7 +381,7 @@ scheduler(void) {
                 /* CRITICAL SECTION START */ 
                 current_task = task;
                 arch_vm_activate(task->as->arch_vm);
-                trace("sched: switching to task tid=%ld name=%s",
+                pr_trace("sched: switching to task tid=%ld name=%s",
                     task->tid, task->name);
                 arch_kctx_switch(
                     scheduler_ctx,
@@ -394,19 +399,9 @@ scheduler(void) {
                 panic("sched: found non-ready task in running_tasks list");
             }
         }
-        list_foreach_safe(iter, &zombie_tasks, next) {
-            task_t* task = list_entry(iter, task_t, node_zombie);
-            trace("sched: cleaning up zombie task tid=%ld name=%s",
-                task->tid, task->name);
-            list_remove(&task->node_zombie);
-            task_cleanup(task);
-            info("sched: zombie task tid=%ld name=%s cleaned up",
-                task->tid, task->name);
-        }
 
-        info("sched: one full round done.");
-        info("free pages: %ld", pm_count_free());
+        pr_info("sched: one full round done.");
+        pr_info("free pages: %ld", pm_count_free());
         task_dump();
-        ipc_port_dump();
     }
 }

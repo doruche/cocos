@@ -72,8 +72,8 @@ pm_init(bootinfo_t* bootinfo) {
 
             pm_zone_t zone = pm_zone_init(PA2PN(smem), PA2PN(emem));
 
-            info("pmzone found:[%p - %p) - (%d pages)", smem, emem, (emem - smem) / PAGE_SIZE);
-            trace("spagerun=%p, salloc=%p, npages=%d, nfree=%d",
+            pr_info("pmzone found:[%p - %p) - (%d pages)", smem, emem, (emem - smem) / PAGE_SIZE);
+            pr_trace("spagerun=%p, salloc=%p, npages=%d, nfree=%d",
                 PN2PA(zone.spagerun), PN2PA(zone.salloc), zone.npages, zone.nfree);
 
             pmzones[npmzones++] = zone;
@@ -110,7 +110,7 @@ pm_decref(ppn_t ppn) {
             page_run_t* run = ppn2run(zone, ppn);
             assert(run->ref > 0);
             run->ref--;
-            trace("pm_decref: ppn=%p, ref %d -> %d", PN2PA(ppn), run->ref + 1, run->ref);
+            pr_trace("pm_decref: ppn=%p, ref %d -> %d", PN2PA(ppn), run->ref + 1, run->ref);
             if (run->ref == 0) {
                 run->next = zone->freelist;
                 zone->freelist = run;
@@ -131,7 +131,7 @@ pm_incref(ppn_t ppn) {
             page_run_t* run = ppn2run(zone, ppn);
             assert(run->ref > 0); // can not increase ref of free page
             run->ref++;
-            trace("pm_increase_ref: ppn=%p, ref %d -> %d", PN2PA(ppn), run->ref - 1, run->ref);
+            pr_trace("pm_increase_ref: ppn=%p, ref %d -> %d", PN2PA(ppn), run->ref - 1, run->ref);
             return;
         }
     }
@@ -162,10 +162,10 @@ pm_count_free(void) {
 
 void
 pm_dump(void) {
-    info("------ pm dump ------");
+    pr_info("------ pm dump ------");
     for (usize i = 0; i < npmzones; i++) {
         pm_zone_t* zone = pmzones + i;
-        info("pmzone %d: spagerun=%p, salloc=%p, npages=%d, nfree=%d",
+        pr_info("pmzone %d: spagerun=%p, salloc=%p, npages=%d, nfree=%d",
             i,
             PN2PA(zone->spagerun),
             PN2PA(zone->salloc),
@@ -173,5 +173,5 @@ pm_dump(void) {
             zone->nfree
         );
     }
-    info("------ pm dump end ------");
+    pr_info("------ pm dump end ------");
 }

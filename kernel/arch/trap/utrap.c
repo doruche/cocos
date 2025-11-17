@@ -75,7 +75,7 @@ prepare_utrap_ret(void) {
 void
 utrap() {
     printk("\n");
-    trace("user trap!");
+    pr_trace("user trap!");
 
     prepare_utrap_entry();
 
@@ -87,7 +87,7 @@ utrap() {
                 timer_intr();
                 break;
             case SCAUSE_IRQ_EXT: 
-                trace("utrap: external interrupt");
+                pr_trace("utrap: external interrupt");
                 // todo: plic
                 extern void dev_intr(irq_t irqno);
                 dev_intr(irqno);
@@ -109,11 +109,12 @@ utrap() {
                     tf
                 ))) {
                     // invalid syscall, kill the task
-                    warn("invalid syscall %ld from task %d",
+                    pr_warn("invalid syscall %ld from task %d",
                         tf->x[17],
                         current->tid   
                     );
-                    task_crash_exit(-ERR_INVALID_SYSCALL);
+                    // task_crash_exit(-ERR_INVALID_SYSCALL);
+                    task_exit(-ERR_INVALID_SYSCALL);
                 }
                 // not cover all cases.
                 // actually if a syscall has changed sepc,
@@ -126,12 +127,12 @@ utrap() {
             case SCAUSE_EXC_STORE_PAGE_FAULT: 
                 uaddr_t fault_addr = r_stval();
                 // currently just kill the task on page fault
-                notify(
+                pr_notify(
                     "task page fault: tid=%ld name=%s addr=0x%lx pc=0x%lx exccode=%s",
                     current->tid, current->name,
                     fault_addr, r_sepc(), exception_strs[exccode]
                 );
-                task_crash_exit(-ERR_PAGEFAULT);
+                task_exit(-ERR_PAGEFAULT);
                 break;
             default:
                 panic("Unhandled user exception: %s (sepc=0x%lx, stval=0x%lx)",
@@ -150,12 +151,12 @@ __noreturn
 void
 arch_utrap_ret() {
     task_t* current = unwrap_null(current_task);
-    trace("returning to user space task tid=%ld name=%s",
+    pr_trace("returning to user space task tid=%ld name=%s",
         current->tid, current->name);
 
     prepare_utrap_ret();
 
-    flush(); // flush console output buffer before returning to user space
+    printf_flush(); // flush console output buffer before returning to user space
 
     vaddr_t hook = TRAMPOLINE + 
         ((u64)u_trampoline_ret - (u64)u_trampoline_entry);

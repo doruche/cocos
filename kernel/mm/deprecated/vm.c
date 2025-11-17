@@ -44,7 +44,7 @@ void kvms_init(bootinfo_t* bootinfo) {
                 break;
             case MEMZONE_DEV:
                 // device memory, we do not map it here.
-                info("found device memory zone [%lx, %lx), skip mapping",
+                pr_info("found device memory zone [%lx, %lx), skip mapping",
                     zone->start, zone->end);
                 continue;
             case MEMZONE_NONE:
@@ -53,7 +53,7 @@ void kvms_init(bootinfo_t* bootinfo) {
                 unreachable();
         }
         if (zone->start == zone->end) {
-            notify("skipping empty memory zone %d type %d", i, zone->type);
+            pr_notify("skipping empty memory zone %d type %d", i, zone->type);
             continue;
         }
         vm_map(
@@ -64,7 +64,7 @@ void kvms_init(bootinfo_t* bootinfo) {
             VM_RESERVED,
             flags
         );
-        info("mapped kernel memory zone [%lx, %lx) flags=%c%c%c",
+        pr_info("mapped kernel memory zone [%lx, %lx) flags=%c%c%c",
             zone->start, zone->end,
             (flags & VM_READ) ? 'r' : '-',
             (flags & VM_WRITE) ? 'w' : '-',
@@ -95,15 +95,15 @@ vm_destroy(vm_space_t* vms) {
     list_foreach_safe(iter, &vms->areas, next) {
         vm_area_t* area = list_entry(iter, vm_area_t, node);
         usize npages = area->end - area->start;
-        notify("vm_destroy: unmapping area [%lx, %lx) npages %ld",
+        pr_notify("vm_destroy: unmapping area [%lx, %lx) npages %ld",
             PN2PA(area->start), PN2PA(area->end), npages);
         vm_unmap(vms, area->start, npages);
     }
 
     assert(vms->areas.next == &vms->areas); // all areas should be destroyed
-    notify("free pages before destroying pgtbl: %ld", pm_count_free()); 
+    pr_notify("free pages before destroying pgtbl: %ld", pm_count_free()); 
     pgtbl_destroy(vms->pgtbl); // and all mappings should be removed
-    notify("free pages after destroying pgtbl: %ld", pm_count_free());
+    pr_notify("free pages after destroying pgtbl: %ld", pm_count_free());
 }
 
 /// create a new vm area and map it
@@ -117,7 +117,7 @@ vm_map(
     vm_area_flags_t flags
 ) {
     if (npages == 0) {
-        warn("vm_map: mapping zero pages at vpn %lx", PN2PA(vpn));
+        pr_warn("vm_map: mapping zero pages at vpn %lx", PN2PA(vpn));
         return;
     }
 
@@ -350,10 +350,10 @@ kvms_derive(vm_space_t* vms) {
 
 void
 vm_dump(vm_space_t* vms) {
-    trace("vm space dump:");
+    pr_trace("vm space dump:");
     list_foreach(iter, &vms->areas) {
         vm_area_t* area = list_entry(iter, vm_area_t, node);
-        trace("  area [%lx, %lx) type=%s flags=%c%c%c",
+        pr_trace("  area [%lx, %lx) type=%s flags=%c%c%c",
             PN2PA(area->start), PN2PA(area->end),
             area->type == VM_RESERVED ? "RESERVED" :
             area->type == VM_ALLOCATED ? "ALLOCATED" : "UNKNOWN",

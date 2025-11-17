@@ -1,1 +1,1 @@
-obj-y := main.o task.o bfsimg.o bfs.o pns.o
+obj-y := main.o task.o bfsimg.o bfs.o tns.o

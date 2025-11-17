@@ -127,7 +127,7 @@ arch_ctx_destroy(
     // however if we want to extend our design to support threads,
     // we may need to unmap and free those kernel stacks here
     // immediately when a thread is destroyed to save memory.
-    trace("arch_ctx_destroy: called");
+    pr_trace("arch_ctx_destroy: called");
     kmem_cache_free(&arch_ctx_cache, ctx);
 }
 

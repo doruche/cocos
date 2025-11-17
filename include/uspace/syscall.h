@@ -4,9 +4,9 @@
 #include <uspace/arch/syscall.h>
 
 static inline result_t
-sys_task_kill(tid_t tid) {
+sys_task_destroy(tid_t tid) {
     return arch_syscall(
-        SYS_TASK_KILL,
+        SYS_TASK_DESTROY,
         (u64)(tid),
         0,
         0,
@@ -131,71 +131,29 @@ sys_task_yield(void) {
 }
 
 static inline result_t
-sys_p_creat(port_t req_pid) {
-    return arch_syscall(
-        SYS_P_CREAT,
-        (u64)(req_pid),
-        0,
-        0,
-        0,
-        0
-    );
-}
-
-static inline result_t
-sys_p_close(port_t pid) {
-    return arch_syscall(
-        SYS_P_CLOSE,
-        (u64)(pid),
-        0,
-        0,
-        0,
-        0
-    );
-}
-
-
-static inline result_t
-sys_p_send(
-    port_t remote,
-    const untyped_msg_t* msg
+sys_ipc(
+    tid_t send_to,
+    tid_t recv_from,
+    msg_t* msg,
+    ipc_flags_t flags
 ) {
     return arch_syscall(
-        SYS_P_SEND,
-        (u64)(remote),
+        SYS_IPC,
+        (u64)(send_to),
+        (u64)(recv_from),
         (u64)(msg),
-        0,
-        0,
+        (u64)(flags),
         0
     );
 }
 
 static inline result_t
-sys_p_notify(
-    port_t pid,
-    const notif_t* notif
-) {
+sys_notify(tid_t tid, notif_t notifs) {
     return arch_syscall(
-        SYS_P_NOTIFY,
-        (u64)(pid),
-        (u64)(notif),
+        SYS_NOTIFY,
+        (u64)(tid),
+        (u64)(notifs),
         0,
-        0,
-        0
-    );
-}
-
-static inline result_t
-sys_p_recv(
-    port_t local,
-    untyped_msg_t* msg,
-    notif_t* notif
-) {
-    return arch_syscall(
-        SYS_P_RECV,
-        (u64)(local),
-        (u64)(msg),
-        (u64)(notif),
         0,
         0
     );
@@ -225,21 +183,6 @@ sys_task_resume(tid_t tid) {
     );
 }
 
-static inline result_t
-sys_p_stat(
-    port_t pid,
-    p_stat_t* stat
-) {
-    return arch_syscall(
-        SYS_P_STAT,
-        (u64)(pid),
-        (u64)(stat),
-        0,
-        0,
-        0
-    );
-}
-
 static inline void __noreturn
 sys_task_exit(result_t exit_code) {
     arch_syscall(
@@ -251,4 +194,16 @@ sys_task_exit(result_t exit_code) {
         0
     );
     unreachable();
+}
+
+static inline result_t
+sys_task_getzombie(zombie_task_t* out) {
+    return arch_syscall(
+        SYS_TASK_GETZOMBIE,
+        (u64)(out),
+        0,
+        0,
+        0,
+        0
+    );
 }

@@ -1,5 +1,6 @@
 APPS := \
-	hello
+	hello \
+	echoc
 
 .PHONY: all $(APPS)
 

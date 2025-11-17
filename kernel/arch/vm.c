@@ -200,7 +200,7 @@ map_region(
             flags
         );
     }
-    trace("mapped region: [0x%lx, 0x%lx) flags=%c%c%c%c",
+    pr_trace("mapped region: [0x%lx, 0x%lx) flags=%c%c%c%c",
         start, end,
         (flags & VM_READ) ? 'r' : '-',
         (flags & VM_WRITE) ? 'w' : '-',

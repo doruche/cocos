@@ -5,28 +5,22 @@
 #pragma once
 
 #include <libs/prelude.h>
-#include <uspace/rpc.h>
 
-typedef enum _example_msg_id_t {
-    EXAMPLE_FOO = 0,
-} example_msg_id_t;
+typedef enum _example_msg_type_t {
+    EXAMPLE_FOO,
+    EXAMPLE_FOO_RESP,
+} example_msg_type_t;
 
 typedef struct _example_msg_t {
+    example_msg_type_t type;
     union {
         struct {
-            example_msg_id_t id;
-            union {
-                struct {
-                    u32 a;
-                    u32 b;
-                } foo_req;
-                struct {
-                    u32 result;
-                } foo_resp;
-            };
-        };
-        u8 padding[RPC_MSG_SIZE];
+            u32 a;
+            u32 b;
+        } foo_req;
+        struct {
+            u32 result;
+        } foo_resp;
     };
 } example_msg_t;
 
-static_assert(sizeof(example_msg_t) == RPC_MSG_SIZE);

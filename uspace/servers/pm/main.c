@@ -1,15 +1,14 @@
 #include "task.h"
 #include "bfs.h"
-#include "pns.h"
+#include "tns.h"
 #include <libs/prelude.h>
-#include <uspace/rpc.h>
+#include <uspace/ipc.h>
 #include <uspace/syscall.h>
 #include <uspace/servers/pm.h>
-#include <uspace/servers/pns.h>
 
 static void
 spawn_init_tasks(void) {
-    trace("pm: spawning init tasks...");
+    pr_trace("pm: spawning init tasks...");
 
     usize i = 0;
     loop { 
@@ -30,99 +29,141 @@ spawn_init_tasks(void) {
                 strerr(ret));
         }
 
-        trace("pm: spawned init task '%s' (tid %ld)",
+        pr_trace("pm: spawned init task '%s' (tid %ld)",
             inode->name, tid);
     }
 
-    trace("pm: init tasks spawned.");
+    pr_trace("pm: init tasks spawned.");
 }
 
-static result_t
-pm_handle_msg(pm_msg_t* msg) {
-    switch (msg->header.id) {
-        case PM_PING:
-            trace("pm: received ping request");
-            msg->body.ping_resp.val = msg->body.ping.val;
-            msg->header.remote = msg->header.aux_xfer.port;
-            msg->header.aux_xfer.port = PID_INVALID;
-            msg->header.aux_xfer.flags = 0;
-            result_t ret = p_send((untyped_msg_t*)msg);
-            if (is_err(ret)) {
-                warn("pm: failed to send ping response: %s", strerr(ret));
-                return ret;
-            }
-            p_close(msg->header.remote);
-            trace("pm: sent ping response");
-            return OK;
-        default:
-            warn("pm: received unknown pm message id %ld",
-                msg->header.id);
-            return -ERR_NOENT;
-    }
-}
-
-static result_t
-msg_dispatch(untyped_msg_t* msg) {
-    switch (msg->header.local) {
-        case PID_PM: return pm_handle_msg((pm_msg_t*)msg);
-        case PID_PNS: return pns_handle_msg((pns_msg_t*)msg);
-        default:
-            warn("pm: received message for unknown port %ld",
-                msg->header.local);
-            return -ERR_NOENT;
-    }
-}
-
-static result_t
-handle_notif(notif_t* notif) {
-    switch (notif->type) {
-        case NOTIF_TASK_EXIT:
-            trace("pm: task %ld exited with code %ld",
-                notif->payload.task_exited.tid,
-                notif->payload.task_exited.exit_code);
-            /* TODO: cleanup resources */
-            return OK;
-        default:
-            warn("pm: received unknown notification type %ld",
-                notif->type);
-            return -ERR_NOENT;
-    }
-}
-
-result_t __noreturn
+result_t
 main(void) {
     bfs_probe();
-    pns_init();
+    tns_init();
 
-    spawn_init_tasks();
+    spawn_init_tasks();    
+
+    pr_info("pm server started.");
 
     loop {
-        untyped_msg_t msg = {0};
-        notif_t notif = {0};
-        result_t ret = OK;
-        port_t remote = PID_INVALID;
+        msg_t msg = {0};
+        result_t ret = ipc_recv(IPC_OPEN, &msg);
+        if(is_err(ret)) {
+            pr_warn("pm: ipc_recv failed: %s",
+                strerr(ret));
+            continue;
+        }
+        msg_t resp = {0};
 
-        ret = rpc_recv(
-            PID_PM,
-            &msg,
-            &remote,
-            &notif
-        );
-        if (is_err(ret)) {
-            warn("pm: rpc_recv failed: %s", strerr(ret));
-            continue;
-        } else if (notif.type != 0) {
-            ret = handle_notif(&notif);
-            if (is_err(ret)) {
-                warn("pm: handle_notif failed: %s", strerr(ret));
+        switch (msg.type) {
+            case MSG_NOTIF: {
+                pr_trace("pm: received notif from %ld: 0x%lx",
+                    msg.src, msg.notifs);
+                if (msg.notifs & NOTIF_TASK_EXIT) {
+                    zombie_task_t ztask;
+                    while (!is_err(sys_task_getzombie(&ztask))) {
+                        pr_info("pm: task exited: tid=%ld exit_code=%ld",
+                            ztask.tid, ztask.exit_code);
+                        unwrap_err(sys_task_destroy(ztask.tid));
+                    }
+                }
+                break;
             }
-            continue;
-        } else {
-            ret = msg_dispatch(&msg);
-            if (is_err(ret)) {
-                warn("pm: msg_dispatch failed: %s", strerr(ret));
+            case MSG_EXCEPT: {
+                if (msg.src != TID_KERNEL) {
+                    pr_warn("pm: received except msg from non-kernel task %ld",
+                        msg.src);
+                    break;
+                }
+                pr_trace("pm: received except from %ld: type=%ld",
+                    msg.src, msg.except.type);
+                pr_warn("pm: unhandled exception message");
+                break;
             }
-            continue;
+            case MSG_PM: {
+                pr_trace("pm: received pm msg from %ld: type=%ld",
+                    msg.src, msg.pm.type);
+                resp.type = MSG_PM;
+                switch (msg.pm.type) {
+                    case PM_PING: {
+                        resp.pm.type = PM_PING_RESP;
+                        resp.pm.ping_resp.val = msg.pm.ping.val;
+                        rpc_reply(msg.src, &resp);
+                        break;
+                    }
+                    case PM_RESOLVE_NAME: {
+                        tid_t server_tid;
+                        ret = tn_lookup(
+                            msg.pm.resolve_name.name,
+                            &server_tid
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: tns_lookup failed for name '%s': %s",
+                                msg.pm.resolve_name.name,
+                                strerr(ret));
+                            rpc_reply_result(msg.src, ret);
+                            break;
+                        }
+                        resp.pm.resolve_name_resp.server_tid = server_tid;
+                        pr_notify("pm: resolved service '%s' to %ld for %ld",
+                            msg.pm.resolve_name.name,
+                            server_tid,
+                            msg.src);
+                        rpc_reply(msg.src, &resp);
+                        break;
+                    }
+                    case PM_PUBLISH: {
+                        ret = tn_insert(
+                            msg.pm.publish.name,
+                            msg.pm.publish.server_tid
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: tns_insert failed for name '%s': %s",
+                                msg.pm.publish.name,
+                                strerr(ret));
+                        }
+                        rpc_reply_result(msg.src, ret);
+                        if (ret == OK) {
+                            pr_info("pm: published service '%s' from %ld",
+                                msg.pm.publish.name, msg.src);
+                        }
+                        break;
+                    }
+                    case PM_UNPUBLISH: {
+                        tid_t server_tid;
+                        ret = tn_lookup(
+                            msg.pm.unpublish.name,
+                            &server_tid
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: tns_lookup failed for name '%s': %s",
+                                msg.pm.unpublish.name, strerr(ret));
+                            rpc_reply_result(msg.src, ret);
+                            break;
+                        }
+                        if (server_tid != msg.src) {
+                            rpc_reply_result(msg.src, -ERR_PERM);
+                            break;
+                        }
+                        unwrap_err(tn_remove(msg.pm.unpublish.name));
+                        rpc_reply_result(msg.src, OK);
+                        pr_info("pm: unpublished service '%s' from %ld",
+                            msg.pm.unpublish.name, msg.src);
+                        break;
+                    }
+                    default: {
+                        pr_warn("pm: received unknown pm msg type %ld from %ld",
+                            msg.pm.type, msg.src);
+                        break;
+                    }
+                }
+                break;
+            }
+            default: {
+                pr_warn("pm: received unknown msg type %ld from %ld",
+                    msg.type, msg.src);
+                break;
+            }
         }
     }
 

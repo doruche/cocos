@@ -46,7 +46,7 @@ as_creat(task_t* owner) {
     
     unwrap_err(as_bind(as, owner));
 
-    trace("as_creat: created address space %ld", as->id);
+    pr_trace("as_creat: created address space %ld", as->id);
     return as;
 }
 
@@ -58,7 +58,7 @@ as_bind(addr_space_t* as, task_t* task) {
     }
     task->as = as;
     as->rc++;
-    trace("as_bind: bound address space %ld to task %ld, rc=%ld",
+    pr_trace("as_bind: bound address space %ld to task %ld, rc=%ld",
         as->id, task->tid, as->rc);
     return OK;
 }
@@ -70,7 +70,7 @@ static void
 as_destroy(addr_space_t* as) {
     assert(as->rc == 0);
     list_remove(&as->node);
-    trace("as_destroy: destroying address space %ld", as->id);
+    pr_trace("as_destroy: destroying address space %ld", as->id);
     arch_vm_destroy(as->arch_vm);
     kmem_cache_free(&as_cache, as);
 }
@@ -83,11 +83,11 @@ as_unbind(addr_space_t* as, task_t* task) {
     task->as = NULL;
     assert(as->rc > 0);
     as->rc--;
-    trace("as_unbind: unbound address space %ld from task %ld, rc=%ld",
+    pr_trace("as_unbind: unbound address space %ld from task %ld, rc=%ld",
         as->id, task->tid, as->rc);
 
     if (as->rc == 0) {
-        trace("as_unbind: address space %ld rc is 0, destroying it", as->id);
+        pr_trace("as_unbind: address space %ld rc is 0, destroying it", as->id);
         as_destroy(as);
     }
     
@@ -103,12 +103,12 @@ as_map(
     vm_flags_t flags
 ) {
     if (npages == 0) {
-        warn("as_map: npages is 0");
+        pr_warn("as_map: npages is 0");
         return OK;
     }
     for (usize i = 0; i < npages; i++) {
         if (arch_vm_is_mapped(as->arch_vm, vpn + i)) {
-            warn("as_map: vpn 0x%lx is already mapped", vpn + i);
+            pr_warn("as_map: vpn 0x%lx is already mapped", vpn + i);
             return -ERR_EXIST;
         }
     }
@@ -122,7 +122,7 @@ as_map(
         );
     }
 
-    trace("as_map: mapped ppn [0x%lx, 0x%lx) to vpn [0x%lx, 0x%lx), flags 0x%x",
+    pr_trace("as_map: mapped ppn [0x%lx, 0x%lx) to vpn [0x%lx, 0x%lx), flags 0x%x",
         ppn,
         ppn + npages,
         vpn,
@@ -140,12 +140,12 @@ as_unmap(
     usize npages
 ) {
     if (npages == 0) {
-        warn("as_unmap: npages is 0");
+        pr_warn("as_unmap: npages is 0");
         return OK;
     }
     for (usize i = 0; i < npages; i++) {
         if (!arch_vm_is_mapped(as->arch_vm, vpn + i)) {
-            warn("as_unmap: vpn 0x%lx is not mapped", vpn + i);
+            pr_warn("as_unmap: vpn 0x%lx is not mapped", vpn + i);
             return -ERR_NOENT;
         }
     }
@@ -154,7 +154,7 @@ as_unmap(
         arch_vm_unmap(as->arch_vm, vpn + i);
     }
 
-    trace("as_unmap: unmapped vpn [0x%lx, 0x%lx)",
+    pr_trace("as_unmap: unmapped vpn [0x%lx, 0x%lx)",
         vpn,
         vpn + npages
     );
@@ -168,7 +168,7 @@ as_memcheck_callback(
 ) {
     addr_space_t* as = ctx;
     if (!arch_vm_is_mapped(as->arch_vm, PA2PN(chunk->start))) {
-        warn("as_memcheck: unmapped vpn %lx", PA2PN(chunk->start));
+        pr_warn("as_memcheck: unmapped vpn %lx", PA2PN(chunk->start));
         return -ERR_FAULT;
     }
     return OK;
@@ -220,7 +220,7 @@ result_t as_memcpy(
     usize len
 ) {
     if (is_err(as_memcheck(as, dst, len))) {
-        warn("as_memcpy: memory check failed for dst 0x%lx, len %ld", dst, len);
+        pr_warn("as_memcpy: memory check failed for dst 0x%lx, len %ld", dst, len);
         return -ERR_FAULT;
     }
 
@@ -272,7 +272,7 @@ as_memset(
     usize len
 ) {
     if (is_err(as_memcheck(as, dst, len))) {
-        warn("as_memset: memory check failed for dst 0x%lx, len %ld", dst, len);
+        pr_warn("as_memset: memory check failed for dst 0x%lx, len %ld", dst, len);
         return -ERR_FAULT;
     }
 

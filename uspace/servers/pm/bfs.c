@@ -1,5 +1,5 @@
-#include "libs/prelude.h"
 #include "bfs.h"
+#include <libs/prelude.h>
 
 extern u8 __bfs_img[];
 
@@ -20,7 +20,7 @@ bfs_probe(void) {
         panic("bfs: invalid magic number: 0x%x (expected 0x%x)",
             sb->magic, BFS_MAGIC);
     }
-    trace("bfs: detected with %ld inodes",
+    pr_trace("bfs: detected with %ld inodes",
         sb->inode_cnt);
 }
 
@@ -41,11 +41,11 @@ bfs_inode(usize index) {
     bfs_super_t* sb = bfs_sb();
     bfs_inode_t* inodes = bfs_inodes();
     if (index >= sb->inode_cnt) {
-        trace("bfs_inode: index %ld out of bounds (inode_cnt=%ld)\n",
+        pr_trace("bfs_inode: index %ld out of bounds (inode_cnt=%ld)\n",
             index, sb->inode_cnt);
         return NULL;
     }
-    trace("bfs_inode: index=%ld, name='%s', size=0x%lx, offset=0x%lx\n",
+    pr_trace("bfs_inode: index=%ld, name='%s', size=0x%lx, offset=0x%lx\n",
         index,
         inodes[index].name,
         inodes[index].size,
@@ -56,7 +56,7 @@ bfs_inode(usize index) {
 
 const u8*
 bfs_read_inplace(const bfs_inode_t* inode) {
-    trace("bfs_read_inplace: inode name='%s', size=0x%lx, offset=0x%lx\n",
+    pr_trace("bfs_read_inplace: inode name='%s', size=0x%lx, offset=0x%lx\n",
         inode->name,
         inode->size,
         inode->offset

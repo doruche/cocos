@@ -1,43 +1,71 @@
 #pragma once
 #include <libs/prelude.h>
 
-typedef u64 port_t;
-#define PID_ANY     ((port_t)-2)
-#define PID_INVALID ((port_t)-1)
+/* server protocol headers */
+#include <uspace/servers/pm.h>
+#include <uspace/servers/echo.h>
 
-/* kernel defined */
-#define PID_PM      ((port_t)0)
-/* pm defined */
-#define PID_PNS     ((port_t)53)
+/* IPC flags */
+typedef u64 ipc_flags_t;
+#define IPC_SEND     (1L << 0)
+#define IPC_RECV     (1L << 1)
+#define IPC_CALL     (IPC_SEND | IPC_RECV)
+#define IPC_KERN     (1L << 2)
+#define IPC_NONBLOCK (1L << 3)
 
-#define MSG_SIZE 512
-typedef struct _untyped_msg_t {
-    u8 raw[MSG_SIZE];
-} untyped_msg_t;
+/* IPC source */
+#define IPC_OPEN    ((tid_t)-1) /* open receive */
 
-typedef struct _p_stat_t {
-    port_t id;
-    tid_t owner;
-} p_stat_t;
+/* IPC message struct */
+#define MSG_SIZE (272)
+
+typedef u64 msg_type_t;
+/* kernel reserved */
+#define MSG_NOTIF   0
+#define MSG_EXCEPT  1
+#define MSG_RESULT  2
+
+typedef enum _except_type_t {
+    EXCEPT_PAGEFAULT,
+} except_type_t;
+typedef struct _except_msg_t {
+    except_type_t type;
+    tid_t task;
+    union {
+        struct {
+            uaddr_t fault_addr;
+            bool is_write;  
+        } pagefault;
+    };
+} except_msg_t;
+
+/* user defined */
+#define MSG_PM      3
+#define MSG_ECHO    4
 
 /* asynchronous notification */
-typedef struct _notif_t {
+typedef u64 notif_t;
+/* kernel reserved */
+#define NOTIF_IPC_ABORT (1L << 0)
+#define NOTIF_TASK_EXIT (1L << 1)
+#define NOTIF_IRQ       (1L << 2)
+/* user defined */
+#define NOTIF_USER0     (1L << 16)
+
+/* synchronous message */
+typedef struct _msg_t {
+    tid_t   src;
+    msg_type_t type;
     union {
-        /* port that was closed causing the aborted notification */
-        port_t port_aborted;
-        /* IRQ number */
-        irq_t irqno;
-        /* exited task */
-        struct {
-            tid_t tid;
-            result_t exit_code;
-        } task_exited;
+        u8 raw[MSG_SIZE - 16];
+        /* kernel reserved */
+        notif_t notifs;
+        except_msg_t except;
+        result_t result;
         /* user defined */
-        u8 raw[16];
-    } payload;
-    u64 type;
-} notif_t;
-#define NOTIF_ABORTED   1L /* message send aborted due to port closed */
-#define NOTIF_IRQ       2L /* interrupt notification */
-#define NOTIF_TASK_EXIT 3L /* task exited notification */
-#define NOTIF_USER0     42L /* user defined notification number start here */
+        pm_msg_t pm;
+        echo_msg_t echo;
+    };
+} msg_t;
+
+static_assert(sizeof(msg_t) == MSG_SIZE);
