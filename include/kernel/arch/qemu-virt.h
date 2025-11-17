@@ -26,10 +26,5 @@
 #define VIRSTOP     (1UL << (39 - 1))
 #define TRAMPOLINE  (VIRSTOP - PAGE_SIZE)
 
-#define UART0           0x10000000UL
-#define UART0_RANGE     0x1000UL
 #define PLIC            0x0C000000UL
 #define PLIC_RANGE      0x4000000UL
-
-#define VIRTIO0         0x10001000UL  // virtio-blk
-#define VIRTIO0_RANGE   0x1000UL

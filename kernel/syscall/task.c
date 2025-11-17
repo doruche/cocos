@@ -3,6 +3,7 @@
 #include <libs/prelude.h>
 #include <kernel/syscall.h>
 #include <kernel/task/sched.h>
+#include <kernel/task/irq.h>
 
 SYSCALL_DEFINE1(task_destroy, tid_t, tid) {
     pr_trace("sys_task_destroy: called for tid=%ld", tid);
@@ -104,5 +105,35 @@ SYSCALL_DEFINE1(task_getzombie, zombie_task_t*, out) {
     memcpy(out, &zombie, sizeof(zombie_task_t));
     pr_trace("sys_task_getzombie: got zombie task tid=%ld with exit code %ld",
         zombie.tid, zombie.exit_code);
+    return OK;
+}
+
+SYSCALL_DEFINE1(irq_listen, irq_t, irqno) {
+    task_t* current = unwrap_null(current_task);
+    pr_trace("sys_irq_listen: called by task tid=%ld name=%s to listen irq %d",
+        current->tid, current->name, irqno);
+    result_t ret = irq_listen(irqno, current);
+    if (is_err(ret)) {
+        pr_warn("sys_irq_listen: failed to listen irq %d by task tid=%ld name=%s: %s",
+            irqno, current->tid, current->name, strerr(ret));
+        return ret;
+    }
+    pr_trace("sys_irq_listen: successfully listened irq %d by task tid=%ld name=%s",
+        irqno, current->tid, current->name);
+    return OK;
+}
+
+SYSCALL_DEFINE1(irq_unlisten, irq_t, irqno) {
+    task_t* current = unwrap_null(current_task);
+    pr_trace("sys_irq_unlisten: called by task tid=%ld name=%s to unlisten irq %d",
+        current->tid, current->name, irqno);
+    result_t ret = irq_unlisten(irqno, current);
+    if (is_err(ret)) {
+        pr_warn("sys_irq_unlisten: failed to unlisten irq %d by task tid=%ld name=%s: %s",
+            irqno, current->tid, current->name, strerr(ret));
+        return ret;
+    }
+    pr_trace("sys_irq_unlisten: successfully unlistened irq %d by task tid=%ld name=%s",
+        irqno, current->tid, current->name);
     return OK;
 }

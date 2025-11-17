@@ -99,6 +99,7 @@ typedef isize result_t;
 #define ERR_MSG_TOOLONG 10 // Message too long
 #define ERR_DEAD_TASK 11 // Destination task is dead
 #define ERR_WOULD_BLOCK 12 // Ipc would block
+#define ERR_DEV_BUSY 13 // Device busy
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
@@ -172,7 +173,7 @@ typedef u64 vm_flags_t;
 #define VM_ANON  (1L << 6)
 #define PPN_ANON 0L
 
-typedef u8 irq_t;
+typedef u32 irq_t;
 
 isize   vprintf(const char *fmt, va_list ap);
 isize   printf(const char *fmt, ...);
@@ -195,6 +196,8 @@ void    printf_flush(void);
 #define SYS_TASK_EXIT   20
 #define SYS_TASK_GETZOMBIE  21
 #define SYS_AS_MEMSET   22
+#define SYS_IRQ_LISTEN  23
+#define SYS_IRQ_UNLISTEN    24
 
 
 #include <libs/log.h>

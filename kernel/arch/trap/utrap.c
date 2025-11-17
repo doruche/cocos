@@ -7,6 +7,7 @@
 #include <kernel/arch/csr.h>
 #include <kernel/arch/trap.h>
 #include <kernel/arch/qemu-virt.h>
+#include <kernel/arch/plic.h>
 #include <kernel/task/sched.h>
 #include <kernel/task/processor.h>
 #include <kernel/misc/printk.h>
@@ -90,7 +91,9 @@ utrap() {
                 pr_trace("utrap: external interrupt");
                 // todo: plic
                 extern void dev_intr(irq_t irqno);
-                dev_intr(irqno);
+                irq_t extern_irqno = plic_claim();
+                dev_intr(extern_irqno);
+                plic_complete(extern_irqno);
                 break;
             case SCAUSE_IRQ_SOFT:
                 unreachable();

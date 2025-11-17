@@ -64,6 +64,7 @@ main(void) {
                     while (!is_err(sys_task_getzombie(&ztask))) {
                         pr_info("pm: task exited: tid=%ld exit_code=%ld",
                             ztask.tid, ztask.exit_code);
+                        unwrap_err(task_free(ztask.tid));
                         unwrap_err(sys_task_destroy(ztask.tid));
                     }
                 }
@@ -149,6 +150,51 @@ main(void) {
                         rpc_reply_result(msg.src, OK);
                         pr_info("pm: unpublished service '%s' from %ld",
                             msg.pm.unpublish.name, msg.src);
+                        break;
+                    }
+                    case PM_MAP: {
+                        switch (msg.pm.map.type) {
+                            vpn_t vpn;
+                            case PM_MAP_ANON: {
+                                ret = vm_map_anon(
+                                    msg.src,
+                                    msg.pm.map.info.anon.npages,
+                                    &vpn
+                                );
+                                if (is_err(ret)) {
+                                    pr_warn("pm: vm_map_anon failed for tid %ld: %s",
+                                        msg.src, strerr(ret));
+                                    rpc_reply_result(msg.src, ret);
+                                    break;
+                                }
+                                resp.pm.map_resp.vpn = vpn;
+                                rpc_reply(msg.src, &resp);
+                                break;
+                            }
+                            case PM_MAP_MMIO: {
+                                ret = vm_map_mmio(
+                                    msg.src,
+                                    msg.pm.map.info.mmio.ppn,
+                                    msg.pm.map.info.mmio.npages,
+                                    &vpn
+                                );
+                                if (is_err(ret)) {
+                                    pr_warn("pm: vm_map_mmio failed for tid %ld: %s",
+                                        msg.src, strerr(ret));
+                                    rpc_reply_result(msg.src, ret);
+                                    break;
+                                }
+                                resp.pm.map_resp.vpn = vpn;
+                                rpc_reply(msg.src, &resp);
+                                break;
+                            }
+                            default: {
+                                pr_warn("pm: unknown map type %ld from %ld",
+                                    msg.pm.map.type, msg.src);
+                                rpc_reply_result(msg.src, -ERR_INVAL);
+                                break;
+                            }
+                        }
                         break;
                     }
                     default: {

@@ -34,8 +34,12 @@ ipc(
     ipc_flags_t flags
 ) {
     task_t* current = unwrap_null(current_task);
+    /* sanity check */
     assert_eq(current->listen_on, TID_INVALID);
+    assert(!(elem_in_list(&current->node_sender) &&
+        elem_in_list(&current->node_receiver)));
     
+
     /* send */
     if (flags & IPC_SEND) {
         assert(send_to != NULL);
@@ -78,6 +82,7 @@ ipc(
             memcpy(&send_to->msg, msg, sizeof(msg_t));
             send_to->msg.src = (flags & IPC_KERN) ? TID_KERNEL : current->tid;
             if (send_to->listen_on != IPC_OPEN) {
+                assert_eq(send_to->listen_on, current->tid);
                 list_remove(&send_to->node_receiver);
             }
             unwrap_err(task_resume(send_to->tid));

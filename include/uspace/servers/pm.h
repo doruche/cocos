@@ -14,6 +14,9 @@ typedef enum _pm_msg_type_t {
     PM_RESOLVE_NAME,
     PM_PUBLISH,
     PM_UNPUBLISH,
+
+    PM_MAP,
+    PM_UNMAP,
 } pm_msg_type_t;
 
 typedef struct _pm_msg_t {
@@ -38,6 +41,28 @@ typedef struct _pm_msg_t {
         struct {
             char name[SERVICE_NAME_MAX_LEN];
         } unpublish;
+        struct {
+            enum {
+                PM_MAP_ANON,
+                PM_MAP_MMIO,
+            } type;
+            union {
+                struct {
+                    usize npages;
+                } anon;
+                struct {
+                    ppn_t ppn;
+                    usize npages;
+                } mmio;
+            } info;
+        } map;
+        struct {
+            vpn_t vpn;
+        } map_resp;
+        struct {
+            vpn_t vpn;
+            usize npages;
+        } unmap;
     };
 } pm_msg_t;
 

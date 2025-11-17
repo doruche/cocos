@@ -1,5 +1,5 @@
 /*
- * custom parameters about the operating system
+ * custom parameters about the kernel
  */
 
 #pragma once

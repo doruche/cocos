@@ -224,3 +224,27 @@ sys_as_memset(
         0
     );
 }
+
+static inline result_t
+sys_irq_listen(irq_t irqno) {
+    return arch_syscall(
+        SYS_IRQ_LISTEN,
+        (u64)(irqno),
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline result_t
+sys_irq_unlisten(irq_t irqno) {
+    return arch_syscall(
+        SYS_IRQ_UNLISTEN,
+        (u64)(irqno),
+        0,
+        0,
+        0,
+        0
+    );
+}

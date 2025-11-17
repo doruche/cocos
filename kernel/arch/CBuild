@@ -6,4 +6,5 @@ obj-y :=			\
 	timer.o			\
 	trampoline.o	\
 	sbi.o			\
+	plic.o			\
 	entry.o

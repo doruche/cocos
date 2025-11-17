@@ -23,6 +23,8 @@ typedef struct _arch_trapframe_t arch_trapframe_t;
 typedef struct _arch_ctx_t arch_ctx_t;
 typedef struct _arch_vm_t arch_vm_t;
 
+#define IRQ_MAX 16
+
 #define NMEMZONE_MAX    8
 
 enum memzone_type {
@@ -62,8 +64,8 @@ u64     arch_timer_get(void);
 void    arch_intr_set(bool enable);
 bool    arch_intr_status(void);
 void    arch_intr_wait(void);
-void    arch_irq_enable(u8 irq);
-void    arch_irq_disable(u8 irq);
+void    arch_irq_enable(irq_t irqno);
+void    arch_irq_disable(irq_t irqno);
 
 u64     arch_syscall_arg(
     arch_trapframe_t* tf,

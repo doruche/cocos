@@ -7,6 +7,7 @@
 #include <kernel/arch/csr.h>
 #include <kernel/arch/qemu-virt.h>
 #include <kernel/arch/trap.h>
+#include <kernel/arch/plic.h>
 
 static bootinfo_t bootinfo;
 
@@ -49,6 +50,7 @@ arch_init(void) {
     w_sie(r_sie() & ~(SIE_SSIE | SIE_STIE | SIE_SEIE));
     w_stvec(STVEC((u64)ktrap_trampoline, STVEC_MODE_DIRECT));
     w_sstatus(r_sstatus() | SSTATUS_SUM);   // enable supervisor access user memory
+    plic_init();
 
     extern void kstart(bootinfo_t* bootinfo);
     kstart(&bootinfo);

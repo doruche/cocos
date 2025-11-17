@@ -116,6 +116,10 @@ SYSCALL_DECLARE1(task_resume, tid_t, tid);
 SYSCALL_DECLARE1(task_exit, result_t, exit_code);
 SYSCALL_DECLARE1(task_getzombie, zombie_task_t*, out);
 
+/* irq */
+SYSCALL_DECLARE1(irq_listen, irq_t, irqno);
+SYSCALL_DECLARE1(irq_unlisten, irq_t, irqno);
+
 /* ipc */
 SYSCALL_DECLARE4(
     ipc,

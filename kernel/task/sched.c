@@ -3,6 +3,7 @@
 #include <libs/elf.h>
 #include <kernel/arch/arch.h>
 #include <kernel/task/sched.h>
+#include <kernel/task/irq.h>
 #include <kernel/ipc.h>
 #include <kernel/mm/slab.h>
 #include <kernel/mm/as.h>
@@ -229,7 +230,6 @@ task_block(tid_t tid) {
     return OK;
 }
 
-
 result_t
 task_resume(tid_t tid) {
     task_t* task = NULL;
@@ -333,6 +333,8 @@ task_exit(result_t exit_code) {
         pr_trace("task_exit: aborted receiver task tid=%ld name=%s receiving from exiting task tid=%ld name=%s",
             receiver->tid, receiver->name, current->tid, current->name);
     }
+
+    task_release_irq(current);
 
     /* CRITICAL SECTION START */
     current->state = T_ZOMBIE;
