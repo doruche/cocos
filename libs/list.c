@@ -65,6 +65,11 @@ list_remove(list_elem_t* elem) {
     return elem;
 }
 
+bool
+elem_in_list(list_elem_t* elem) {
+    return elem->prev != NULL && elem->next != NULL;
+}
+
 list_elem_t*
 list_peak_front(list_t* list) {
     if (list_is_empty(list)) {

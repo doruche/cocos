@@ -1,10 +1,12 @@
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
 #include <uspace/servers/echo.h>
+#include <uspace/task.h>
 
 result_t
 main(void) {
     unwrap_err(tns_publish("echo"));
+    assert(is_err(tns_publish("echo")));
 
     pr_info("echo server started.");
 

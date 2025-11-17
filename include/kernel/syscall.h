@@ -146,18 +146,18 @@ SYSCALL_DECLARE3(
     vpn_t, vpn,
     usize, npages
 );
-// SYSCALL_DECLARE4(
-//     as_read,
-//     asid_t, asid,
-//     vaddr_t, addr,
-//     void*, buf,
-//     usize, len
-// );
 SYSCALL_DECLARE4(
-    as_write,
+    as_memcpy,
     asid_t, asid,
     vaddr_t, addr,
     const u8*, buf,
+    usize, len
+);
+SYSCALL_DECLARE4(
+    as_memset,
+    asid_t, asid,
+    vaddr_t, addr,
+    u8, value,
     usize, len
 );
 

@@ -9,7 +9,7 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_AS_GET]       __sys_as_get,
     [SYS_AS_MAP]      __sys_as_map,
     [SYS_AS_UNMAP]    __sys_as_unmap,
-    [SYS_AS_WRITE]    __sys_as_write,
+    [SYS_AS_MEMCPY]   __sys_as_memcpy,
     [SYS_TASK_SPAWN]    __sys_task_spawn,
     [SYS_TASK_YIELD]    __sys_task_yield,
     [SYS_IPC]      __sys_ipc,
@@ -18,6 +18,7 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_TASK_RESUME] __sys_task_resume,
     [SYS_TASK_EXIT]    __sys_task_exit,
     [SYS_TASK_GETZOMBIE]  __sys_task_getzombie,
+    [SYS_AS_MEMSET]   __sys_as_memset,
 };
 
 static const char* const syscall_strs[] = {
@@ -27,7 +28,7 @@ static const char* const syscall_strs[] = {
     [SYS_AS_GET]       = "as_get",
     [SYS_AS_MAP]      = "as_map",
     [SYS_AS_UNMAP]    = "as_unmap",
-    [SYS_AS_WRITE]    = "as_write",
+    [SYS_AS_MEMCPY]   = "as_memcpy",
     [SYS_TASK_SPAWN]    = "task_spawn",
     [SYS_TASK_YIELD]    = "task_yield",
     [SYS_IPC]      = "ipc",
@@ -36,6 +37,7 @@ static const char* const syscall_strs[] = {
     [SYS_TASK_RESUME] = "task_resume",
     [SYS_TASK_EXIT]    = "task_exit",
     [SYS_TASK_GETZOMBIE]  = "task_getzombie",
+    [SYS_AS_MEMSET]   = "as_memset",
 };
 
 result_t

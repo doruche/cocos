@@ -70,14 +70,25 @@ proc_spawn(
         }
 
         // write segment data
-        ret = sys_as_write(
+        ret = sys_as_memcpy(
             asid,
             phdr->p_vaddr,
             elf + phdr->p_offset,
             phdr->p_filesz
         );
         if (is_err(ret)) {
-            pr_warn("proc_spawn: sys_as_write failed: %s",
+            pr_warn("proc_spawn: sys_as_memcpy failed: %s",
+                strerr(ret));
+            return ret;
+        }
+        ret = sys_as_memset(
+            asid,
+            phdr->p_vaddr + phdr->p_filesz,
+            0,
+            phdr->p_memsz - phdr->p_filesz
+        );
+        if (is_err(ret)) {
+            pr_warn("proc_spawn: sys_as_memset failed: %s",
                 strerr(ret));
             return ret;
         }

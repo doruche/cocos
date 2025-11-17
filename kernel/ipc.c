@@ -48,11 +48,14 @@ ipc(
             send_to->state == T_BLOCKED &&
             (send_to->listen_on == IPC_OPEN || 
             send_to->listen_on == current->tid);
-        pr_notify("ipc: target listen_on = %ld",
-            send_to->listen_on);
+        pr_info("ipc: ipc send from tid=%ld name=%s to tid=%ld name=%s, recv_ready=%d "
+            "listen on %ld",
+            current->tid, current->name,
+            send_to->tid, send_to->name,
+            recv_ready, send_to->listen_on);
         if (!recv_ready) {
             if (flags & IPC_NONBLOCK) {
-                pr_trace("ipc: nonblock send failed: tid %ld %s -> tid %ld %s",
+                pr_warn("ipc: nonblock send failed: tid %ld %s -> tid %ld %s",
                     current->tid, current->name, send_to->tid, send_to->name);
                 return -ERR_WOULD_BLOCK;
             }
@@ -66,7 +69,7 @@ ipc(
 
             if (current->notifs & NOTIF_IPC_ABORT) {
                 current->notifs &= ~NOTIF_IPC_ABORT;
-                pr_trace("ipc: send aborted for task tid=%ld name=%s",
+                pr_warn("ipc: send aborted for task tid=%ld name=%s",
                     current->tid, current->name);
                 return -ERR_ABORT;
             }
@@ -74,6 +77,9 @@ ipc(
             /* sender already waiting. direct delivery */
             memcpy(&send_to->msg, msg, sizeof(msg_t));
             send_to->msg.src = (flags & IPC_KERN) ? TID_KERNEL : current->tid;
+            if (send_to->listen_on != IPC_OPEN) {
+                list_remove(&send_to->node_receiver);
+            }
             unwrap_err(task_resume(send_to->tid));
         }
     }    
@@ -89,14 +95,25 @@ ipc(
                 msg->notifs, current->tid, current->name);
         } else {
             if (flags & IPC_NONBLOCK) {
-                pr_trace("ipc: nonblock recv failed: tid %ld %s",
+                pr_warn("ipc: nonblock recv failed: tid %ld %s",
                     current->tid, current->name);
                 return -ERR_WOULD_BLOCK;
             }
 
             /* try to wake up a sender if any */
-            list_elem_t* node_sender = 
-                list_pop_front(&current->sender_list);
+            list_elem_t* node_sender = NULL;
+            list_foreach_safe(iter, &current->sender_list, next) {
+                task_t* sender = list_entry(
+                    iter,
+                    task_t,
+                    node_sender
+                );
+                if (recv_from == IPC_OPEN || sender->tid == recv_from) {
+                    node_sender = iter;
+                    list_remove(&sender->node_sender);
+                    break;
+                }
+            }
             if (node_sender != NULL) {
                 task_t* sender = list_entry(
                     node_sender,
@@ -114,6 +131,11 @@ ipc(
                     return -ERR_WOULD_BLOCK;
                 }
                 current->listen_on = recv_from;
+                if (recv_from != IPC_OPEN) {
+                    task_t* recv_task = NULL;
+                    unwrap_err(task_get(recv_from, &recv_task));
+                    list_push_back(&recv_task->receiver_list, &current->node_receiver);
+                }
                 pr_trace("ipc: blocked receiver task tid=%ld name=%s waiting for tid=%ld",
                     current->tid, current->name, recv_from);
                 unwrap_err(task_block(current->tid));

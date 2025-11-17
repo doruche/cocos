@@ -1,14 +1,9 @@
-# SERVERS := $(shell ls -d */ | xargs -n 1 basename)
-
-SERVERS := echo
-BFS := bfs
+BFS := $(ROOT_DIR)/build/uspace/bfs.img
 PM := pm
 
-BFS_PATH := $(ROOT_DIR)/build/uspace/bfs.img
-BFS_ELFS := \
-	$(ROOT_DIR)/build/uspace/apps/hello/hello \
-	$(ROOT_DIR)/build/uspace/apps/echoc/echoc \
-	$(ROOT_DIR)/build/uspace/servers/echo/echo
+APP_ELFS := $(foreach a, $(APPS), $(ROOT_DIR)/build/uspace/apps/$(a)/$(a))
+SERVER_ELFS := $(foreach s, $(SERVERS), $(ROOT_DIR)/build/uspace/servers/$(s)/$(s))
+BFS_ELFS := $(APP_ELFS) $(SERVER_ELFS)
 
 MKFS := $(ROOT_DIR)/scripts/mkfs.bfs.py
 
@@ -23,7 +18,7 @@ $(PM): $(BFS)
 
 $(BFS): $(SERVERS)
 	@echo "  MAKE\t$@"
-	@$(PYTHON) $(MKFS) -o $(BFS_PATH) $(BFS_ELFS) -s
+	@$(PYTHON) $(MKFS) -o $@ $(BFS_ELFS) -s
 
 $(SERVERS):
 	@echo "  MAKE\t$@"

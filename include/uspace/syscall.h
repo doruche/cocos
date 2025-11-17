@@ -102,14 +102,14 @@ sys_as_unmap(
 }
 
 static inline result_t
-sys_as_write(
+sys_as_memcpy(
     asid_t asid,
     vaddr_t addr,
     const void* buf,
     usize len
 ) {
     return arch_syscall(
-        SYS_AS_WRITE,
+        SYS_AS_MEMCPY,
         (u64)(asid),
         (u64)(addr),
         (u64)(buf),
@@ -204,6 +204,23 @@ sys_task_getzombie(zombie_task_t* out) {
         0,
         0,
         0,
+        0
+    );
+}
+
+static inline result_t
+sys_as_memset(
+    asid_t asid,
+    vaddr_t addr,
+    u8 value,
+    usize len
+) {
+    return arch_syscall(
+        SYS_AS_MEMSET,
+        (u64)(asid),
+        (u64)(addr),
+        (u64)(value),
+        (u64)(len),
         0
     );
 }

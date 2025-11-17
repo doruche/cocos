@@ -191,9 +191,10 @@ void    printf_flush(void);
 #define SYS_TASK_BLOCK  14
 #define SYS_TASK_RESUME 15
 #define SYS_AS_READ     18
-#define SYS_AS_WRITE    19
+#define SYS_AS_MEMCPY   19
 #define SYS_TASK_EXIT   20
 #define SYS_TASK_GETZOMBIE  21
+#define SYS_AS_MEMSET   22
 
 
 #include <libs/log.h>

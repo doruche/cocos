@@ -1,7 +1,3 @@
-APPS := \
-	hello \
-	echoc
-
 .PHONY: all $(APPS)
 
 all: $(APPS)

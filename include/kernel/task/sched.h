@@ -30,12 +30,14 @@ typedef struct _task_t {
     notif_t notifs; /* notifications bitmap */
     /* 
      * which task this task is willing to receive messages from 
-     * can be a specific tid, IPC_OPEN or IPC_DENY (except TID_KERNEL,
+     * can be a specific tid, IPC_OPEN or TID_INVALID (except TID_KERNEL,
      * which is used only in message headers to indicate kernel source).
      */
     tid_t listen_on;
     list_t sender_list; /* tasks blocking on sending to this task */
     list_elem_t node_sender; /* node in sender list of another task */
+    list_t receiver_list; /* tasks blocking on receiving from this task */
+    list_elem_t node_receiver; /* node in receiver list of another task */
 
     /* scheduling */
     result_t exit_code; /* user space exit code */

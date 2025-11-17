@@ -192,6 +192,7 @@ task_spawn(
 
     // ipc_init
     list_init(&task->sender_list);
+    list_init(&task->receiver_list);
     task->listen_on = TID_INVALID;
 
     *out = task;
@@ -272,26 +273,6 @@ task_destroy(tid_t tid) {
     list_remove(&task->node_all);
     list_remove(&task->node_zombie);
 
-    if (task->listen_on != TID_INVALID) {
-        pr_warn("task_destroy: destroying task tid=%ld name=%s which is waiting for ipc",
-            task->tid, task->name);
-        list_remove(&task->node_sender);
-    }
-    
-    /* ipc clean up */
-    list_foreach_safe(iter, &task->sender_list, next) {
-        task_t* sender = list_entry(
-            iter,
-            task_t,
-            node_sender
-        );
-        list_remove(&sender->node_sender);
-        unwrap_err(notify(sender, NOTIF_IPC_ABORT));
-        unwrap_err(task_resume(sender->tid));
-        pr_trace("task_destroy: aborted sender task tid=%ld name=%s sending to destroyed task tid=%ld name=%s",
-            sender->tid, sender->name, task->tid, task->name);
-    }
-
     arch_ctx_destroy(task->actx, task->as->arch_vm);
     unwrap_err(as_unbind(task->as, task));
     kmem_cache_free(&task_cache, task);
@@ -315,6 +296,44 @@ task_exit(result_t exit_code) {
     current->exit_code = exit_code;
     unwrap_err(notify(pm, NOTIF_TASK_EXIT));
     
+    /* ipc clean up */
+    if (current->listen_on != TID_INVALID) {
+        if (current->listen_on != IPC_OPEN) {
+            assert(elem_in_list(&current->node_receiver));
+            list_remove(&current->node_receiver);
+        }
+        pr_warn("task_exit: cleaning up blocked receiver task tid=%ld name=%s",
+            current->tid, current->name);
+    } else if (elem_in_list(&current->node_sender)) {
+        list_remove(&current->node_sender);
+        pr_warn("task_exit: cleaning up blocked sender task tid=%ld name=%s",
+            current->tid, current->name);
+    }
+    list_foreach_safe(iter, &current->sender_list, next) {
+        task_t* sender = list_entry(
+            iter,
+            task_t,
+            node_sender
+        );
+        list_remove(&sender->node_sender);
+        unwrap_err(notify(sender, NOTIF_IPC_ABORT));
+        unwrap_err(task_resume(sender->tid));
+        pr_trace("task_exit: aborted sender task tid=%ld name=%s sending to exiting task tid=%ld name=%s",
+            sender->tid, sender->name, current->tid, current->name);
+    }
+    list_foreach_safe(iter, &current->receiver_list, next) {
+        task_t* receiver = list_entry(
+            iter,
+            task_t,
+            node_receiver
+        );
+        list_remove(&receiver->node_receiver);
+        unwrap_err(notify(receiver, NOTIF_IPC_ABORT));
+        unwrap_err(task_resume(receiver->tid));
+        pr_trace("task_exit: aborted receiver task tid=%ld name=%s receiving from exiting task tid=%ld name=%s",
+            receiver->tid, receiver->name, current->tid, current->name);
+    }
+
     /* CRITICAL SECTION START */
     current->state = T_ZOMBIE;
     list_remove(&current->node_running);

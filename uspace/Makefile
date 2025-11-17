@@ -1,7 +1,12 @@
 LINKER := $(BUILD_DIR)/uspace/libc/arch/uspace.lds
 LINKER_TEMPLATE := libc/arch/uspace.lds.in
 
+export APPS := \
+	hello \
+	echoc
 
+export SERVERS := \
+	echo
 
 .PHONY: all libc apps servers
 

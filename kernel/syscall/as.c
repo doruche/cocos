@@ -73,7 +73,7 @@ SYSCALL_DEFINE3(
 }
 
 SYSCALL_DEFINE4(
-    as_write,
+    as_memcpy,
     asid_t, asid,
     vaddr_t, addr,
     const u8*, buf,
@@ -93,6 +93,31 @@ SYSCALL_DEFINE4(
         return ret;
     }
     pr_trace("sys_as_write: successfully wrote 0x%lx bytes to addr 0x%lx in as %ld",
+        len, addr, asid);
+    return OK;
+}
+
+SYSCALL_DEFINE4(
+    as_memset,
+    asid_t, asid,
+    vaddr_t, addr,
+    u8, value,
+    usize, len
+) {
+    addr_space_t* as;
+    result_t ret = as_get(asid, &as);
+    if (is_err(ret)) {
+        pr_warn("sys_as_memset: failed to get addr space %ld: %s", 
+            asid, strerr(ret));
+        return ret;
+    }
+    ret = as_memset(as, addr, value, len);
+    if (is_err(ret)) {
+        pr_warn("sys_as_memset: failed to memset 0x%lx bytes to addr 0x%lx in as %ld: %s",
+            len, addr, asid, strerr(ret));
+        return ret;
+    }
+    pr_trace("sys_as_memset: successfully memset 0x%lx bytes to addr 0x%lx in as %ld",
         len, addr, asid);
     return OK;
 }

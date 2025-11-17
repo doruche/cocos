@@ -21,10 +21,10 @@
 #define WARN 0U
 
 #define COLOR_TRACE     COLOR_BOLD_BLACK
-#define COLOR_INFO      COLOR_BOLD_CYAN
-#define COLOR_NOTIFY    COLOR_BOLD_PURPLE
+#define COLOR_INFO      COLOR_CYAN
+#define COLOR_NOTIFY    COLOR_PURPLE
 #define COLOR_WARN      COLOR_YELLOW
-#define COLOR_PANIC     COLOR_BOLD_RED
+#define COLOR_PANIC     COLOR_RED
 
 #define pr_trace(fmt, ...) \
     do { \
