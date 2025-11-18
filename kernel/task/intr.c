@@ -38,7 +38,7 @@ timer_intr(void) {
 
 void
 dev_intr(irq_t irqno) {
-    pr_trace("dev_intr: external interrupt: irq %d", irqno);
+    pr_notify("dev_intr: external interrupt: irq %d", irqno);
     task_t* owner = irq_owners[irqno];
 
     /*
@@ -47,6 +47,9 @@ dev_intr(irq_t irqno) {
      */
     assert(owner != NULL);
     unwrap_err(notify(owner, NOTIF_IRQ));
+
+    /* temperarily disable it, let driver acknowledge it */
+    arch_irq_disable(irqno);
 }
 
 result_t
@@ -65,7 +68,7 @@ irq_listen(irq_t irqno, task_t* task) {
     }
     irq_owners[irqno] = task;
     arch_irq_enable(irqno);
-    pr_trace("irq_listen: task tid=%ld name=%s listening on irq %d",
+    pr_notify("irq_listen: task tid=%ld name=%s listening on irq %d",
         task->tid, task->name, irqno);
     return OK;
 }
@@ -86,7 +89,7 @@ irq_unlisten(irq_t irqno, task_t* task) {
     }
     irq_owners[irqno] = NULL;
     arch_irq_disable(irqno);
-    pr_trace("irq_unlisten: task tid=%ld name=%s unlistening on irq %d",
+    pr_notify("irq_unlisten: task tid=%ld name=%s unlistening on irq %d",
         task->tid, task->name, irqno);
     return OK;
 }

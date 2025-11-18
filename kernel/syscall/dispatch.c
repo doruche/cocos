@@ -19,6 +19,9 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_TASK_EXIT]    __sys_task_exit,
     [SYS_TASK_GETZOMBIE]  __sys_task_getzombie,
     [SYS_AS_MEMSET]   __sys_as_memset,
+    [SYS_IRQ_LISTEN]   __sys_irq_listen,
+    [SYS_IRQ_UNLISTEN] __sys_irq_unlisten,
+    [SYS_IRQ_ACK]     __sys_irq_ack,
 };
 
 static const char* const syscall_strs[] = {
@@ -38,6 +41,9 @@ static const char* const syscall_strs[] = {
     [SYS_TASK_EXIT]    = "task_exit",
     [SYS_TASK_GETZOMBIE]  = "task_getzombie",
     [SYS_AS_MEMSET]   = "as_memset",
+    [SYS_IRQ_LISTEN]   = "irq_listen",
+    [SYS_IRQ_UNLISTEN] = "irq_unlisten",
+    [SYS_IRQ_ACK]     = "irq_ack",
 };
 
 result_t

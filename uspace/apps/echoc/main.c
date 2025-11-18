@@ -1,6 +1,5 @@
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
-#include <uspace/servers/echo.h>
 #include <uspace/syscall.h>
 
 

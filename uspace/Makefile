@@ -2,11 +2,13 @@ LINKER := $(BUILD_DIR)/uspace/libc/arch/uspace.lds
 LINKER_TEMPLATE := libc/arch/uspace.lds.in
 
 export APPS := \
+	idle \
 	hello \
-	echoc
+	echoc 
 
 export SERVERS := \
-	echo
+	echo \
+	uart16550
 
 .PHONY: all libc apps servers
 

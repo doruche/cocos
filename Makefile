@@ -75,7 +75,6 @@ run-log:
 
 gdb-server:
 	$(QEMU) $(QEMU_FLAGS) \
-		$(OUT_SERIAL) \
 		-kernel $(KERNEL_BIN) \
 		-s -S
 

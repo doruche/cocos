@@ -137,3 +137,14 @@ SYSCALL_DEFINE1(irq_unlisten, irq_t, irqno) {
         irqno, current->tid, current->name);
     return OK;
 }
+
+SYSCALL_DEFINE1(irq_ack, irq_t, irqno) {
+    task_t* current = unwrap_null(current_task);
+    pr_trace("sys_irq_ack: called by task tid=%ld name=%s to ack irq %d",
+        current->tid, current->name, irqno);
+    arch_irq_enable(irqno);
+    pr_trace("sys_irq_ack: successfully acked irq %d by task tid=%ld name=%s",
+        irqno, current->tid, current->name);
+    return OK;
+}
+

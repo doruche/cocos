@@ -118,6 +118,7 @@ SYSCALL_DECLARE1(task_getzombie, zombie_task_t*, out);
 
 /* irq */
 SYSCALL_DECLARE1(irq_listen, irq_t, irqno);
+SYSCALL_DECLARE1(irq_ack, irq_t, irqno);
 SYSCALL_DECLARE1(irq_unlisten, irq_t, irqno);
 
 /* ipc */

@@ -4,6 +4,14 @@
 
 usize __hook_impl
 __puts(const char* str) {
-    usize len = strlen(str);
+    /*
+     * use strlen() here may cause an
+     * linking error. idk why, maybe some
+     * dependency issue? refine later.
+     */
+    usize len = 0;
+    while (str[len] != '\0') {
+        len++;
+    }
     return sys_dbg_puts(str, len);
 }

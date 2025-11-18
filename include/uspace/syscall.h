@@ -248,3 +248,15 @@ sys_irq_unlisten(irq_t irqno) {
         0
     );
 }
+
+static inline result_t
+sys_irq_ack(irq_t irqno) {
+    return arch_syscall(
+        SYS_IRQ_ACK,
+        (u64)(irqno),
+        0,
+        0,
+        0,
+        0
+    );
+}

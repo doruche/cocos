@@ -198,6 +198,7 @@ void    printf_flush(void);
 #define SYS_AS_MEMSET   22
 #define SYS_IRQ_LISTEN  23
 #define SYS_IRQ_UNLISTEN    24
+#define SYS_IRQ_ACK     25
 
 
 #include <libs/log.h>

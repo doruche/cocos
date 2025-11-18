@@ -4,6 +4,7 @@
 /* server protocol headers */
 #include <uspace/servers/pm.h>
 #include <uspace/servers/echo.h>
+#include <uspace/servers/serial.h>
 
 /* IPC flags */
 typedef u64 ipc_flags_t;
@@ -42,6 +43,7 @@ typedef struct _except_msg_t {
 /* user defined */
 #define MSG_PM      3
 #define MSG_ECHO    4
+#define MSG_SERIAL  5
 
 /* asynchronous notification */
 typedef u64 notif_t;
@@ -65,6 +67,7 @@ typedef struct _msg_t {
         /* user defined */
         pm_msg_t pm;
         echo_msg_t echo;
+        serial_msg_t serial;
     };
 } msg_t;
 
