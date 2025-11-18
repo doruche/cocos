@@ -5,7 +5,7 @@
 #define UART0_IRQ      10
 #define UART0_BASE     0x10000000UL
 
-#define UART_COM(base, offset) ((base) + (offset))
+#define UART_COM(base, offset) ((volatile u8*)((base) + (offset)))
 
 #define COM_THR         0 /* In: Transmit Holding Register */
 #define COM_RBR         0 /* Out: Receive Buffer Register */

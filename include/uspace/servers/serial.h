@@ -33,3 +33,15 @@ typedef struct _serial_msg_t {
     };
 } serial_msg_t;
 
+
+result_t serial_read(
+    tid_t serial_server,
+    u8* buf,
+    usize len,
+    usize* out_len
+);
+result_t serial_write(
+    tid_t serial_server,
+    const u8* buf,
+    usize len
+);

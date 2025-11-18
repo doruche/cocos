@@ -98,8 +98,6 @@ SYSCALL_DEFINE1(task_getzombie, zombie_task_t*, out) {
     zombie_task_t zombie;
     result_t ret = task_getzombie(&zombie);
     if (is_err(ret)) {
-        pr_warn("sys_task_getzombie: no zombie tasks available: %s",
-            strerr(ret));
         return ret;
     }
     memcpy(out, &zombie, sizeof(zombie_task_t));

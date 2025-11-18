@@ -1,1 +1,8 @@
-obj-y := printf.o panic.o task.o main.o crt0.o ipc.o
+obj-y := \
+	printf.o \
+	panic.o \
+	task.o \
+	main.o \
+	crt0.o \
+	ipc.o \
+	serial.o

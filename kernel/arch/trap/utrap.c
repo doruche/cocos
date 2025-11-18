@@ -75,8 +75,9 @@ prepare_utrap_ret(void) {
 
 void
 utrap() {
-    printk("\n");
-    pr_trace("user trap!");
+    task_t* current = unwrap_null(current_task);
+    pr_trace("user trap tid=%ld name=%s",
+        current->tid, current->name);
 
     prepare_utrap_entry();
 
@@ -102,9 +103,8 @@ utrap() {
         }
     } else {
         u64 exccode = r_scause();
-        task_t* current = unwrap_null(current_task);
         switch (exccode) {
-            case SCAUSE_EXC_ECALL_FROM_U:
+            case SCAUSE_EXC_ECALL_FROM_U: {
                 // syscall
                 arch_trapframe_t* tf = &current->actx->tf;
                 if (is_err(syscall_dispatch(
@@ -125,9 +125,10 @@ utrap() {
                 // but for now there is no such syscall.
                 tf->sepc += 4;
                 break;
+            }
             case SCAUSE_EXC_INST_PAGE_FAULT:
             case SCAUSE_EXC_LOAD_PAGE_FAULT:
-            case SCAUSE_EXC_STORE_PAGE_FAULT: 
+            case SCAUSE_EXC_STORE_PAGE_FAULT: {
                 uaddr_t fault_addr = r_stval();
                 // currently just kill the task on page fault
                 pr_notify(
@@ -136,6 +137,19 @@ utrap() {
                     fault_addr, r_sepc(), exception_strs[exccode]
                 );
                 task_exit(-ERR_PAGEFAULT);
+                break;
+            }
+            case SCAUSE_EXC_LOAD_ACCESS:
+            case SCAUSE_EXC_STORE_ACCESS:
+            case SCAUSE_EXC_INST_ACCESS: {
+                    uaddr_t fault_addr = r_stval();
+                    pr_notify(
+                        "task access fault: tid=%ld name=%s addr=0x%lx pc=0x%lx exccode=%s",
+                        current->tid, current->name,
+                        fault_addr, r_sepc(), exception_strs[exccode]
+                    );
+                    task_exit(-ERR_ACCESS_FAULT);
+                }
                 break;
             default:
                 panic("Unhandled user exception: %s (sepc=0x%lx, stval=0x%lx)",

@@ -106,7 +106,7 @@ main(void) {
                             break;
                         }
                         resp.pm.resolve_name_resp.server_tid = server_tid;
-                        pr_notify("pm: resolved service '%s' to %ld for %ld",
+                        pr_trace("pm: resolved service '%s' to %ld for %ld",
                             msg.pm.resolve_name.name,
                             server_tid,
                             msg.src);

@@ -3,6 +3,14 @@
 #include <uspace/syscall.h>
 #include <uspace/ipc.h>
 
+/*
+ * currenly, this driver also serves as a simple tty driver.
+ * you can see some tty-like behaviors, such as echoing input characters,
+ * handling backspace, and appending newline on carriage return.
+ * those are weird, as they almost only work on my local terminal.
+ * i'll improve it later.
+ */
+
 static vaddr_t uart_base;
 
 static void
@@ -19,37 +27,118 @@ uart_init(void) {
     pr_info("uart16550: MMIO mapped at vpn 0x%lx",
         msg.pm.map_resp.vpn);
 
+    /* disable interrupts */
+    *UART_COM(uart_base, COM_IER) = 0x00;
     /* disable fifo */
-    *(volatile u8*)UART_COM(uart_base, COM_FCR) = 0x00;
-    /* set baud rate to 115200 */
-    *(volatile u8*)UART_COM(uart_base, COM_LCR) = COM_LCR_DLAB;
+    *UART_COM(uart_base, COM_FCR) = 0x00;
+    /* set baud rate */
+    *UART_COM(uart_base, COM_LCR) = COM_LCR_DLAB;
+    *UART_COM(uart_base, COM_DLL) = 0x03;
+    *UART_COM(uart_base, COM_DLM) = 0x00;
     /* 1 start bit, 8 data bits, no parity, 1 stop bit */
-    *(volatile u8*)UART_COM(uart_base, COM_LCR) = 
-        COM_LCR_WLEN8 & !COM_LCR_DLAB;
+    *UART_COM(uart_base, COM_LCR) = COM_LCR_WLEN8;
     /* turn off modem controls */
-    *(volatile u8*)UART_COM(uart_base, COM_MCR) = 0x00;
+    *UART_COM(uart_base, COM_MCR) = 0x00;
     /* enable data ready interrupt */
-    *(volatile u8*)UART_COM(uart_base, COM_IER) = COM_IER_RDI;
+    *UART_COM(uart_base, COM_IER) = COM_IER_RDI;
     pr_info("uart16550: hardware initialized.");
 }
 
+static bool
+uart_tx_busy(void) {
+    return (*(volatile u8*)UART_COM(uart_base, COM_LSR) & COM_LSR_THRE) == 0;
+}
+
+static bool
+uart_rx_ready(void) {
+    return (*(volatile u8*)UART_COM(uart_base, COM_LSR) & COM_LSR_DR) != 0;
+}
+
 static result_t
-serial_write(const u8* buf, usize len) {
+uart_serial_write(const u8* buf, usize len) {
     for (usize i = 0; i < len; i++) {
         /* wait for THR empty */
-        while ((*(volatile u8*)UART_COM(uart_base, COM_LSR) & COM_LSR_THRE) == 0) {
+        while (uart_tx_busy()) {
             /* wait */
         }
         *(volatile u8*)UART_COM(uart_base, COM_THR) = buf[i];
+        if (buf[i] == '\r') {
+            /* also send newline */
+            while (uart_tx_busy()) {
+                /* wait */
+            }
+            *(volatile u8*)UART_COM(uart_base, COM_THR) = '\n';
+        }
     }
     return OK;
 }
 
-static char rd_buf[SERIAL_BUF_MAX_LEN] = {0};
+
+static char rd_buf[SERIAL_BUF_MAX_LEN + 1] = {0};
 static usize rd_buf_idx = 0;
 static usize rd_req_len = 0;
 static tid_t rd_req_tid = TID_INVALID;
 static bool is_rd_waiting = false;
+
+static result_t
+uart_serial_read_register(tid_t tid, usize len) {
+    if (is_rd_waiting) {
+        return -ERR_DEV_BUSY;
+    }
+    if (len > SERIAL_BUF_MAX_LEN) {
+        return -ERR_INVAL;
+    }
+    is_rd_waiting = true;
+    rd_buf_idx = 0;
+    rd_req_len = len;
+    rd_req_tid = tid;
+    pr_info("uart16550: registered read request of len %ld from tid %ld",
+        rd_req_len, rd_req_tid);
+    return OK;
+}
+
+static result_t
+uart_serial_read(void) {
+    u8 byte = *(volatile u8*)UART_COM(uart_base, COM_RBR);
+    pr_info("uart16550: received byte 0x%x", byte);
+    if (is_rd_waiting) {
+        if (byte == 0x08 || byte == 0x7f) {
+            /* backspace */
+            if (rd_buf_idx > 0) {
+                rd_buf_idx--;
+                /* echo backspace */
+                const char bs_seq[] = {'\b', ' ', '\b'};
+                uart_serial_write((const u8*)bs_seq, sizeof(bs_seq));
+            }
+        } else {
+            rd_buf[rd_buf_idx++] = byte;  
+            uart_serial_write(&byte, 1); /* echo back */
+            bool rd_ready = 
+                (rd_buf_idx == rd_req_len) ||
+                (byte == '\r');
+            if (rd_ready) {
+                /* fulfill read request */
+                msg_t resp = {0};
+                resp.type = MSG_SERIAL;
+                resp.serial.type = SERIAL_READ_RESP;
+                resp.serial.read_resp.len = rd_buf_idx;
+                memcpy(
+                    resp.serial.read_resp.buf,
+                    rd_buf,
+                    rd_buf_idx
+                );
+                rpc_reply(rd_req_tid, &resp);
+                /* clear read request state */
+                is_rd_waiting = false;
+                rd_buf_idx = 0;
+                rd_req_len = 0;
+                rd_req_tid = TID_INVALID;
+            }
+        }
+    }
+    return OK;
+}
+
 
 result_t
 main(void) {
@@ -72,35 +161,11 @@ main(void) {
             case MSG_NOTIF: {
                 if (msg.notifs & NOTIF_IRQ) {
                     pr_trace("uart16550: received IRQ notification");
-                    while ((*(volatile u8*)UART_COM(uart_base, COM_LSR) & COM_LSR_DR) != 0) {
-                        /* read data */
-                        u8 byte = *(volatile u8*)UART_COM(uart_base, COM_RBR);
-                        pr_trace("uart16550: received byte 0x%x ('%c')",
-                            byte,
-                            (byte >= 32 && byte <= 126) ? byte : '.');
-                        if (is_rd_waiting) {
-                            if (rd_buf_idx < rd_req_len) {
-                                rd_buf[rd_buf_idx++] = byte;  
-                                serial_write(&byte, 1); /* echo back */
-                                if (rd_buf_idx == rd_req_len ||
-                                byte == '\n' || byte == '\r') {
-                                    /* fulfill read request */
-                                    msg_t resp = {0};
-                                    resp.type = MSG_SERIAL;
-                                    resp.serial.type = SERIAL_READ_RESP;
-                                    resp.serial.read_resp.len = rd_buf_idx;
-                                    memcpy(
-                                        resp.serial.read_resp.buf,
-                                        rd_buf,
-                                        rd_buf_idx
-                                    );
-                                    rpc_reply(rd_req_tid, &resp);
-                                    is_rd_waiting = false;
-                                    rd_buf_idx = 0;
-                                    rd_req_len = 0;
-                                    rd_req_tid = TID_INVALID;
-                                }
-                            }
+                    while (uart_rx_ready()) {
+                        ret = uart_serial_read();
+                        if (is_err(ret)) {
+                            pr_warn("uart16550: serial_read failed: %s",
+                                strerr(ret));
                         }
                     }
                     unwrap_err(sys_irq_ack(UART0_IRQ));
@@ -110,10 +175,13 @@ main(void) {
             case MSG_SERIAL: {
                 switch (msg.serial.type) {
                     case SERIAL_WRITE: {
-                        ret = serial_write(
+                        ret = uart_serial_write(
                             msg.serial.write.buf,
                             msg.serial.write.len
                         );
+                        pr_info("uart16550: wrote %ld bytes from tid %ld",
+                            msg.serial.write.len,
+                            msg.src);
                         if (is_err(ret)) {
                             pr_warn("uart16550: serial_write failed: %s",
                                 strerr(ret));
@@ -128,28 +196,21 @@ main(void) {
                         break;
                     }
                     case SERIAL_READ: {
-                        if (is_rd_waiting) {
-                            pr_warn("uart16550: read request already pending from another task");
-                            rpc_reply_result(msg.src, -ERR_DEV_BUSY);
-                            break;
+                        ret = uart_serial_read_register(
+                            msg.src,
+                            msg.serial.read.len
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("uart16550: serial_read_register failed: %s",
+                            strerr(ret));
+                            rpc_reply_result(msg.src, ret);        
                         }
-                        if (msg.serial.read.len > SERIAL_BUF_MAX_LEN) {
-                            pr_warn("uart16550: read request length %ld exceeds buffer max len %ld",
-                                msg.serial.read.len, SERIAL_BUF_MAX_LEN);
-                            rpc_reply_result(msg.src, -ERR_INVAL);
-                            break;
-                        }
-                        is_rd_waiting = true;
-                        rd_buf_idx = 0;
-                        rd_req_len = msg.serial.read.len;
-                        rd_req_tid = msg.src;
-                        pr_info("uart16550: registered read request of len %ld from tid %ld",
-                            rd_req_len, rd_req_tid);
-                        break;
                         /*
                          * this just register a read request 
                          * we'll response when data is available
                          */
+                        break;
+                        
                     }
                     default: {
                         pr_warn("uart16550: unknown serial msg type %ld from %ld",
@@ -157,9 +218,10 @@ main(void) {
                         break;
                     }
                 }
+                break;
             }
             default: {
-                pr_trace("uart16550: received unknown msg type %ld from %ld",
+                pr_warn("uart16550: received unknown msg type %ld from %ld",
                     msg.type, msg.src);
                 break;
             }

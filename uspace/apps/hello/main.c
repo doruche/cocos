@@ -4,32 +4,30 @@
 
 result_t
 main(usize argc, char* argv[]) {
-    // printf("hello, cocos userland!\n");
-    
     tid_t serial;
     while (is_err(tns_resolve("serial/uart16550", &serial))) {
         sys_task_yield();
     }
-    pr_info("hello: resolved 'serial/uart16550' server at tid %ld", serial);
-
-    msg_t msg = {0};
-    msg.type = MSG_SERIAL;
-    msg.serial.type = SERIAL_READ;
-    msg.serial.read.len = 64;
-    result_t ret = rpc_call(serial, &msg);
-    if (is_err(ret)) {
-        pr_warn("hello: rpc_call to serial server failed: %s",
-            strerr(ret));
-    }
-    msg.serial.read_resp.buf[msg.serial.read_resp.len - 1] = '\0';
-    pr_info("hello: received serial read response: '%s'",
-        msg.serial.read_resp.buf);
     
-    msg.serial.type = SERIAL_WRITE;
-    const char* hello_str = "Hello, cocos serial server!\n";
-    memcpy(msg.serial.write.buf, hello_str, strlen(hello_str) + 1);
-    msg.serial.write.len = strlen(hello_str) + 1;
-    unwrap_err(rpc_call(serial, &msg));
+    char buf[SERIAL_BUF_MAX_LEN] = {0};
+    usize read_len;
+    unwrap_err(serial_read(
+        serial,
+        (u8*)buf,
+        32,
+        &read_len
+    ));
+    pr_notify("hello: read %ld bytes from serial: '%s'",
+        read_len,
+        buf
+    );
+    unwrap_err(serial_write(
+        serial,
+        (u8*)buf,
+        read_len
+    ));
 
-    return 0;
+    pr_notify("hello: serial test completed.");
+
+    return OK;
 }

@@ -105,6 +105,7 @@ typedef isize result_t;
 #define ERR_KILLED          43 // Task killed
 #define ERR_INVALID_SYSCALL 44 // Invalid syscall
 #define ERR_PANIC           45 // Process panic
+#define ERR_ACCESS_FAULT    46 // Access fault
 
 static inline char*
 strerr(isize err) {

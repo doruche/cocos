@@ -6,7 +6,6 @@
 result_t
 main(void) {
     unwrap_err(tns_publish("echo"));
-    assert(is_err(tns_publish("echo")));
 
     pr_info("echo server started.");
 

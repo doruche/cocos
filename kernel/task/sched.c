@@ -376,13 +376,13 @@ task_yield(void) {
 
 static void
 task_dump(void) {
-    pr_info("==== task dump start ====");
+    pr_trace("==== task dump start ====");
     list_foreach(iter, &all_tasks) {
         task_t* task = list_entry(iter, task_t, node_all);
-        pr_info("task tid=%ld name=%s state=%d",
+        pr_trace("task tid=%ld name=%s state=%d",
             task->tid, task->name, task->state);        
     }
-    pr_info("==== task dump end ====");
+    pr_trace("==== task dump end ====");
 }
 
 void
