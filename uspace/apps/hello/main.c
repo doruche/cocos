@@ -17,17 +17,18 @@ main(usize argc, char* argv[]) {
         32,
         &read_len
     ));
-    pr_notify("hello: read %ld bytes from serial: '%s'",
+    printf("hello: read %ld bytes from serial: '%s'",
         read_len,
         buf
     );
+    printf("hello: writing back to serial...");
     unwrap_err(serial_write(
         serial,
         (u8*)buf,
         read_len
     ));
 
-    pr_notify("hello: serial test completed.");
+    printf("hello: serial test completed.");
 
     return OK;
 }

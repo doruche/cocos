@@ -25,6 +25,19 @@ typedef u64 msg_type_t;
 #define MSG_NOTIF   0
 #define MSG_EXCEPT  1
 #define MSG_RESULT  2
+/* user defined */
+#define MSG_PM      3
+#define MSG_ECHO    4
+#define MSG_SERIAL  5
+
+/* asynchronous notification */
+typedef u64 notif_t;
+/* kernel reserved */
+#define NOTIF_IPC_ABORT (1L << 0)
+#define NOTIF_TASK_EXIT (1L << 1)
+#define NOTIF_IRQ       (1L << 2)
+/* user defined */
+#define NOTIF_USER0     (1L << 16)
 
 typedef enum _except_type_t {
     EXCEPT_PAGEFAULT,
@@ -39,20 +52,6 @@ typedef struct _except_msg_t {
         } pagefault;
     };
 } except_msg_t;
-
-/* user defined */
-#define MSG_PM      3
-#define MSG_ECHO    4
-#define MSG_SERIAL  5
-
-/* asynchronous notification */
-typedef u64 notif_t;
-/* kernel reserved */
-#define NOTIF_IPC_ABORT (1L << 0)
-#define NOTIF_TASK_EXIT (1L << 1)
-#define NOTIF_IRQ       (1L << 2)
-/* user defined */
-#define NOTIF_USER0     (1L << 16)
 
 /* synchronous message */
 typedef struct _msg_t {

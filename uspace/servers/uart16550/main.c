@@ -62,13 +62,6 @@ uart_serial_write(const u8* buf, usize len) {
             /* wait */
         }
         *(volatile u8*)UART_COM(uart_base, COM_THR) = buf[i];
-        if (buf[i] == '\r') {
-            /* also send newline */
-            while (uart_tx_busy()) {
-                /* wait */
-            }
-            *(volatile u8*)UART_COM(uart_base, COM_THR) = '\n';
-        }
     }
     return OK;
 }
@@ -111,11 +104,15 @@ uart_serial_read(void) {
                 uart_serial_write((const u8*)bs_seq, sizeof(bs_seq));
             }
         } else {
+            if (byte == '\r') {
+                /* convert carriage return to newline */
+                byte = '\n';
+            }
             rd_buf[rd_buf_idx++] = byte;  
             uart_serial_write(&byte, 1); /* echo back */
             bool rd_ready = 
                 (rd_buf_idx == rd_req_len) ||
-                (byte == '\r');
+                (byte == '\n');
             if (rd_ready) {
                 /* fulfill read request */
                 msg_t resp = {0};
@@ -179,7 +176,7 @@ main(void) {
                             msg.serial.write.buf,
                             msg.serial.write.len
                         );
-                        pr_info("uart16550: wrote %ld bytes from tid %ld",
+                        pr_trace("uart16550: wrote %ld bytes from tid %ld",
                             msg.serial.write.len,
                             msg.src);
                         if (is_err(ret)) {

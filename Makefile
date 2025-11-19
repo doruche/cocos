@@ -43,12 +43,12 @@ QEMU_FLAGS := \
 	-serial mon:stdio
 
 # Parameters
-MODULES := libs kernel uspace
+MODULES := kernel uspace libs
 
 .PHONY: all clean $(MODULES) \
 		run gdb-client gdb-server
 
-all: $(MODULES)
+all: $(MODULES) 
 
 # building the kernel depends on bootimage from uspace.
 # this is a bit coarse-grained and slow, but works for now.
