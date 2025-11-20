@@ -131,7 +131,7 @@ proc_spawn(
         if (is_err(ret)) {
             pr_warn("proc_spawn: sys_as_map failed: %s",
                 strerr(ret));
-            goto err;            
+            goto err;
         }
 
         // write segment data

@@ -12,19 +12,24 @@ LDFLAGS := $(GLOBL_LDFLAGS) -T $(LINKER) -Map=$(BUILD_DIR)/kernel.map
 
 include $(ROOT_DIR)/scripts/build.mk
 
-.PHONY: all stub
+.PHONY: all stub bootimage
 
 all: $(TARGET)
 
-$(BUILD_DIR)/kernel.elf: $(MOD_OBJDIR)_dirs $(OBJS) $(LIBGENERIC) $(LINKER)
+$(BUILD_DIR)/kernel.elf: $(MOD_OBJDIR)_dirs $(OBJS) $(LIBGENERIC) $(LINKER) $(BOOTIMG)
 	@echo "  LD\t$(shell realpath --relative-to=$(BUILD_DIR) $@)"
-	@$(LD) $(LDFLAGS) -o $@ $(OBJS) $(LIBGENERIC)
+	@$(LD) $(LDFLAGS) -o $@ $(OBJS) $(BOOTIMG) $(LIBGENERIC)
 	@echo "  COPY\tkernel.bin"
 	@$(OBJCOPY) -S -O binary $@ $(BUILD_DIR)/kernel.bin
 	@echo "  DUMP\tkernel.asm"
 	@$(OBJDUMP) -S -d $@ > $(BUILD_DIR)/kernel.asm
 
-$(LINKER): $(LINKER_TEMPLATE)
+BOOTIMG := $(BUILD_DIR)/kernel/bootimage.o
+bootimage:
+	@rm -f $(BOOTIMG)
+	@$(CC) -c -o $(BOOTIMG) $(MOD_SRCDIR)/bootimage.S
+
+$(LINKER): $(LINKER_TEMPLATE) bootimage
 # -E: preprocess only
 # -P: inhibit generation of linemarkers
 # -x c: treat input as C code to make preprocessor happy

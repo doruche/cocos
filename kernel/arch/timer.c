@@ -8,7 +8,7 @@
 #include <kernel/arch/sbi.h>
 #include <kernel/arch/qemu-virt.h>
 
-static const u64 INTERVAL = FREQUENCY / 10;
+static const u64 INTERVAL = FREQUENCY / 100;
 
 void
 set_next_timer(void) {

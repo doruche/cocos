@@ -55,7 +55,7 @@ tn_insert(
             strncpy(entry->name, name, SERVICE_NAME_MAX_LEN);
             entry->server = server;
             list_push_back(&tn_list, &entry->node);
-            pr_notify("tn_insert: "
+            pr_trace("tn_insert: "
                 "registered service '%s' with server %ld",
                 entry->name,
                 entry->server);

@@ -104,7 +104,7 @@ kmem_cache_alloc(kmem_cache_t* cache) {
         slab = slab_pop_front(&cache->partial_slabs);
     } else {
         // need to allocate a new slab
-        pr_warn("kmem_cache_alloc: allocating new slab");
+        pr_trace("kmem_cache_alloc: allocating new slab");
         ppn_t ppn = unwrap_err(pm_alloc());
         slab = (slab_t*)PN2PA(ppn);
         slab_init(cache, slab);

@@ -3,7 +3,7 @@
  * string & memory manipulation functions.
  */
 
-#include "libs/prelude.h"
+#include <libs/prelude.h>
 
 void*
 memset(void* s, u8 c, usize n) {
@@ -82,4 +82,35 @@ strcmp(const char* s1, const char* s2) {
         s2++;
     }
     return (isize)(*(u8*)s1 - *(u8*)s2);
+}
+
+result_t
+str2isize(const char* s, isize* out) {
+    isize result = 0;
+    bool negative = false;
+    usize i = 0;
+
+    while (s[i] == ' ' || s[i] == '\t') {
+        i++;
+    }
+
+    if (s[i] == '-') {
+        negative = true;
+        i++;
+    } else if (s[i] == '+') {
+        i++;
+    }
+
+    if (s[i] < '0' || s[i] > '9') {
+        return -ERR_INVAL;
+    }
+    while (s[i] >= '0' && s[i] <= '9') {
+        result = result * 10 + (s[i] - '0');
+        i++;
+    }
+    if (negative) {
+        result = -result;
+    }
+    *out = result;
+    return OK;
 }

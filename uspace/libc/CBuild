@@ -4,5 +4,4 @@ obj-y := \
 	task.o \
 	main.o \
 	crt0.o \
-	ipc.o \
-	serial.o
+	ipc.o 

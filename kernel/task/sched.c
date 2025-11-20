@@ -421,8 +421,8 @@ scheduler(void) {
             }
         }
 
-        pr_info("sched: one full round done.");
-        pr_info("free pages: %ld", pm_count_free());
+        pr_trace("sched: one full round done.");
+        pr_trace("free pages: %ld", pm_count_free());
         task_dump();
     }
 }

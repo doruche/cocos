@@ -3,8 +3,7 @@ LINKER_TEMPLATE := libc/arch/uspace.lds.in
 
 export APPS := \
 	idle \
-	hello \
-	echoc 
+	shell
 
 export SERVERS := \
 	echo \

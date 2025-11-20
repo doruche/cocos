@@ -100,6 +100,7 @@ typedef isize result_t;
 #define ERR_DEAD_TASK 11 // Destination task is dead
 #define ERR_WOULD_BLOCK 12 // Ipc would block
 #define ERR_DEV_BUSY 13 // Device busy
+#define ERR_BUF_OVERFLOW 14 // Buffer overflow
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
@@ -134,6 +135,10 @@ strerr(isize err) {
             return "Destination task is dead";
         case -ERR_WOULD_BLOCK:
             return "Ipc would block";
+        case -ERR_DEV_BUSY:
+            return "Device busy";
+        case -ERR_BUF_OVERFLOW:
+            return "Buffer overflow";
         case -ERR_PAGEFAULT:
             return "Page fault";
         case -ERR_KILLED:
