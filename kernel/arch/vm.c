@@ -219,6 +219,7 @@ make_kvm(arch_vm_t* vm) {
     extern u8 __edata[];
     extern u8 __sbss[];
     extern u8 __ebss[];
+    extern u8 __stack0_guard[];
     extern u8 __stack0_bottom[];
     extern u8 __stack0_top[];
     extern u8 __smem[];
@@ -246,6 +247,12 @@ make_kvm(arch_vm_t* vm) {
         (kaddr_t)__sbss,
         (kaddr_t)__ebss,
         VM_READ | VM_WRITE
+    );
+    arch_vm_map(
+        vm,
+        PA2PN((kaddr_t)__stack0_guard),
+        0,
+        VM_READ | VM_WRITE | VM_FAKE
     );
     map_region(
         vm,

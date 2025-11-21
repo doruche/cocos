@@ -1,5 +1,5 @@
 /*
- * libgeneric's hooks
+ * libcocos's hooks
  */
 
 #include <libs/hooks.h>

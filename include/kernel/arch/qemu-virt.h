@@ -13,7 +13,7 @@
 #define FREQUENCY   10000000UL  // 10MHz
 
 // actually i mean sbi.(x
-#define BIOS_BASE   0x80000000UL
+#define BIOS_BASE   0x80000000
 
 #define KERN_BASE   0x80200000
 #define PHYSTOP     0x80000000UL + 128*1024*1024  // 128MB

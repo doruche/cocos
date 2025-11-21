@@ -1,7 +1,7 @@
 #pragma once
 
 #include <libs/prelude.h>
-#include <kernel/consts/params.h>
+#include <config.h>
 
 /*
  * although the kernel supports infinite tasks on theory,
@@ -25,13 +25,6 @@ struct task_t {
     tid_t tid;
     char name[TASK_NAME_MAX_LEN];
     asid_t asid;
-
-    // TODO thread
-    // union {
-    //     bool is_main;
-    //     list_t threads;
-    // };
-
     vpn_t brk;
 };
 
@@ -46,6 +39,7 @@ result_t
 proc_spawn(
     const char* name,
     const u8* elf,
+    const cmdline_t* cmdline,
     tid_t* out_tid
 );
 

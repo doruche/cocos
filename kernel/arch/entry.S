@@ -1,4 +1,4 @@
-#include <kernel/consts/params.h>
+#include <config.h>
 
     .section    .text.entry
     .globl      _start

@@ -3,6 +3,7 @@
  */
 
 #include <libs/prelude.h>
+#include <config.h>
 
 typedef enum _serial_msg_type_t {
     SERIAL_WRITE,
@@ -10,8 +11,6 @@ typedef enum _serial_msg_type_t {
     SERIAL_READ,
     SERIAL_READ_RESP,
 } serial_msg_type_t;
-
-#define SERIAL_BUF_MAX_LEN 128
 
 typedef struct _serial_msg_t {
     serial_msg_type_t type;

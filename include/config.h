@@ -1,17 +1,17 @@
 /*
- * custom parameters about the kernel
+ * cocos operating system configurations
  */
 
 #pragma once
-
-#ifndef PAGE_SIZE
-    #define PAGE_SIZE   0x1000
-#endif
 
 #ifndef NCPU
     #define NCPU    1
 #elif NCPU > 1
     #error "SMP is not supported yet"
+#endif
+
+#ifndef PAGE_SIZE
+    #define PAGE_SIZE   0x1000
 #endif
 
 #define BOOT_STACK_SIZE (8 * PAGE_SIZE)
@@ -22,7 +22,13 @@
 
 #define TASK_NAME_MAX_LEN 32
 
-// max physical pages a task can alloc via sys_pm_alloc
-// too rigid, but good enough for now (128 KB)
-// optimize later with dynamic array (list is too heavyweight)
-#define TASK_MAX_PHYS_PAGES 32
+#define SERIAL_BUF_MAX_LEN 128
+
+#define NUM_CMD_ARGS_MAX 8
+
+#define INIT_SERVERS \
+    { "uart16550", "random", "echo", "idle", NULL }
+
+#define INIT_APPS \
+    { "shell", NULL }
+

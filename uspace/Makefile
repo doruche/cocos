@@ -1,13 +1,17 @@
 LINKER := $(BUILD_DIR)/uspace/libc/arch/uspace.lds
 LINKER_TEMPLATE := libc/arch/uspace.lds.in
 
+# these will be put into bfs image
 export APPS := \
-	idle \
-	shell
-
+	hello \
+	shell \
+	arg \
+	stackof
 export SERVERS := \
+	idle \
 	echo \
-	uart16550
+	uart16550 \
+	random
 
 .PHONY: all libc apps servers
 

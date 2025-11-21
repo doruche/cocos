@@ -85,7 +85,7 @@ uart_serial_read_register(tid_t tid, usize len) {
     rd_buf_idx = 0;
     rd_req_len = len;
     rd_req_tid = tid;
-    pr_info("uart16550: registered read request of len %ld from tid %ld",
+    pr_trace("uart16550: registered read request of len %ld from tid %ld",
         rd_req_len, rd_req_tid);
     return OK;
 }
@@ -93,7 +93,6 @@ uart_serial_read_register(tid_t tid, usize len) {
 static result_t
 uart_serial_read(void) {
     u8 byte = *(volatile u8*)UART_COM(uart_base, COM_RBR);
-    pr_info("uart16550: received byte 0x%x", byte);
     if (is_rd_waiting) {
         if (byte == 0x08 || byte == 0x7f) {
             /* backspace */

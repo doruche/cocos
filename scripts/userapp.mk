@@ -10,8 +10,8 @@ CFLAGS := $(GLOBL_CFLAGS) -DLOG=$(ULOG) -DNAME=\"$(TYPE)/$(APP_NAME)/\"
 LDFLAGS := $(GLOBL_LDFLAGS) -T $(BUILD_DIR)/uspace/libc/arch/uspace.lds
 TARGET := $(MOD_OBJDIR)/$(APP_NAME)
 
-# NOTE libc depends on libgeneric! ORDER MATTERS!!!
-LIBS := $(BUILD_DIR)/libs/libgeneric.a $(BUILD_DIR)/uspace/libc/libc.a
+# NOTE libc depends on libcocos! ORDER MATTERS!!!
+LIBS := $(BUILD_DIR)/libs/libcocos.a $(BUILD_DIR)/uspace/libc/libc.a
 
 # this script will be run at each user apps' root dir
 include $(ROOT_DIR)/scripts/build.mk

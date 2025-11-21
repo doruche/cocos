@@ -7,9 +7,9 @@
 #include <kernel/arch/csr.h>
 #include <kernel/arch/trap.h>
 #include <kernel/arch/qemu-virt.h>
-#include <kernel/consts/params.h>
 #include <kernel/mm/pm.h>
 #include <kernel/mm/slab.h>
+#include <config.h>
 
 static kmem_cache_t arch_ctx_cache;
 
@@ -69,6 +69,7 @@ arch_ctx_creat(
     arch_vm_t* vm,
     kaddr_t kentry, 
     uaddr_t uentry,
+    uaddr_t usp,
     vpn_t kstack_top
 ) {
     arch_ctx_t* ctx = unwrap_null(kmem_cache_alloc(&arch_ctx_cache));
@@ -79,7 +80,7 @@ arch_ctx_creat(
     ctx->tf.sepc = uentry;
     ctx->tf.sstatus = (r_sstatus() & ~SSTATUS_SPP) | SSTATUS_SPIE;
     ctx->tf.ksp = PN2PA(kstack_top);
-    ctx->tf.x[2] = BIOS_BASE;
+    ctx->tf.x[2] = usp;
 
     // allocate and map kernel stack
     for (usize i = 0; i < KSTACK_SIZE / PAGE_SIZE; i++) {
@@ -96,22 +97,6 @@ arch_ctx_creat(
         (vpn_t)(kstack_top - KSTACK_SIZE / PAGE_SIZE - 1),
         0,
         VM_READ | VM_WRITE | VM_FAKE
-    );
-
-    // allocate and map user stack
-    for (usize i = 0; i < USTACK_SIZE / PAGE_SIZE; i++) {
-        arch_vm_map(
-            vm,
-            (vpn_t)(BIOS_BASE / PAGE_SIZE - USTACK_SIZE / PAGE_SIZE + i),
-            PPN_ANON,
-            VM_USER | VM_READ | VM_WRITE | VM_ANON
-        );
-    }
-    arch_vm_map(
-        vm,
-        (vpn_t)(BIOS_BASE / PAGE_SIZE - USTACK_SIZE / PAGE_SIZE - 1),
-        0,
-        VM_USER | VM_READ | VM_WRITE | VM_FAKE
     );
 
     return ctx;

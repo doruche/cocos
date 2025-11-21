@@ -8,7 +8,7 @@
 #include <libs/list.h>
 #include <kernel/mm/as.h>
 #include <kernel/arch/arch.h>
-#include <kernel/consts/params.h>
+#include <config.h>
 
 typedef enum _task_state_t {
     T_READY = 0,
@@ -60,7 +60,8 @@ void    sched_init(u8* init_elf);
 
 result_t task_spawn(
     const char* name, 
-    uaddr_t entry, 
+    uaddr_t entry,
+    uaddr_t sp,
     asid_t asid,
     task_t** out
 );

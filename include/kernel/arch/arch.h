@@ -25,6 +25,7 @@ typedef struct _arch_vm_t arch_vm_t;
 
 #define IRQ_MAX 16
 
+
 #define NMEMZONE_MAX    8
 
 enum memzone_type {
@@ -86,6 +87,7 @@ arch_ctx_t* arch_ctx_creat(
     arch_vm_t* vm,
     kaddr_t kentry,
     uaddr_t uentry,
+    uaddr_t usp,
     vpn_t kstack_top
 );
 void    arch_ctx_destroy(

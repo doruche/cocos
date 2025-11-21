@@ -7,6 +7,9 @@
 
 static struct task_t tasks[MAX_TASK_NUM];
 
+extern u8 __ustack_bottom[];
+extern u8 __ustack_top[];
+
 void
 task_init(void) {
     for (usize i = 0; i < MAX_TASK_NUM; i++) {
@@ -73,10 +76,55 @@ pflags2vmflags(usize p_flags) {
     return vm_flags;
 }
 
+/* 
+ * length of cmdline cannot exceed SERIAL_BUF_MAX_LEN, 
+ * twice to accomodate both argv strings and pointers
+ */
+static u8 init_stack_buf[SERIAL_BUF_MAX_LEN * 2];
+
+/* System-V ABI without envp & auxv */
+static uaddr_t
+proc_setup_stack(const cmdline_t* cmdline) {
+    extern u8 __ustack_top[];
+    
+    memset(init_stack_buf, 0, sizeof(init_stack_buf));
+    
+    u8* buf_top = init_stack_buf + sizeof(init_stack_buf);
+    u8* p = buf_top;
+    
+    uaddr_t argv_ptrs[NUM_CMD_ARGS_MAX];
+    
+    /* push strings */
+    for (isize i = cmdline->argc - 1; i >= 0; i--) {
+        usize len = strlen(cmdline->argv[i]) + 1;
+        p -= len;
+        memcpy(p, cmdline->argv[i], len);
+        argv_ptrs[i] = (uaddr_t)__ustack_top - (buf_top - p);
+        pr_info("proc_setup_stack: argv[%ld] at 0x%lx: %s",
+            i, argv_ptrs[i], (char*)p);
+    }
+    p = (u8*)align_down((usize)p, sizeof(u64));
+
+    /* push argv pointers */
+    p -= sizeof(u64); /* NULL-terminate */
+    for (isize i = cmdline->argc - 1; i >= 0; i--) {
+        p -= sizeof(u64);
+        *((u64*)p) = argv_ptrs[i];
+    }
+    p -= sizeof(u64); /* argc */
+    *((u64*)p) = cmdline->argc;
+
+    /* align to 16 */
+    p = (u8*)align_down((usize)p, 16);
+
+    return (uaddr_t)__ustack_top - (buf_top - p);
+}
+
 result_t
 proc_spawn(
     const char* name,
     const u8* elf,
+    const cmdline_t* cmdline,
     tid_t* out_tid
 ) {
     struct task_t* task = NULL;
@@ -92,9 +140,11 @@ proc_spawn(
         goto err;
     }
 
+    uaddr_t sp = proc_setup_stack(cmdline);
     tid_t tid = sys_task_spawn(
         name,
         elf_hdr->e_entry,
+        sp,
         ASID_NEW
     );
     if (is_err(tid)) {
@@ -123,10 +173,18 @@ proc_spawn(
             PGUP(phdr->p_memsz) / PAGE_SIZE,
             flags
         );
-        task->brk = max(
-            task->brk,
-            PA2PN(phdr->p_vaddr + phdr->p_memsz)
-        );
+        if (phdr->p_vaddr != (u64)__ustack_bottom) {
+            task->brk = max(
+                task->brk,
+                PA2PN(phdr->p_vaddr + phdr->p_memsz)
+            );
+        } else {
+            /*
+             * for stack segment,
+             * no need to do following 'memxxx's.
+             * but for simplicity we still do them.
+             */
+        }
 
         if (is_err(ret)) {
             pr_warn("proc_spawn: sys_as_map failed: %s",
@@ -157,6 +215,33 @@ proc_spawn(
                 strerr(ret));
             goto err;
         }
+    }
+
+    /* copy stack content */
+    extern u8 __ustack_top[];
+    usize copy_size = (uaddr_t)__ustack_top - sp;
+    u8* src = init_stack_buf + sizeof(init_stack_buf) - copy_size;
+    ret = sys_as_memcpy(asid, sp, src, copy_size);
+    if (is_err(ret)) {
+        pr_warn("proc_spawn: failed to copy stack content: %s", strerr(ret));
+        goto err;
+    } else {
+        pr_info("proc_spawn: init sp set at 0x%lx, copied %ld bytes",
+            sp, copy_size);
+    }
+
+    /* map guard page */
+    ret = sys_as_map(
+        asid,
+        PA2PN((uaddr_t)__ustack_bottom - PAGE_SIZE),
+        0,
+        1,
+        VM_READ | VM_WRITE | VM_FAKE
+    );
+    if (is_err(ret)) {
+        pr_warn("proc_spawn: sys_as_map guard page failed: %s",
+            strerr(ret));
+        goto err;
     }
 
     task->tid = tid;

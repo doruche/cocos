@@ -3,7 +3,7 @@ MOD_SRCDIR := $(ROOT_DIR)/kernel
 MOD_OBJDIR := $(BUILD_DIR)/kernel
 TARGET := $(BUILD_DIR)/kernel.elf
 
-LIBGENERIC := $(BUILD_DIR)/libs/libgeneric.a
+LIBCOCOS := $(BUILD_DIR)/libs/libcocos.a
 LINKER := $(MOD_OBJDIR)/arch/kernel.lds
 LINKER_TEMPLATE := $(MOD_SRCDIR)/arch/kernel.lds.in
 
@@ -16,9 +16,9 @@ include $(ROOT_DIR)/scripts/build.mk
 
 all: $(TARGET)
 
-$(BUILD_DIR)/kernel.elf: $(MOD_OBJDIR)_dirs $(OBJS) $(LIBGENERIC) $(LINKER) $(BOOTIMG)
+$(BUILD_DIR)/kernel.elf: $(MOD_OBJDIR)_dirs $(OBJS) $(LIBCOCOS) $(LINKER) $(BOOTIMG)
 	@echo "  LD\t$(shell realpath --relative-to=$(BUILD_DIR) $@)"
-	@$(LD) $(LDFLAGS) -o $@ $(OBJS) $(BOOTIMG) $(LIBGENERIC)
+	@$(LD) $(LDFLAGS) -o $@ $(OBJS) $(BOOTIMG) $(LIBCOCOS)
 	@echo "  COPY\tkernel.bin"
 	@$(OBJCOPY) -S -O binary $@ $(BUILD_DIR)/kernel.bin
 	@echo "  DUMP\tkernel.asm"

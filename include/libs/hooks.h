@@ -1,5 +1,5 @@
 /*
- * hooks user of libgeneric must implement.
+ * hooks user of libcocos must implement.
  */
 
 #pragma once

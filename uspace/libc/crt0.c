@@ -4,11 +4,11 @@
 // define in assembly to support arbitrary signatures:
 // 1. main(void)
 // 2. main(int argc, char** argv)
-extern result_t __main(isize argc, char* argv[]);
+extern result_t __main(usize argc, char* argv[]);
 
 void
-crt0(void) {
-    result_t ret = __main(0, NULL);
+crt0(usize argc, char* argv[]) {
+    result_t ret = __main(argc, argv);
     printf_flush();
     task_exit(ret);
 }

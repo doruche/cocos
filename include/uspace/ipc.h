@@ -13,6 +13,7 @@ result_t rpc_call(tid_t remote, msg_t *msg);
 result_t rpc_reply(tid_t client, const msg_t *msg);
 result_t rpc_reply_result(tid_t client, result_t res);
 
+
 /*
  * TNS - Task Name System
  * In this simple kernel, it is implemented

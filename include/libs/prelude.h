@@ -101,6 +101,7 @@ typedef isize result_t;
 #define ERR_WOULD_BLOCK 12 // Ipc would block
 #define ERR_DEV_BUSY 13 // Device busy
 #define ERR_BUF_OVERFLOW 14 // Buffer overflow
+#define ERR_UNKNOWN_REQ 15 // Unknown request
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
@@ -111,6 +112,8 @@ typedef isize result_t;
 static inline char*
 strerr(isize err) {
     switch (err) {
+        case OK:
+            return "Success";
         case -ERR_NOMEM:
             return "Out of memory";
         case -ERR_INVAL:
@@ -139,6 +142,8 @@ strerr(isize err) {
             return "Device busy";
         case -ERR_BUF_OVERFLOW:
             return "Buffer overflow";
+        case -ERR_UNKNOWN_REQ:
+            return "Unknown request";
         case -ERR_PAGEFAULT:
             return "Page fault";
         case -ERR_KILLED:
@@ -154,7 +159,8 @@ strerr(isize err) {
 
 typedef usize tid_t;
 #define TID_INVALID ((tid_t)-2)
-/* -1 for IPC_OPEN */
+/* -1 for TID_ANY (a.k.a. IPC_OPEN) */
+#define TID_ANY     ((tid_t)-1)
 #define TID_KERNEL  ((tid_t)0)
 #define TID_PM      ((tid_t)1)
 

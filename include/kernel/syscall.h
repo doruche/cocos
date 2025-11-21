@@ -104,10 +104,11 @@ result_t    syscall_dispatch(
 /* task */
 SYSCALL_DECLARE1(task_destroy, tid_t, tid);
 SYSCALL_DECLARE0(task_gettid);
-SYSCALL_DECLARE3(
+SYSCALL_DECLARE4(
     task_spawn, 
     const char*, name, 
-    uaddr_t, entry, 
+    uaddr_t, entry,
+    uaddr_t, sp,
     asid_t, asid
 );
 SYSCALL_DECLARE0(task_yield);

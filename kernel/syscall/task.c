@@ -28,9 +28,15 @@ SYSCALL_DEFINE0(task_gettid) {
     return (unwrap_null(current_task))->tid;
 }
 
-SYSCALL_DEFINE3(task_spawn, const char*, name, uaddr_t, entry, asid_t, asid) {
+SYSCALL_DEFINE4(
+    task_spawn, 
+    const char*, name, 
+    uaddr_t, entry, 
+    uaddr_t, sp,
+    asid_t, asid
+) {
     task_t* task = NULL;
-    result_t ret = task_spawn(name, entry, asid, &task);
+    result_t ret = task_spawn(name, entry, sp, asid, &task);
     if (is_err(ret)) {
         pr_warn("sys_task_spawn: failed to spawn task %s: %s",
             name, strerr(ret));

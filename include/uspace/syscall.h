@@ -43,14 +43,15 @@ static inline result_t
 sys_task_spawn(
     const char* name,
     uaddr_t entry,
+    uaddr_t sp,
     asid_t asid
 ) {
     return arch_syscall(
         SYS_TASK_SPAWN,
         (u64)(name),
         (u64)(entry),
+        (u64)(sp),
         (u64)(asid),
-        0,
         0
     );
 }

@@ -1,5 +1,5 @@
 #include <kernel/arch/qemu-virt.h>
-#include <kernel/consts/params.h>
+#include <config.h>
 
 OUTPUT_ARCH(riscv)
 ENTRY(_start);
@@ -37,6 +37,14 @@ SECTIONS {
     }
 
     . = ALIGN(4K);
+    __euser = .;
+
+    . = BIOS_BASE - USTACK_SIZE;
+    .ustack : ALIGN(4K) {
+        __ustack_bottom = .;
+        . += USTACK_SIZE;
+        __ustack_top = .;
+    }  
 
     /DISCARD/ : {
         *(.comment)

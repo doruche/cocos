@@ -9,7 +9,7 @@ main(void) {
     while (is_err(tns_resolve("echo", &remote))) {
         sys_task_yield();
     }
-    pr_info("echoc: resolved 'echo' server at tid %ld", remote);
+    printf("echoc: resolved 'echo' server at tid %ld\n", remote);
 
     msg_t msg = {0};
     msg.type = MSG_ECHO;
@@ -21,7 +21,7 @@ main(void) {
         pr_warn("echoc: rpc_call to echo server failed: %s",
             strerr(ret));
     } else {
-        pr_info("echoc: received echo response: '%s'",
+        printf("echoc: received echo response: '%s'\n",
             msg.echo.echo_resp.data);
     }
 

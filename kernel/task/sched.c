@@ -7,10 +7,10 @@
 #include <kernel/ipc.h>
 #include <kernel/mm/slab.h>
 #include <kernel/mm/as.h>
-#include <kernel/consts/params.h>
 #include <kernel/task/processor.h>
 #include <kernel/mm/pm.h>
 #include <kernel/mm/kmalloc.h>
+#include <config.h>
 
 /*
  * Invariable we should keep during scheduling:
@@ -70,6 +70,10 @@ creat_first_task(u8* bootimage) {
     unwrap_err(task_spawn(
         "pm", 
         elf_header->e_entry, 
+        /*
+         * reserve 32 bytes to 
+         */
+        PN2PA(arch_vm_kbase()) - 32,
         ASID_NEW,
         &init_task
     ));
@@ -157,7 +161,8 @@ sched_init(u8* init_elf) {
 result_t
 task_spawn(
     const char* name, 
-    uaddr_t entry, 
+    uaddr_t entry,
+    uaddr_t sp, 
     asid_t asid,
     task_t** out
 ) {
@@ -186,6 +191,7 @@ task_spawn(
         task->as->arch_vm,
         (kaddr_t)arch_utrap_ret,
         entry,
+        sp,
         kstack_top
     ));
 

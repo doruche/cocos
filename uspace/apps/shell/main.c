@@ -1,5 +1,7 @@
-#include "cmd.h"
+#include "builtin.h"
 #include "console.h"
+#include <libs/prelude.h>
+#include <uspace/ipc.h>
 
 #define COLOR_PROMPT COLOR_CYAN
 
@@ -15,48 +17,14 @@ about_message(void) {
     printf("type 'help' to see available commands.\n");
 }
 
-static void
-skip_empty(char** str) {
-    while (**str == ' ' || **str == '\t') {
-        (*str)++;
-    }
-}
-
-static result_t
-cmd_parse(char* input, struct args_t* out_args) {
-    char* ptr = input;
-    skip_empty(&ptr);
-
-    usize arg_idx = 0;
-    while (*ptr != '\0' && arg_idx < NUM_ARGS_MAX) {
-        char* start = ptr;
-        while (*ptr != ' ' && *ptr != '\t' && *ptr != '\0') {
-            ptr++;
-        }
-        usize len = ptr - start;
-        if (len > 0) {
-            out_args->argv[arg_idx] = start;
-            if (*ptr != '\0') {
-                *ptr = '\0'; /* null-terminate */
-                ptr++;
-            }
-            arg_idx++;
-        }
-        skip_empty(&ptr);
-    }
-    out_args->argc = arg_idx;
-    out_args->argv[arg_idx] = NULL;
-
-    return OK;
-}
-
 result_t
 main(void) {
     console_init();
     about_message();
     
     char buf[SERIAL_BUF_MAX_LEN] = {0};
-    struct args_t args = {0};
+    char buf2[SERIAL_BUF_MAX_LEN] = {0};
+    cmdline_t args = {0};
     loop {
         prompt("");
         result_t ret = console_gets(buf);
@@ -65,26 +33,33 @@ main(void) {
             goto done;
         }
         buf[strlen(buf) - 1] = '\0'; /* remove newline */
-        
+        memcpy(buf2, buf, SERIAL_BUF_MAX_LEN);
+
         char* p = buf;
-        skip_empty(&p);
+        cmd_skip_empty(&p);
         if (*p == '\0') {
             continue; /* empty input */
         }
 
-        ret = cmd_parse(buf, &args);
+        cmd_parse_inplace(buf, &args);
+        ret = builtin_run(&args);
         if (is_err(ret)) {
-            printf("error parsing command: %s\n", strerr(ret));
-            goto done;
-        }
-        ret = cmd_run(&args);
-        if (is_err(ret)) {
-            printf("error executing command: %s\n", strerr(ret));
-            goto done;
+            msg_t m = {0};
+            m.type = MSG_PM;
+            m.pm.type = PM_SPAWN;
+            memcpy(m.pm.spawn.cmdline, buf2, SERIAL_BUF_MAX_LEN);
+            ret = rpc_call(TID_PM, &m);
+            if (is_err(ret)) {
+                printf("error executing command '%s': %s\n", buf, strerr(ret));
+                goto done;
+            } else {
+                /* here we should wait. but now we just continue */
+            }
         }
 
     done:
         memset(buf, 0, SERIAL_BUF_MAX_LEN);
+        memset(buf2, 0, SERIAL_BUF_MAX_LEN);
         memset(&args, 0, sizeof(args));
     }
 
