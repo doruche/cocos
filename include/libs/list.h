@@ -32,7 +32,7 @@ bool    list_contains(list_t* list, list_elem_t* elem);
 usize   list_length(list_t* list);
 
 #define list_head(name) \
-    static list_t name = { &(name), &(name) }
+    list_t name = { &(name), &(name) }
 
 #define list_entry(ptr, type, member) \
     container_of(ptr, type, member)

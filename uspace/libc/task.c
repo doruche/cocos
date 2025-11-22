@@ -26,7 +26,7 @@ result_t
 proc_spawn(
     const char* path,
     const char* argv[],
-    tid_t* out_pid
+    pid_t* out_pid
 ) {
     if (argv == NULL || argv[0] == NULL) {
         return -ERR_INVAL;
@@ -61,5 +61,46 @@ proc_spawn(
         return ret;
     }
     *out_pid = msg.pm.proc_spawn_resp.pid;
+    return OK;
+}
+
+result_t
+proc_join(pid_t pid, result_t* xcode) {
+    // msg_t msg = {0};
+    // loop {
+    //     msg.type = MSG_PM;
+    //     msg.pm.type = PM_PROC_PROBE;
+    //     msg.pm.proc_probe.pid = pid;
+    //     
+    //     result_t ret = rpc_call(TID_PM, &msg);
+    //     /* OK means target still alive */
+    //     if (is_err(ret)) {
+    //         return ret;
+    //     }
+    // }
+
+    msg_t msg = {0};
+    result_t ret = OK;
+    msg.type = MSG_PM;
+    msg.pm.type = PM_PROC_WATCH;
+    msg.pm.proc_watch.pid = pid;
+    ret = rpc_call(TID_PM, &msg);
+    if (is_err(ret)) {
+        return ret;
+    }
+    loop {
+        ret = async_recv(TID_PM, &msg);
+        if (ret == OK) {
+            break;
+        } else if (ret != -ERR_NOENT) {
+            panic("proc_join: unexpected error from async_recv: %s",
+                strerr(ret));
+        }
+    }
+    if (xcode != NULL) {
+        *xcode = msg.pm.proc_exit.xcode;
+    }
+    /* no need to unwatch, as the process exit will automatically clean up watchers */
+
     return OK;
 }

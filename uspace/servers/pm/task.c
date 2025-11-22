@@ -1,4 +1,5 @@
 #include "task.h"
+#include "tns.h"
 #include <libs/prelude.h>
 #include <libs/elf.h>
 #include <libs/iter.h>
@@ -17,6 +18,7 @@ task_init(void) {
         processes[i].pid = TID_INVALID;
         processes[i].in_use = false;
         memset(processes[i].path, 0, PATH_MAX_LEN);
+        list_init(&processes[i].watchers);
         processes[i].asid = ASID_INVALID;
         processes[i].brk = 0;
     }
@@ -28,6 +30,7 @@ proc_alloc(struct process_t** out_proc) {
         if (!processes[i].in_use) {
             processes[i].in_use = true;
             *out_proc = &processes[i];
+            list_init(&processes[i].watchers);
             pr_info("process_alloc: allocated process slot %ld", i);
             return OK;
         }
@@ -36,7 +39,7 @@ proc_alloc(struct process_t** out_proc) {
     return -ERR_NOMEM;
 }
 
-static result_t
+result_t
 proc_get(pid_t pid, struct process_t** out_proc) {
     for (usize i = 0; i < array_size(processes); i++) {
         if (processes[i].pid == pid) {
@@ -66,6 +69,26 @@ proc_exit(pid_t pid, result_t exit_code) {
     unwrap_err(proc_get(pid, &proc));
 
     /* resources cleanup goes here. but now empty */
+    list_foreach_safe(iter, &proc->watchers, next) {
+        struct proc_watcher_t* pw = 
+            list_entry(iter, struct proc_watcher_t, node);
+        unwrap_err(async_send(
+            pw->watcher,
+            &(msg_t) {
+                .type = MSG_PM,
+                .pm = {
+                    .type = PM_PROC_EXIT,
+                    .proc_exit = {
+                        .pid = pid,
+                        .xcode = exit_code,
+                    }
+                }
+            }
+        ));
+        list_remove(&pw->node);
+        free(pw);
+    }
+    tn_cleanup(pid);
 
     proc_free(proc);
     unwrap_err(sys_task_destroy(pid));
@@ -251,6 +274,48 @@ err:
         proc_free(proc);
     }
     return ret;
+}
+
+result_t
+proc_watch(pid_t watcher, pid_t target) {
+    struct process_t* proc = NULL;
+    result_t ret = proc_get(target, &proc);
+    if (is_err(ret)) {
+        return ret;
+    }
+
+    struct proc_watcher_t* pw = 
+        (struct proc_watcher_t*)malloc(sizeof(*pw));
+    if (pw == NULL) {
+        return -ERR_NOMEM;
+    }
+    pw->watcher = watcher;
+    list_push_back(&proc->watchers, &pw->node);
+    pr_info("proc_watch: pid %ld watching pid %ld",
+        watcher, target);
+    return OK;
+}
+
+result_t
+proc_unwatch(pid_t watcher, pid_t target) {
+    struct process_t* proc = NULL;
+    result_t ret = proc_get(target, &proc);
+    if (is_err(ret)) {
+        return ret;
+    }
+
+    list_foreach_safe(iter, &proc->watchers, next) {
+        struct proc_watcher_t* pw = 
+            list_entry(iter, struct proc_watcher_t, node);
+        if (pw->watcher == watcher) {
+            list_remove(&pw->node);
+            free(pw);
+            pr_info("proc_unwatch: pid %ld unwatching pid %ld",
+                watcher, target);
+            return OK;
+        }
+    }
+    return -ERR_NOENT;
 }
 
 result_t

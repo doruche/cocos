@@ -107,13 +107,15 @@ builtin_help(const cmdline_t* cmdline) {
 }
 
 result_t
-builtin_run(const cmdline_t* cmdline) {
+builtin_run(const cmdline_t* cmdline, bool* exist) {
     assert(cmdline->argc > 0);
     const char* cmd_name = cmdline->argv[0];
     for (usize i = 0; i < array_size(cmds); i++) {
         if (strcmp(cmd_name, cmds[i].name) == 0) {
+            *exist = true;
             return cmds[i].handler(cmdline);
         }
     }
+    *exist = false;
     return -ERR_NOENT; /* no built-in command found */
 }

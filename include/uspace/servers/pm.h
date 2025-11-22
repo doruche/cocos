@@ -23,8 +23,10 @@ typedef enum _pm_msg_type_t {
 
     PM_PROC_SPAWN,
     PM_PROC_SPAWN_RESP,
+    PM_PROC_PROBE,
     PM_PROC_WATCH,
-
+    PM_PROC_UNWATCH,
+    PM_PROC_EXIT,
     // PM_THREAD_XXX,
 } pm_msg_type_t;
 
@@ -81,7 +83,17 @@ typedef struct _pm_msg_t {
         } proc_spawn_resp;
         struct {
             pid_t pid;
+        } proc_probe;
+        struct {
+            pid_t pid;
         } proc_watch;
+        struct {
+            pid_t pid;
+        } proc_unwatch;
+        struct {
+            pid_t pid;
+            result_t xcode;
+        } proc_exit; /* response of proc_watch */
     };
 } pm_msg_t;
 

@@ -12,9 +12,6 @@ tid_t   task_gettid(void);
 result_t proc_spawn(
     const char* path,
     const char* argv[],
-    tid_t* out_pid
+    pid_t* out_pid
 );
-result_t proc_wait(
-    tid_t pid,
-    result_t* exit_code
-);
+result_t proc_join(pid_t pid, result_t* xcode);

@@ -5,4 +5,5 @@ obj-y := \
 	main.o \
 	crt0.o \
 	mm.o \
-	ipc.o 
+	ipc.o \
+	async.o

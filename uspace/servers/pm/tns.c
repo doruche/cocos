@@ -81,3 +81,19 @@ tn_remove(const char* name) {
 
     return -ERR_NOENT;
 }
+
+void
+tn_cleanup(tid_t server) {
+    list_foreach_safe(iter, &tn_list, next) {
+        struct tn_entry* entry = 
+            list_entry(iter, struct tn_entry, node);
+        if (entry->server == server) {
+            pr_trace("tn_cleanup: removing service '%s' with server %ld",
+                entry->name,
+                entry->server);
+            list_remove(&entry->node);
+            entry->name[0] = '\0';
+            entry->server = TID_INVALID;
+        }
+    }
+}

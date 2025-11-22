@@ -8,4 +8,4 @@ struct builtin_cmd {
     result_t (*handler)(const cmdline_t* cmdline);
 };
 
-result_t builtin_run(const cmdline_t* cmdline);
+result_t builtin_run(const cmdline_t* cmdline, bool* exist);

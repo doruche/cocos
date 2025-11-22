@@ -21,3 +21,4 @@ result_t tn_insert(
     tid_t server
 );
 result_t tn_remove(const char* name);
+void tn_cleanup(tid_t server);

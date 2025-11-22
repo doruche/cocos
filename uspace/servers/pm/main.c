@@ -86,6 +86,14 @@ main(void) {
                 }
                 break;
             }
+            case MSG_ASYNC_PULL: {
+                ret = async_flush(msg.src);
+                if (is_err(ret)) {
+                    pr_warn("pm: async_flush failed for %ld: %s",
+                        msg.src, strerr(ret));
+                }
+                break;
+            }
             case MSG_EXCEPT: {
                 if (msg.src != TID_KERNEL) {
                     pr_warn("pm: received except msg from non-kernel task %ld",
@@ -250,6 +258,47 @@ main(void) {
                         rpc_reply(msg.src, &resp);
                         pr_info("pm: spawned process '%s' (tid %ld) for %ld",
                             msg.pm.proc_spawn.path, pid, msg.src);
+                        break;
+                    }
+                    case PM_PROC_PROBE: {
+                        struct process_t* proc = NULL;
+                        ret = proc_get(
+                            msg.pm.proc_probe.pid,
+                            &proc
+                        );
+                        /* 
+                         * maybe proc already exited, or maybe it doesn't exist. 
+                         * we don't care 
+                         */
+                        rpc_reply_result(msg.src, ret);
+                        break;
+                    }
+                    case PM_PROC_WATCH: {
+                        ret = proc_watch(
+                            msg.src,
+                            msg.pm.proc_watch.pid
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: proc_watch failed for pid %ld by %ld: %s",
+                                msg.pm.proc_watch.pid,
+                                msg.src,
+                                strerr(ret));
+                        }
+                        rpc_reply_result(msg.src, ret);
+                        break;
+                    }
+                    case PM_PROC_UNWATCH: {
+                        ret = proc_unwatch(
+                            msg.src,
+                            msg.pm.proc_watch.pid
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: proc_unwatch failed for pid %ld by %ld: %s",
+                                msg.pm.proc_watch.pid,
+                                msg.src,
+                                strerr(ret));
+                        }
+                        rpc_reply_result(msg.src, ret);
                         break;
                     }
                     default: {

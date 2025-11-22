@@ -27,10 +27,11 @@ typedef u64 msg_type_t;
 #define MSG_EXCEPT  1
 #define MSG_RESULT  2
 /* user defined */
-#define MSG_PM      3
-#define MSG_ECHO    4
-#define MSG_SERIAL  5
-#define MSG_RANDOM  6
+#define MSG_ASYNC_PULL 3
+#define MSG_PM      4
+#define MSG_ECHO    5
+#define MSG_SERIAL  6
+#define MSG_RANDOM  7
 
 /* asynchronous notification */
 typedef u64 notif_t;
@@ -41,6 +42,7 @@ typedef u64 notif_t;
 /* user defined */
 #define NOTIF_USER0     (1L << 16)
 #define NOTIF_CHILD_EXIT (1L << 17)
+#define NOTIF_ASYNC_PENDING (1L << 18)
 
 typedef enum _except_type_t {
     EXCEPT_PAGEFAULT,

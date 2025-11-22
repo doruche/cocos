@@ -2,6 +2,7 @@
 #include "console.h"
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
+#include <uspace/task.h>
 
 #define COLOR_PROMPT COLOR_CYAN
 
@@ -43,8 +44,9 @@ main(void) {
             goto done;
         }
 
-        ret = builtin_run(&args);
-        if (is_err(ret)) {
+        bool exist = false;
+        ret = builtin_run(&args, &exist);
+        if (!exist) {
             msg_t m = {0};
             m.type = MSG_PM;
             m.pm.type = PM_PROC_SPAWN;
@@ -56,6 +58,7 @@ main(void) {
                 goto done;
             } else {
                 /* here we should wait. but now we just continue */
+                proc_join(m.pm.proc_spawn_resp.pid, NULL);
             }
         }
 

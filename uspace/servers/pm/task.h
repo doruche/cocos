@@ -22,12 +22,21 @@ struct process_t {
     pid_t pid;
     asid_t asid;
     vpn_t brk;
+    list_t watchers; /* list of proc_watcher_t */
+};
+
+struct proc_watcher_t {
+    pid_t watcher;
+    list_elem_t node;
 };
 
 void
 task_init(void);
 
+result_t proc_get(pid_t pid, struct process_t** out_proc);
 result_t proc_exit(pid_t pid, result_t exit_code);
+result_t proc_watch(pid_t watcher, pid_t target);
+result_t proc_unwatch(pid_t watcher, pid_t target);
 
 result_t
 pm_proc_spawn(
@@ -36,12 +45,7 @@ pm_proc_spawn(
     const cmdline_t* cmdline,
     pid_t* out_pid
 );
-result_t
-pm_proc_join(
-    pid_t parent_pid,
-    pid_t pid,
-    result_t* exit_code
-);
+
 
 result_t
 vm_map_anon(
