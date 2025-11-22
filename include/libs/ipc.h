@@ -40,6 +40,7 @@ typedef u64 notif_t;
 #define NOTIF_IRQ       (1L << 2)
 /* user defined */
 #define NOTIF_USER0     (1L << 16)
+#define NOTIF_CHILD_EXIT (1L << 17)
 
 typedef enum _except_type_t {
     EXCEPT_PAGEFAULT,

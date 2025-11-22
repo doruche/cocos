@@ -8,7 +8,7 @@
 static void
 prompt(const char* msg) {
     printf(COLOR_PROMPT "sh> %s" COLOR_RESET, msg);
-    printf_flush();
+    console_flush();
 }
 
 static void
@@ -23,7 +23,6 @@ main(void) {
     about_message();
     
     char buf[SERIAL_BUF_MAX_LEN] = {0};
-    char buf2[SERIAL_BUF_MAX_LEN] = {0};
     cmdline_t args = {0};
     loop {
         prompt("");
@@ -33,21 +32,24 @@ main(void) {
             goto done;
         }
         buf[strlen(buf) - 1] = '\0'; /* remove newline */
-        memcpy(buf2, buf, SERIAL_BUF_MAX_LEN);
 
-        char* p = buf;
-        cmd_skip_empty(&p);
-        if (*p == '\0') {
-            continue; /* empty input */
+        ret = cmd_parse(buf, &args);
+        if (is_err(ret)) {
+            printf("error parsing command: %s\n", strerr(ret));
+            goto done;
+        }
+        if (args.argc == 0) {
+            /* empty command */
+            goto done;
         }
 
-        cmd_parse_inplace(buf, &args);
         ret = builtin_run(&args);
         if (is_err(ret)) {
             msg_t m = {0};
             m.type = MSG_PM;
-            m.pm.type = PM_SPAWN;
-            memcpy(m.pm.spawn.cmdline, buf2, SERIAL_BUF_MAX_LEN);
+            m.pm.type = PM_PROC_SPAWN;
+            memcpy(m.pm.proc_spawn.cmdline, buf, SERIAL_BUF_MAX_LEN);
+            memcpy(m.pm.proc_spawn.path, args.argv[0], PATH_MAX_LEN);
             ret = rpc_call(TID_PM, &m);
             if (is_err(ret)) {
                 printf("error executing command '%s': %s\n", buf, strerr(ret));
@@ -59,8 +61,8 @@ main(void) {
 
     done:
         memset(buf, 0, SERIAL_BUF_MAX_LEN);
-        memset(buf2, 0, SERIAL_BUF_MAX_LEN);
-        memset(&args, 0, sizeof(args));
+        cmd_free(&args);
+        memset(&args, 0, sizeof(cmdline_t));
     }
 
     return OK;

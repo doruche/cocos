@@ -21,10 +21,11 @@ typedef enum _pm_msg_type_t {
     PM_MAP_RESP,
     PM_UNMAP,
 
-    PM_SPAWN,
-    PM_SPAWN_RESP,
-    
-    PM_WATCH,
+    PM_PROC_SPAWN,
+    PM_PROC_SPAWN_RESP,
+    PM_PROC_WATCH,
+
+    // PM_THREAD_XXX,
 } pm_msg_type_t;
 
 typedef struct _pm_msg_t {
@@ -72,14 +73,15 @@ typedef struct _pm_msg_t {
             usize npages;
         } unmap;
         struct {
+            char path[PATH_MAX_LEN];
             char cmdline[SERIAL_BUF_MAX_LEN];
-        } spawn;
+        } proc_spawn;
         struct {
-            tid_t proc_tid;
-        } spawn_resp;
+            tid_t pid;
+        } proc_spawn_resp;
         struct {
-            tid_t watch_tid;
-        } watch;
+            pid_t pid;
+        } proc_watch;
     };
 } pm_msg_t;
 

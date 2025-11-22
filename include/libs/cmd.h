@@ -13,3 +13,6 @@ typedef struct _cmdline_t {
 
 void cmd_skip_empty(char** cmd_str);
 void cmd_parse_inplace(char* input, cmdline_t* out);
+
+result_t cmd_parse(const char* input, cmdline_t* out);
+void cmd_free(cmdline_t* cmdline);

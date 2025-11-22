@@ -36,8 +36,13 @@ SECTIONS {
         __ebss = .;
     }
 
+    .heap : ALIGN(4K) {
+        __heap_start = .;
+        . += USER_HEAP_SIZE;
+        __heap_end = .;
+    }
+
     . = ALIGN(4K);
-    __euser = .;
 
     . = BIOS_BASE - USTACK_SIZE;
     .ustack : ALIGN(4K) {

@@ -20,11 +20,23 @@
 
 #define KSTACK_SIZE (2 * PAGE_SIZE) // 8KB kernel stack per process
 
-#define TASK_NAME_MAX_LEN 32
-
 #define SERIAL_BUF_MAX_LEN 128
 
 #define NUM_CMD_ARGS_MAX 8
+
+/* 64KB heap */
+#define USER_HEAP_SIZE (1024 * 64)
+
+#define PATH_MAX_LEN 32
+
+/*
+ * although our kernel supports infinite tasks on theory,
+ * we limit the max number of tasks in user space for simplicity.
+ * (why? can it really simplify anything? probably not much...
+ * idk. just leave it as is for now.)
+ */
+
+#define MAX_TASK_NUM 128
 
 #define INIT_SERVERS \
     { "uart16550", "random", "echo", "idle", NULL }

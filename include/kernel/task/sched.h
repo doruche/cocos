@@ -19,7 +19,7 @@ typedef enum _task_state_t {
 
 typedef struct _addr_space_t addr_space_t; /* forward declaration */
 typedef struct _task_t {
-    char name[TASK_NAME_MAX_LEN];
+    char name[PATH_MAX_LEN];
     tid_t tid __readonly;
     task_state_t state;
     arch_ctx_t* actx;
@@ -53,6 +53,8 @@ typedef struct _task_t {
 kaddr_t task_kstack_top(tid_t tid);
 result_t    task_get(tid_t tid, task_t** out);
 void    task_yield(void);
+void    task_switch_to(tid_t tid);
+result_t    task_kill(tid_t tid);
 result_t    task_block(tid_t tid);
 result_t    task_resume(tid_t tid);
 

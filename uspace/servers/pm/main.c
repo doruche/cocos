@@ -12,18 +12,18 @@ spawn_tasks(const char* init_tasks[]) {
         const char* name = init_tasks[i];
         const bfs_inode_t* inode = unwrap_null(bfs_lookup(name));
         const u8* elf = bfs_read_inplace(inode);
-        tid_t tid;
-        unwrap_err(proc_spawn(
+        pid_t pid;
+        unwrap_err(pm_proc_spawn(
             name,
             elf,
             (const cmdline_t*)&(cmdline_t){
                 .argc = 1,
                 .argv = { (char*)name, NULL},
             },
-            &tid
+            &pid
         ));
-        pr_trace("pm: spawned init task '%s' (tid %ld)",
-            name, tid);
+        pr_trace("pm: spawned init task '%s' (pid %ld)",
+            name, pid);
     }
 }
 
@@ -79,10 +79,9 @@ main(void) {
                 if (msg.notifs & NOTIF_TASK_EXIT) {
                     zombie_task_t ztask;
                     while (!is_err(sys_task_getzombie(&ztask))) {
-                        pr_info("pm: task exited: tid=%ld exit_code=%ld %s",
+                        pr_info("pm: process exited: pid=%ld exit_code=%ld %s",
                             ztask.tid, ztask.exit_code, strerr(ztask.exit_code));
-                        unwrap_err(task_free(ztask.tid));
-                        unwrap_err(sys_task_destroy(ztask.tid));
+                        unwrap_err(proc_exit(ztask.tid, ztask.exit_code));
                     }
                 }
                 break;
@@ -216,39 +215,41 @@ main(void) {
                         }
                         break;
                     }
-                    case PM_SPAWN: {
-                        tid_t proc_tid;
+                    case PM_PROC_SPAWN: {
+                        tid_t pid;
                         cmdline_t cmdline = {0};
                         cmd_parse_inplace(
-                            msg.pm.spawn.cmdline,
+                            msg.pm.proc_spawn.cmdline,
                             &cmdline
                         );
                         /* currently, only support spawning from bfs */
-                        const bfs_inode_t* inode = bfs_lookup(cmdline.argv[0]);
+                        const bfs_inode_t* inode = bfs_lookup(
+                            msg.pm.proc_spawn.path
+                        );
                         if (inode == NULL) {
                             pr_warn("pm: bfs_lookup failed for spawn cmd '%s' from %ld",
-                                cmdline.argv[0], msg.src);
+                                msg.pm.proc_spawn.path, msg.src);
                             rpc_reply_result(msg.src, -ERR_NOENT);
                             break;
                         }
                         const u8* elf = bfs_read_inplace(inode);
-                        ret = proc_spawn(
-                            cmdline.argv[0],
+                        ret = pm_proc_spawn(
+                            msg.pm.proc_spawn.path,
                             elf,
                             (const cmdline_t*)&cmdline,
-                            &proc_tid
+                            &pid
                         );
                         if (is_err(ret)) {
                             pr_warn("pm: proc_spawn failed for cmd '%s' from %ld: %s",
-                                cmdline.argv[0], msg.src, strerr(ret));
+                                msg.pm.proc_spawn.path, msg.src, strerr(ret));
                             rpc_reply_result(msg.src, ret);
                             break;
                         }
-                        resp.pm.type = PM_SPAWN_RESP;
-                        resp.pm.spawn_resp.proc_tid = proc_tid;
+                        resp.pm.type = PM_PROC_SPAWN_RESP;
+                        resp.pm.proc_spawn_resp.pid = pid;
                         rpc_reply(msg.src, &resp);
                         pr_info("pm: spawned process '%s' (tid %ld) for %ld",
-                            cmdline.argv[0], proc_tid, msg.src);
+                            msg.pm.proc_spawn.path, pid, msg.src);
                         break;
                     }
                     default: {

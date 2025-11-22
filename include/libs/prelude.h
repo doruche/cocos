@@ -156,7 +156,7 @@ strerr(isize err) {
             return "Unknown error";
     }
 }
-
+/* kernel task id */
 typedef usize tid_t;
 #define TID_INVALID ((tid_t)-2)
 /* -1 for TID_ANY (a.k.a. IPC_OPEN) */
@@ -168,6 +168,9 @@ typedef struct _zombie_task_t {
     tid_t tid;
     result_t exit_code;
 } zombie_task_t;
+
+/* pm-defined */
+typedef tid_t pid_t;
 
 typedef u64 asid_t;
 #define ASID_INVALID ((asid_t)-1)
@@ -189,7 +192,10 @@ typedef u32 irq_t;
 
 isize   vprintf(const char *fmt, va_list ap);
 isize   printf(const char *fmt, ...);
-void    printf_flush(void);
+void    console_flush(void);
+
+isize   vsnprintf(char *buf, usize size, const char *fmt, va_list ap);
+isize   snprintf(char *buf, usize size, const char *fmt, ...);
 
 #define SYS_TASK_DESTROY 0
 #define SYS_TASK_GETTID 1
@@ -217,3 +223,4 @@ void    printf_flush(void);
 #include <libs/assert.h>
 #include <libs/ipc.h>
 #include <libs/string.h>
+#include <libs/mm.h>

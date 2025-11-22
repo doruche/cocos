@@ -68,8 +68,9 @@ ktrap(u64 prev_sp) {
                 panic("Exception in scheduler: %s (sepc=0x%lx, stval=0x%lx)",
                       exception_strs[exccode], r_sepc(), r_stval());
             } else {
-                panic("Exception in task: tid=%ld name=%s exccode=%s (sepc=0x%lx, stval=0x%lx)",
-                      current_task->tid, current_task->name,
+                panic("Exception in task: tid=%ld name=%s kstacktop=0x%lx\n"
+                    "exccode=%s (sepc=0x%lx, stval=0x%lx)",
+                      current_task->tid, current_task->name, current_task->actx->tf.ksp,
                       exception_strs[exccode], r_sepc(), r_stval());
             }
         } else {

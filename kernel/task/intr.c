@@ -38,7 +38,7 @@ timer_intr(void) {
 
 void
 dev_intr(irq_t irqno) {
-    pr_notify("dev_intr: external interrupt: irq %d", irqno);
+    pr_info("dev_intr: external interrupt: irq %d", irqno);
     task_t* owner = irq_owners[irqno];
 
     /*

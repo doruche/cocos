@@ -78,7 +78,7 @@ rpc_reply(tid_t client, const msg_t *msg) {
      * sending machanism on top of non-blocking send.
      * we'll do that later.
      */
-    return ipc_send(client, msg);
+    return ipc_send_nonblock(client, msg);
 }
 
 result_t
@@ -86,7 +86,7 @@ rpc_reply_result(tid_t client, result_t res) {
     msg_t msg = {0};
     msg.type = MSG_RESULT;
     msg.result = res;
-    return ipc_send(client, &msg);
+    return ipc_send_nonblock(client, &msg);
 }
 
 result_t

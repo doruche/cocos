@@ -101,14 +101,25 @@ void    arch_kctx_init(
     vpn_t kstack_top
 );
 void    arch_kctx_load(arch_kctx_t* kctx);
-void    arch_kctx_switch(arch_kctx_t* prev, arch_kctx_t* next);
+void    arch_kctx_switch(arch_kctx_t* prev, arch_kctx_t* next, arch_vm_t* next_vm);
 void    arch_utrap_ret(void);
 
 
 // vm flags defined in libs/prelude.h
 arch_vm_t* arch_vm_creat(void);
+extern arch_vm_t kvm;
+
+/*
+ * the following two functions seems
+ * unnecessary now, as we can switch vm
+ * during kctx switch.
+ * let's leave them here for possible future use.
+ */
+
 void    arch_vm_activate(arch_vm_t* vm);
 void    arch_vm_deactivate(void);
+
+
 void    arch_vm_destroy(arch_vm_t* vm);
 void    arch_vm_map(
     arch_vm_t* vm,

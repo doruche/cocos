@@ -6,6 +6,7 @@ export APPS := \
 	hello \
 	shell \
 	arg \
+	spawn \
 	stackof
 export SERVERS := \
 	idle \

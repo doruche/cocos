@@ -170,7 +170,7 @@ task_spawn(
     memset(task, 0, sizeof(task_t));
 
     task->tid = alloc_tid();
-    strncpy(task->name, name, TASK_NAME_MAX_LEN);
+    strncpy(task->name, name, PATH_MAX_LEN);
     task->state = T_BLOCKED;
 
     if (asid == ASID_NEW) {
@@ -228,7 +228,8 @@ task_block(tid_t tid) {
     if (task == current_task) {
         arch_kctx_switch(
             arch_ctx_kctx(current_task->actx),
-            scheduler_ctx
+            scheduler_ctx,
+            NULL
         );
     }
     /* CRITICAL SECTION END */
@@ -275,9 +276,55 @@ task_destroy(tid_t tid) {
         return -ERR_NOENT;
     }
 
-    assert_eq(task->state, T_ZOMBIE);
+    /* ipc clean up */
+    if (task->listen_on != TID_INVALID) {
+        if (task->listen_on != IPC_OPEN) {
+            assert(elem_in_list(&task->node_receiver));
+            list_remove(&task->node_receiver);
+        }
+        pr_warn("task_exit: cleaning up blocked receiver task tid=%ld name=%s",
+            task->tid, task->name);
+    } else if (elem_in_list(&task->node_sender)) {
+        list_remove(&task->node_sender);
+        pr_warn("task_exit: cleaning up blocked sender task tid=%ld name=%s",
+            task->tid, task->name);
+    }
+    list_foreach_safe(iter, &task->sender_list, next) {
+        task_t* sender = list_entry(
+            iter,
+            task_t,
+            node_sender
+        );
+        list_remove(&sender->node_sender);
+        unwrap_err(notify(sender, NOTIF_IPC_ABORT));
+        unwrap_err(task_resume(sender->tid));
+        pr_trace("task_exit: aborted sender task tid=%ld name=%s sending to exiting task tid=%ld name=%s",
+            sender->tid, sender->name, task->tid, task->name);
+    }
+    list_foreach_safe(iter, &task->receiver_list, next) {
+        task_t* receiver = list_entry(
+            iter,
+            task_t,
+            node_receiver
+        );
+        list_remove(&receiver->node_receiver);
+        unwrap_err(notify(receiver, NOTIF_IPC_ABORT));
+        unwrap_err(task_resume(receiver->tid));
+        pr_trace("task_exit: aborted receiver task tid=%ld name=%s receiving from exiting task tid=%ld name=%s",
+            receiver->tid, receiver->name, task->tid, task->name);
+    }
+
+    task_release_irq(task);
+
+    if (task->state != T_ZOMBIE) {
+        pr_warn("task_destroy: destroying non-zombie task tid=%ld name=%s",
+            task->tid, task->name);
+        list_remove(&task->node_running);
+    } else {
+        list_remove(&task->node_zombie);        
+    }
+
     list_remove(&task->node_all);
-    list_remove(&task->node_zombie);
 
     arch_ctx_destroy(task->actx, task->as->arch_vm);
     unwrap_err(as_unbind(task->as, task));
@@ -301,46 +348,6 @@ task_exit(result_t exit_code) {
     
     current->exit_code = exit_code;
     unwrap_err(notify(pm, NOTIF_TASK_EXIT));
-    
-    /* ipc clean up */
-    if (current->listen_on != TID_INVALID) {
-        if (current->listen_on != IPC_OPEN) {
-            assert(elem_in_list(&current->node_receiver));
-            list_remove(&current->node_receiver);
-        }
-        pr_warn("task_exit: cleaning up blocked receiver task tid=%ld name=%s",
-            current->tid, current->name);
-    } else if (elem_in_list(&current->node_sender)) {
-        list_remove(&current->node_sender);
-        pr_warn("task_exit: cleaning up blocked sender task tid=%ld name=%s",
-            current->tid, current->name);
-    }
-    list_foreach_safe(iter, &current->sender_list, next) {
-        task_t* sender = list_entry(
-            iter,
-            task_t,
-            node_sender
-        );
-        list_remove(&sender->node_sender);
-        unwrap_err(notify(sender, NOTIF_IPC_ABORT));
-        unwrap_err(task_resume(sender->tid));
-        pr_trace("task_exit: aborted sender task tid=%ld name=%s sending to exiting task tid=%ld name=%s",
-            sender->tid, sender->name, current->tid, current->name);
-    }
-    list_foreach_safe(iter, &current->receiver_list, next) {
-        task_t* receiver = list_entry(
-            iter,
-            task_t,
-            node_receiver
-        );
-        list_remove(&receiver->node_receiver);
-        unwrap_err(notify(receiver, NOTIF_IPC_ABORT));
-        unwrap_err(task_resume(receiver->tid));
-        pr_trace("task_exit: aborted receiver task tid=%ld name=%s receiving from exiting task tid=%ld name=%s",
-            receiver->tid, receiver->name, current->tid, current->name);
-    }
-
-    task_release_irq(current);
 
     /* CRITICAL SECTION START */
     current->state = T_ZOMBIE;
@@ -348,7 +355,8 @@ task_exit(result_t exit_code) {
     list_push_back(&zombie_tasks, &current->node_zombie);
     arch_kctx_switch(
         arch_ctx_kctx(current->actx),
-        scheduler_ctx
+        scheduler_ctx,
+        &kvm
     );
     unreachable();
 }
@@ -375,9 +383,47 @@ task_yield(void) {
     /* CRITICAL SECTION START */
     arch_kctx_switch(
         arch_ctx_kctx(current->actx),
-        scheduler_ctx
+        scheduler_ctx,
+        &kvm
     );
     /* CRITICAL SECTION END */
+}
+
+/* 
+ * switch to a specific task directly, bypassing scheduler.
+ * the current task will be put into READY state.
+ * the target task must be in READY state.
+ * target task must be T_READY.
+ * to switch to a blocked task, resume it first.
+ */
+void
+task_switch_to(tid_t tid) {
+    task_t* current = unwrap_null(current_task);
+    task_t* target = NULL;
+    unwrap_err(task_get(tid, &target));
+    assert_eq(target->state, T_READY);
+
+    pr_trace("task_switch_to: switching from tid=%ld name=%s to tid=%ld name=%s",
+        current->tid, current->name, target->tid, target->name);
+
+    /* CRITICAL SECTION START */
+    current->state = T_READY;
+    target->state = T_RUNNING;
+    current_task = target;
+
+    /* 
+     * we switch vm and kctx atomically to avoid page fault 
+     * on kernel stack access.
+     */
+    arch_kctx_switch(
+        arch_ctx_kctx(current->actx),
+        arch_ctx_kctx(target->actx),
+        target->as->arch_vm
+    );
+    /* 
+     * CRITICAL SECTION END 
+     * We are back.
+     */
 }
 
 static void
@@ -407,14 +453,13 @@ scheduler(void) {
 
                 /* CRITICAL SECTION START */ 
                 current_task = task;
-                arch_vm_activate(task->as->arch_vm);
                 pr_trace("sched: switching to task tid=%ld name=%s",
                     task->tid, task->name);
                 arch_kctx_switch(
                     scheduler_ctx,
-                    arch_ctx_kctx(task->actx)
+                    arch_ctx_kctx(task->actx),
+                    task->as->arch_vm
                 );
-                arch_vm_deactivate();
                 current_task = NULL;
                 /*
                  * CRITICAL SECTION END
@@ -428,7 +473,12 @@ scheduler(void) {
         }
 
         pr_trace("sched: one full round done.");
-        pr_trace("free pages: %ld", pm_count_free());
+        
+        static usize counter = 0;
+        if (counter++ == 500) {
+            counter = 0;
+            pr_notify("free pages: %ld", pm_count_free());
+        }
         task_dump();
     }
 }

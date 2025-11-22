@@ -39,21 +39,27 @@ arch_kctx_load(
     arch_kctx_t* kctx
 ) {
     extern void
-    __kctx_switch(arch_kctx_t* prev, arch_kctx_t* next);
+    __kctx_switch(arch_kctx_t* prev, arch_kctx_t* next, u64 next_satp);
     static arch_kctx_t placeholder;
     
-    __kctx_switch(&placeholder, kctx);
+    __kctx_switch(&placeholder, kctx, 0);
 }
 
 void
 arch_kctx_switch(
     arch_kctx_t* prev, 
-    arch_kctx_t* next
+    arch_kctx_t* next,
+    arch_vm_t* next_vm
 ) {
     extern void
-    __kctx_switch(arch_kctx_t* prev, arch_kctx_t* next);
+    __kctx_switch(arch_kctx_t* prev, arch_kctx_t* next, u64 next_satp);
 
-    __kctx_switch(prev, next);
+    u64 satp = 0;
+    if (next_vm != NULL) {
+        satp = (8L << 60) | ((u64)next_vm->entries >> 12);
+    }
+
+    __kctx_switch(prev, next, satp);
 }
 
 /*

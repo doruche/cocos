@@ -173,7 +173,7 @@ arch_utrap_ret() {
 
     prepare_utrap_ret();
 
-    printf_flush(); // flush console output buffer before returning to user space
+    console_flush(); // flush console output buffer before returning to user space
 
     vaddr_t hook = TRAMPOLINE + 
         ((u64)u_trampoline_ret - (u64)u_trampoline_entry);

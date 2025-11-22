@@ -1,9 +1,9 @@
-# void ctx_switch(arch_kctx_t* prev, arch_kctx_t* next);
+# void ctx_switch(arch_kctx_t* prev, arch_kctx_t* next, u64 next_satp);
     .section .text
     .global __kctx_switch
     .type __kctx_switch, @function
 __kctx_switch:
-    # now a0 -> prev, a1 -> next
+    # now a0 -> prev, a1 -> next, a2 -> next_satp
     sd ra, 0(a0)
     sd sp, 8(a0)
     sd s0, 16(a0)
@@ -19,6 +19,11 @@ __kctx_switch:
     sd s10, 96(a0)
     sd s11, 104(a0)
 
+    # switch vm if a2 != 0
+    beqz a2, 1f
+    csrw satp, a2
+    sfence.vma
+1:
     ld ra, 0(a1)
     ld sp, 8(a1)
     ld s0, 16(a1)

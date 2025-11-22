@@ -126,9 +126,20 @@ ipc(
                     node_sender
                 );
                 memcpy(msg, &sender->msg, sizeof(msg_t));
-                unwrap_err(task_resume(sender->tid));
-                pr_trace("ipc: received message from tid=%ld name=%s to tid=%ld name=%s",
+                
+                pr_info("ipc: received message from tid=%ld name=%s to tid=%ld name=%s",
                     sender->tid, sender->name, current->tid, current->name);
+                /*
+                 * if we wake up a caller here, we should 
+                 * immediately switch to it to let it
+                 * fall into recv.
+                 * to recognize whether this sender is a caller,
+                 * we may add a field in task_t later.
+                 * now we adopt a conservative approach:
+                 * always switch to the sender task immediately.
+                 */
+                unwrap_err(task_resume(sender->tid));
+                task_switch_to(sender->tid);
             } else {
                 if (flags & IPC_NONBLOCK) {
                     pr_trace("ipc: nonblock recv failed: tid %ld %s",

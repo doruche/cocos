@@ -114,3 +114,14 @@ str2isize(const char* s, isize* out) {
     *out = result;
     return OK;
 }
+
+char*
+strdup(const char* s) {
+    usize len = strlen(s);
+    char* dup = (char*)malloc(len + 1);
+    if (dup == NULL) {
+        return NULL;
+    }
+    strcpy(dup, s);
+    return dup;
+}

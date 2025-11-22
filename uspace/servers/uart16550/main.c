@@ -24,7 +24,7 @@ uart_init(void) {
     msg.pm.map.info.mmio.npages = 1;
     unwrap_err(rpc_call(TID_PM, &msg));
     uart_base = PN2PA(msg.pm.map_resp.vpn);
-    pr_info("uart16550: MMIO mapped at vpn 0x%lx",
+    pr_trace("uart16550: MMIO mapped at vpn 0x%lx",
         msg.pm.map_resp.vpn);
 
     /* disable interrupts */
@@ -41,7 +41,7 @@ uart_init(void) {
     *UART_COM(uart_base, COM_MCR) = 0x00;
     /* enable data ready interrupt */
     *UART_COM(uart_base, COM_IER) = COM_IER_RDI;
-    pr_info("uart16550: hardware initialized.");
+    pr_trace("uart16550: hardware initialized.");
 }
 
 static bool
