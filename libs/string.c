@@ -84,6 +84,19 @@ strcmp(const char* s1, const char* s2) {
     return (isize)(*(u8*)s1 - *(u8*)s2);
 }
 
+isize
+strncmp(const char* s1, const char* s2, usize n) {
+    for (usize i = 0; i < n; i++) {
+        if (s1[i] != s2[i]) {
+            return (isize)((u8)s1[i] - (u8)s2[i]);
+        }
+        if (s1[i] == '\0') {
+            return 0;
+        }
+    }
+    return 0;
+}
+
 result_t
 str2isize(const char* s, isize* out) {
     isize result = 0;
@@ -124,4 +137,25 @@ strdup(const char* s) {
     }
     strcpy(dup, s);
     return dup;
+}
+
+char*
+strchr(const char* s, char c) {
+    do {
+        if (*s == c) {
+            return (char*)s;
+        }
+    } while (*s++);
+    return NULL;
+}
+
+char*
+strrchr(const char* s, char c) {
+    const char* last = NULL;
+    do {
+        if (*s == c) {
+            last = s;
+        }
+    } while (*s++);
+    return (char*)last;
 }

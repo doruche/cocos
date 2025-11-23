@@ -1,0 +1,1 @@
+obj-y := main.o filesystem.o file.o procfs.o

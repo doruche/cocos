@@ -34,6 +34,7 @@ main(void) {
         }
         buf[strlen(buf) - 1] = '\0'; /* remove newline */
 
+        bool background = false;
         ret = cmd_parse(buf, &args);
         if (is_err(ret)) {
             printf("error parsing command: %s\n", strerr(ret));
@@ -42,6 +43,15 @@ main(void) {
         if (args.argc == 0) {
             /* empty command */
             goto done;
+        }
+        if (strcmp(args.argv[args.argc - 1], "&") == 0) {
+            background = true;
+            /* find '&' */
+            usize amp_idx = strlen(buf) - 1;
+            while (buf[amp_idx] != '&') {
+                amp_idx--;
+            }
+            buf[amp_idx] = '\0';
         }
 
         bool exist = false;
@@ -56,7 +66,7 @@ main(void) {
             if (is_err(ret)) {
                 printf("error executing command '%s': %s\n", buf, strerr(ret));
                 goto done;
-            } else {
+            } else if (!background) {
                 /* here we should wait. but now we just continue */
                 proc_join(m.pm.proc_spawn_resp.pid, NULL);
             }

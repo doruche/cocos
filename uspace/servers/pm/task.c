@@ -30,7 +30,7 @@ proc_alloc(struct process_t** out_proc) {
         if (!processes[i].in_use) {
             processes[i].in_use = true;
             *out_proc = &processes[i];
-            list_init(&processes[i].watchers);
+            assert(list_is_empty(&processes[i].watchers));
             pr_info("process_alloc: allocated process slot %ld", i);
             return OK;
         }
@@ -277,7 +277,7 @@ err:
 }
 
 result_t
-proc_watch(pid_t watcher, pid_t target) {
+pm_proc_watch(pid_t watcher, pid_t target) {
     struct process_t* proc = NULL;
     result_t ret = proc_get(target, &proc);
     if (is_err(ret)) {
@@ -291,13 +291,13 @@ proc_watch(pid_t watcher, pid_t target) {
     }
     pw->watcher = watcher;
     list_push_back(&proc->watchers, &pw->node);
-    pr_info("proc_watch: pid %ld watching pid %ld",
+    pr_info("pm_proc_watch: pid %ld watching pid %ld",
         watcher, target);
     return OK;
 }
 
 result_t
-proc_unwatch(pid_t watcher, pid_t target) {
+pm_proc_unwatch(pid_t watcher, pid_t target) {
     struct process_t* proc = NULL;
     result_t ret = proc_get(target, &proc);
     if (is_err(ret)) {
@@ -310,7 +310,7 @@ proc_unwatch(pid_t watcher, pid_t target) {
         if (pw->watcher == watcher) {
             list_remove(&pw->node);
             free(pw);
-            pr_info("proc_unwatch: pid %ld unwatching pid %ld",
+            pr_info("pm_proc_unwatch: pid %ld unwatching pid %ld",
                 watcher, target);
             return OK;
         }

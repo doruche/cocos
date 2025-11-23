@@ -29,6 +29,8 @@
 
 #define PATH_MAX_LEN 32
 
+#define FS_TYPE_MAX_LEN 16
+
 /*
  * although our kernel supports infinite tasks on theory,
  * we limit the max number of tasks in user space for simplicity.
@@ -38,8 +40,10 @@
 
 #define MAX_TASK_NUM 128
 
+#define MAX_FDS_PER_PROC 32
+
 #define INIT_SERVERS \
-    { "uart16550", "random", "echo", "idle", NULL }
+    { "vfs", "uart16550", "random", "echo", "idle", NULL }
 
 #define INIT_APPS \
     { "shell", NULL }

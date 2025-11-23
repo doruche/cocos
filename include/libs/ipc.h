@@ -6,6 +6,8 @@
 #include <uspace/servers/echo.h>
 #include <uspace/servers/serial.h>
 #include <uspace/servers/random.h>
+#include <uspace/servers/vfs.h>
+#include <uspace/servers/fs.h>
 
 /* IPC flags */
 typedef u64 ipc_flags_t;
@@ -19,7 +21,7 @@ typedef u64 ipc_flags_t;
 #define IPC_OPEN    ((tid_t)-1) /* open receive */
 
 /* IPC message struct */
-#define MSG_SIZE (272)
+#define MSG_SIZE (304)
 
 typedef u64 msg_type_t;
 /* kernel reserved */
@@ -29,9 +31,11 @@ typedef u64 msg_type_t;
 /* user defined */
 #define MSG_ASYNC_PULL 3
 #define MSG_PM      4
-#define MSG_ECHO    5
-#define MSG_SERIAL  6
-#define MSG_RANDOM  7
+#define MSG_VFS     5
+#define MSG_FS      6
+#define MSG_ECHO    7
+#define MSG_SERIAL  8
+#define MSG_RANDOM  9
 
 /* asynchronous notification */
 typedef u64 notif_t;
@@ -70,6 +74,8 @@ typedef struct _msg_t {
         result_t result;
         /* user defined */
         pm_msg_t pm;
+        vfs_msg_t vfs;
+        fs_msg_t fs;
         echo_msg_t echo;
         serial_msg_t serial;
         random_msg_t random;

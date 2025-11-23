@@ -15,6 +15,9 @@ char*   strcpy(char* dest, const char* src);
 char*   strncpy(char* dest, const char* src, usize n);
 char*   strcat(char* dest, const char* src);
 isize   strcmp(const char* s1, const char* s2);
+isize   strncmp(const char* s1, const char* s2, usize n);
 char*   strdup(const char* s);
+char*   strchr(const char* s, char c);
+char*   strrchr(const char* s, char c);
 
 result_t    str2isize(const char* s, isize* out);

@@ -53,6 +53,7 @@ pm_init(void) {
 
     bfs_probe();
     tns_init();
+    task_init();
     spawn_init_tasks();
 }
 
@@ -274,12 +275,12 @@ main(void) {
                         break;
                     }
                     case PM_PROC_WATCH: {
-                        ret = proc_watch(
+                        ret = pm_proc_watch(
                             msg.src,
                             msg.pm.proc_watch.pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: proc_watch failed for pid %ld by %ld: %s",
+                            pr_warn("pm: pm_proc_watch failed for pid %ld by %ld: %s",
                                 msg.pm.proc_watch.pid,
                                 msg.src,
                                 strerr(ret));
@@ -288,12 +289,12 @@ main(void) {
                         break;
                     }
                     case PM_PROC_UNWATCH: {
-                        ret = proc_unwatch(
+                        ret = pm_proc_unwatch(
                             msg.src,
                             msg.pm.proc_watch.pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: proc_unwatch failed for pid %ld by %ld: %s",
+                            pr_warn("pm: pm_proc_unwatch failed for pid %ld by %ld: %s",
                                 msg.pm.proc_watch.pid,
                                 msg.src,
                                 strerr(ret));

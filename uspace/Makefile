@@ -9,10 +9,12 @@ export APPS := \
 	spawn \
 	stackof
 export SERVERS := \
+	vfs \
 	idle \
 	echo \
 	uart16550 \
-	random
+	random \
+	fakefs
 
 .PHONY: all libc apps servers
 

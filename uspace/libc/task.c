@@ -65,6 +65,24 @@ proc_spawn(
 }
 
 result_t
+proc_watch(pid_t pid) {
+    msg_t msg = {0};
+    msg.type = MSG_PM;
+    msg.pm.type = PM_PROC_WATCH;
+    msg.pm.proc_watch.pid = pid;
+    return rpc_call(TID_PM, &msg);
+}
+
+result_t
+proc_unwatch(pid_t pid) {
+    msg_t msg = {0};
+    msg.type = MSG_PM;
+    msg.pm.type = PM_PROC_UNWATCH;
+    msg.pm.proc_unwatch.pid = pid;
+    return rpc_call(TID_PM, &msg);
+}
+
+result_t
 proc_join(pid_t pid, result_t* xcode) {
     // msg_t msg = {0};
     // loop {
@@ -80,11 +98,7 @@ proc_join(pid_t pid, result_t* xcode) {
     // }
 
     msg_t msg = {0};
-    result_t ret = OK;
-    msg.type = MSG_PM;
-    msg.pm.type = PM_PROC_WATCH;
-    msg.pm.proc_watch.pid = pid;
-    ret = rpc_call(TID_PM, &msg);
+    result_t ret = proc_watch(pid);
     if (is_err(ret)) {
         return ret;
     }

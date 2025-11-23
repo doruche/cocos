@@ -35,8 +35,8 @@ task_init(void);
 
 result_t proc_get(pid_t pid, struct process_t** out_proc);
 result_t proc_exit(pid_t pid, result_t exit_code);
-result_t proc_watch(pid_t watcher, pid_t target);
-result_t proc_unwatch(pid_t watcher, pid_t target);
+result_t pm_proc_watch(pid_t watcher, pid_t target);
+result_t pm_proc_unwatch(pid_t watcher, pid_t target);
 
 result_t
 pm_proc_spawn(

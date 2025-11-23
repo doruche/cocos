@@ -14,4 +14,6 @@ result_t proc_spawn(
     const char* argv[],
     pid_t* out_pid
 );
+result_t proc_watch(pid_t pid);
+result_t proc_unwatch(pid_t pid);
 result_t proc_join(pid_t pid, result_t* xcode);
