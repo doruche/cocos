@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdarg.h>
+#include <config.h>
 
 #define NULL ((void*)0)
 
@@ -102,6 +103,8 @@ typedef isize result_t;
 #define ERR_DEV_BUSY 13 // Device busy
 #define ERR_BUF_OVERFLOW 14 // Buffer overflow
 #define ERR_UNKNOWN_REQ 15 // Unknown request
+#define ERR_NOT_SUPPORTED 16 // Not supported
+#define ERR_UNIMPLEMENTED 17 // Not implemented
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
@@ -144,6 +147,10 @@ strerr(isize err) {
             return "Buffer overflow";
         case -ERR_UNKNOWN_REQ:
             return "Unknown request";
+        case -ERR_NOT_SUPPORTED:
+            return "Not supported";
+        case -ERR_UNIMPLEMENTED:
+            return "Not implemented";
         case -ERR_PAGEFAULT:
             return "Page fault";
         case -ERR_KILLED:
@@ -224,6 +231,20 @@ typedef u64 vfs_open_flags_t;
 #define O_RDWR      0x0002
 #define O_CREATE    0x0100
 #define O_TRUNC     0x0200
+typedef u64 vfs_st_mode_t;
+#define S_IFREG    0x8000  // regular file
+#define S_IFDIR    0x4000  // directory
+
+typedef struct vfs_dirent_t {
+    char name[PATH_MAX_LEN];   
+    vfs_st_mode_t mode;
+} vfs_dirent_t;
+
+typedef struct vfs_stat_t {
+    vfs_st_mode_t mode;
+    u64 size;
+    u64 ino;
+} vfs_stat_t;
 
 #define SEEK_SET    0
 #define SEEK_CUR    1

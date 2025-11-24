@@ -9,8 +9,13 @@ result_t
 file_get(
     const char* path,
     bool create,
+    bool mkdir,
     struct fs_file_t** out_file
 ) {
+    if (mkdir && create) {
+        return -ERR_INVAL;
+    }
+
     struct filesystem_t* fss = NULL;
     char rpath_buf[PATH_MAX_LEN] = {0};
     result_t ret = vfs_resolve(path, &fss, rpath_buf);
@@ -33,6 +38,7 @@ file_get(
     msg.type = MSG_FS;
     msg.fs.type = FS_GET;
     msg.fs.get.create = create;
+    msg.fs.get.mkdir = mkdir;
     strncpy(msg.fs.get.path, rpath_buf, PATH_MAX_LEN);
     ret = rpc_call(fss->fs, &msg);
     if (is_err(ret)) {
@@ -56,8 +62,13 @@ file_get(
 result_t
 file_put(
     struct fs_file_t* file,
-    bool unlink
+    bool unlink,
+    bool rmdir
 ) {
+    if (unlink && rmdir) {
+        return -ERR_INVAL;
+    }
+
     assert(file->rc > 0);
     file->rc -= 1;
     file->to_unlink |= unlink;

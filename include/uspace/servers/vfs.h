@@ -16,7 +16,14 @@ typedef enum {
     VFS_WRITE_RESP,
     VFS_CLOSE,
     VFS_UNLINK,
+
+    VFS_MKDIR,
+    VFS_READDIR,
+    VFS_READDIR_RESP,
+    VFS_RMDIR,
     
+    VFS_STAT,
+    VFS_STAT_RESP,
     /*
      * in our microkernel design,
      * a filesystem is not a real kernel module,
@@ -38,7 +45,7 @@ typedef struct {
     union {
         struct {
             char path[PATH_MAX_LEN];
-            vfs_open_flags_t flags;            
+            vfs_open_flags_t flags;
         } open;
         struct {
             u64 fd;
@@ -65,6 +72,28 @@ typedef struct {
         struct {
             u64 fd;
         } unlink;
+
+        struct {
+            char path[PATH_MAX_LEN];
+        } mkdir;
+        struct {
+            char path[PATH_MAX_LEN];
+            usize offset;
+        } readdir;
+        struct {
+            vfs_dirent_t dirent;
+            usize next_offset;
+        } readdir_resp;
+        struct {
+            char path[PATH_MAX_LEN];
+        } rmdir;
+
+        struct {
+            char path[PATH_MAX_LEN];
+        } stat;
+        struct {
+            vfs_stat_t stat;
+        } stat_resp;
 
         struct {
             char path[PATH_MAX_LEN];

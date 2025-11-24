@@ -5,6 +5,7 @@
 struct fs_file_t {
     struct filesystem_t* fss;
     handle_t handle;
+    vfs_st_mode_t mode;
     char rpath[PATH_MAX_LEN];
     /*
      * reference count
@@ -17,18 +18,20 @@ struct fs_file_t {
      * close the file 
      */
     bool to_unlink;
-    list_elem_t node;    
+    list_elem_t node;
 };
 
 result_t file_get(
     const char* path,
     bool create,
+    bool mkdir,
     struct fs_file_t** out_file
 );
 
 result_t file_put(
     struct fs_file_t* file,
-    bool unlink
+    bool unlink,
+    bool rmdir
 );
 
 result_t file_read(

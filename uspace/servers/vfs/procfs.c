@@ -116,7 +116,7 @@ proc_exit(pid_t pid) {
     for (usize fd = 0; fd < MAX_FDS_PER_PROC; fd++) {
         struct proc_file_t* pfile = &proc->files[fd];
         if (pfile->vfs_file != NULL) {
-            unwrap_err(file_put(pfile->vfs_file, false));
+            unwrap_err(file_put(pfile->vfs_file, false, false));
         }
     }
     list_remove(&proc->node);
