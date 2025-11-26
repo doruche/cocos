@@ -6,7 +6,7 @@
 
 #include <libs/prelude.h>
 
-typedef enum _example_msg_type_t {
+typedef enum {
     EXAMPLE_FOO,
     EXAMPLE_FOO_RESP,
 } example_msg_type_t;
@@ -24,3 +24,7 @@ typedef struct _example_msg_t {
     };
 } example_msg_t;
 
+/* 
+ * rpc call encapsulations... 
+ * e.g. result_t example_foo(u32 a, u32 b, u32* out_result);
+ */

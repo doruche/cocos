@@ -173,3 +173,4 @@ SYSCALL_DECLARE2(
     const char*, str,
     usize, len
 );
+SYSCALL_DECLARE1(kdb, const char*, cmd);

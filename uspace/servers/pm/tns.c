@@ -1,7 +1,6 @@
 #include "tns.h"
 #include <libs/prelude.h>
 #include <libs/list.h>
-#include <uspace/servers/pm.h>
 #include <uspace/syscall.h>
 #include <uspace/ipc.h>
 

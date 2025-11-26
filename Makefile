@@ -1,4 +1,5 @@
 # Top-level build script, both for kernel and uspace.
+include Config.mk
 
 # Toolchain
 CROSS := riscv64-unknown-elf-
@@ -27,9 +28,6 @@ export GLOBL_CFLAGS := \
 
 export GLOBL_LDFLAGS := -nostdlib -static -no-pie
 
-export KLOG ?= TRACE
-export ULOG ?= TRACE
-
 # Emulator and debugger. Not used by sub-makefiles.
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
 KERNEL_ELF := $(BUILD_DIR)/kernel.elf
@@ -46,6 +44,7 @@ QEMU_FLAGS := \
 MODULES := kernel uspace libs
 
 .PHONY: all clean $(MODULES) \
+		 \
 		run gdb-client gdb-server
 
 all: $(MODULES) 

@@ -1,0 +1,1 @@
+obj-$(FS_RAMFS) := main.o

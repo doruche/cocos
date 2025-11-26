@@ -7,14 +7,17 @@ export APPS := \
 	shell \
 	arg \
 	spawn \
+	tests \
+	mount \
+	umount \
 	stackof
 export SERVERS := \
-	vfs \
+	ns \
 	idle \
+	ramdisk \
 	echo \
 	uart16550 \
-	random \
-	fakefs
+	random
 
 .PHONY: all libc apps servers
 

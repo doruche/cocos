@@ -19,7 +19,7 @@
  * 3. running_tasks list only contains T_READY / T_RUNNING / T_ZOMBIE tasks.
  */
 
-static list_t all_tasks;
+list_t all_tasks;
 static list_t running_tasks;
 static list_t zombie_tasks;
 
@@ -282,11 +282,11 @@ task_destroy(tid_t tid) {
             assert(elem_in_list(&task->node_receiver));
             list_remove(&task->node_receiver);
         }
-        pr_warn("task_exit: cleaning up blocked receiver task tid=%ld name=%s",
+        pr_warn("task_destroy: cleaning up blocked receiver task tid=%ld name=%s",
             task->tid, task->name);
     } else if (elem_in_list(&task->node_sender)) {
         list_remove(&task->node_sender);
-        pr_warn("task_exit: cleaning up blocked sender task tid=%ld name=%s",
+        pr_warn("task_destroy: cleaning up blocked sender task tid=%ld name=%s",
             task->tid, task->name);
     }
     list_foreach_safe(iter, &task->sender_list, next) {
@@ -298,7 +298,7 @@ task_destroy(tid_t tid) {
         list_remove(&sender->node_sender);
         unwrap_err(notify(sender, NOTIF_IPC_ABORT));
         unwrap_err(task_resume(sender->tid));
-        pr_trace("task_exit: aborted sender task tid=%ld name=%s sending to exiting task tid=%ld name=%s",
+        pr_trace("task_destroy: aborted sender task tid=%ld name=%s sending to exiting task tid=%ld name=%s",
             sender->tid, sender->name, task->tid, task->name);
     }
     list_foreach_safe(iter, &task->receiver_list, next) {
@@ -310,7 +310,7 @@ task_destroy(tid_t tid) {
         list_remove(&receiver->node_receiver);
         unwrap_err(notify(receiver, NOTIF_IPC_ABORT));
         unwrap_err(task_resume(receiver->tid));
-        pr_trace("task_exit: aborted receiver task tid=%ld name=%s receiving from exiting task tid=%ld name=%s",
+        pr_trace("task_destroy: aborted receiver task tid=%ld name=%s receiving from exiting task tid=%ld name=%s",
             receiver->tid, receiver->name, task->tid, task->name);
     }
 
@@ -319,7 +319,9 @@ task_destroy(tid_t tid) {
     if (task->state != T_ZOMBIE) {
         pr_warn("task_destroy: destroying non-zombie task tid=%ld name=%s",
             task->tid, task->name);
-        list_remove(&task->node_running);
+        if (task->state == T_READY) {
+            list_remove(&task->node_running);
+        }
     } else {
         list_remove(&task->node_zombie);        
     }
@@ -477,7 +479,7 @@ scheduler(void) {
         static usize counter = 0;
         if (counter++ == 500) {
             counter = 0;
-            pr_notify("free pages: %ld", pm_count_free());
+            pr_info("free pages: %ld", pm_count_free());
         }
         task_dump();
     }

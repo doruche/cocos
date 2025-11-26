@@ -27,8 +27,8 @@
 /* 64KB heap */
 #define USER_HEAP_SIZE (1024 * 64)
 
-#define PATH_MAX_LEN 32
-
+#define PATH_MAX_LEN 64
+#define FILE_NAME_MAX_LEN 8
 #define FS_TYPE_MAX_LEN 16
 
 /*
@@ -43,7 +43,7 @@
 #define MAX_FDS_PER_PROC 32
 
 #define INIT_SERVERS \
-    { "vfs", "uart16550", "random", "echo", "idle", NULL }
+    { "uart16550", "ns", "random", "idle", NULL }
 
 #define INIT_APPS \
     { "shell", NULL }

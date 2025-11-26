@@ -1,0 +1,1 @@
+obj-$(FS_FAT32) := main.o

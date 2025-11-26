@@ -33,12 +33,10 @@ $(foreach sub_mk,$(SUB_MKS),$(eval $(call collect_objs,$(sub_mk))))
 
 $(MOD_OBJDIR)/%.o: $(MOD_SRCDIR)/%.c
 	@echo "  CC\t$(shell realpath $@ -m --relative-to=$(BUILD_DIR))"
-#	@$(CC) $(CFLAGS) -c $< -o $@
 	@$(CC) $(CFLAGS) -c $(shell realpath $< --relative-to=$(MOD_SRCDIR)) -o $@
 
 $(MOD_OBJDIR)/%.o: $(MOD_SRCDIR)/%.S
 	@echo "  AS\t$(shell realpath $@ -m --relative-to=$(BUILD_DIR))"
-#	@$(CC) $(CFLAGS) -c $< -o $@
 	@$(CC) $(CFLAGS) -c $(shell realpath $< --relative-to=$(MOD_SRCDIR)) -o $@
 
 MODULE_SUBDIRS := $(sort $(dir $(OBJS)))

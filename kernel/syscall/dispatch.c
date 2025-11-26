@@ -14,6 +14,7 @@ static const syscall_ptr_t syscall_table[] = {
     [SYS_TASK_YIELD]    __sys_task_yield,
     [SYS_IPC]      __sys_ipc,
     [SYS_NOTIFY]   __sys_notify,
+    [SYS_KDB]   __sys_kdb,
     [SYS_TASK_BLOCK]  __sys_task_block,
     [SYS_TASK_RESUME] __sys_task_resume,
     [SYS_TASK_EXIT]    __sys_task_exit,
@@ -36,6 +37,7 @@ static const char* const syscall_strs[] = {
     [SYS_TASK_YIELD]    = "task_yield",
     [SYS_IPC]      = "ipc",
     [SYS_NOTIFY]   = "notify",
+    [SYS_KDB]   = "kdb",
     [SYS_TASK_BLOCK]  = "task_block",
     [SYS_TASK_RESUME] = "task_resume",
     [SYS_TASK_EXIT]    = "task_exit",
@@ -59,14 +61,12 @@ syscall_dispatch(
         pr_warn("syscall_dispatch: unimplemented syscall no=%ld", syscall_no);
         return -ERR_NOENT;
     }
-
-    if (syscall_no != SYS_DBG_PUTS) {
-        pr_trace("do_syscall: syscall no=%ld (%s)",
-            syscall_no,
-            syscall_strs[syscall_no]
-        );
-    }
-
+    
+    pr_trace("syscall_dispatch: syscall %s(%ld) called",
+        syscall_strs[syscall_no],
+        syscall_no
+    );
+    
     arch_store_syscall_ret(
         tf,
         syscall_table[syscall_no](

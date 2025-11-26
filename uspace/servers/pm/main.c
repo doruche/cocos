@@ -4,7 +4,6 @@
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
 #include <uspace/syscall.h>
-#include <uspace/servers/pm.h>
 
 static void
 spawn_tasks(const char* init_tasks[]) {
@@ -13,7 +12,7 @@ spawn_tasks(const char* init_tasks[]) {
         const bfs_inode_t* inode = unwrap_null(bfs_lookup(name));
         const u8* elf = bfs_read_inplace(inode);
         pid_t pid;
-        unwrap_err(pm_proc_spawn(
+        unwrap_err(s_proc_spawn(
             name,
             elf,
             (const cmdline_t*)&(cmdline_t){
@@ -79,10 +78,16 @@ main(void) {
                     msg.src, msg.notifs);
                 if (msg.notifs & NOTIF_TASK_EXIT) {
                     zombie_task_t ztask;
+                    bool found = false;
                     while (!is_err(sys_task_getzombie(&ztask))) {
+                        found = true;
                         pr_info("pm: process exited: pid=%ld exit_code=%ld %s",
                             ztask.tid, ztask.exit_code, strerr(ztask.exit_code));
-                        unwrap_err(proc_exit(ztask.tid, ztask.exit_code));
+                        unwrap_err(s_proc_exit(ztask.tid, ztask.exit_code));
+                    }
+                    if (!found) {
+                        pr_warn("pm: received TASK_EXIT notif but no zombie task found\n"
+                                "we may have already killed the task earlier.");
                     }
                 }
                 break;
@@ -183,13 +188,13 @@ main(void) {
                         resp.pm.type = PM_MAP_RESP;
                         switch (msg.pm.map.type) {
                             case PM_MAP_ANON: {
-                                ret = vm_map_anon(
+                                ret = s_vm_map_anon(
                                     msg.src,
                                     msg.pm.map.info.anon.npages,
                                     &vpn
                                 );
                                 if (is_err(ret)) {
-                                    pr_warn("pm: vm_map_anon failed for tid %ld: %s",
+                                    pr_warn("pm: s_vm_map_anon failed for tid %ld: %s",
                                         msg.src, strerr(ret));
                                     rpc_reply_result(msg.src, ret);
                                     break;
@@ -199,14 +204,14 @@ main(void) {
                                 break;
                             }
                             case PM_MAP_MMIO: {
-                                ret = vm_map_mmio(
+                                ret = s_vm_map_mmio(
                                     msg.src,
                                     msg.pm.map.info.mmio.ppn,
                                     msg.pm.map.info.mmio.npages,
                                     &vpn
                                 );
                                 if (is_err(ret)) {
-                                    pr_warn("pm: vm_map_mmio failed for tid %ld: %s",
+                                    pr_warn("pm: s_vm_map_mmio failed for tid %ld: %s",
                                         msg.src, strerr(ret));
                                     rpc_reply_result(msg.src, ret);
                                     break;
@@ -242,14 +247,14 @@ main(void) {
                             break;
                         }
                         const u8* elf = bfs_read_inplace(inode);
-                        ret = pm_proc_spawn(
+                        ret = s_proc_spawn(
                             msg.pm.proc_spawn.path,
                             elf,
                             (const cmdline_t*)&cmdline,
                             &pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: proc_spawn failed for cmd '%s' from %ld: %s",
+                            pr_warn("pm: s_proc_spawn failed for cmd '%s' from %ld: %s",
                                 msg.pm.proc_spawn.path, msg.src, strerr(ret));
                             rpc_reply_result(msg.src, ret);
                             break;
@@ -261,9 +266,20 @@ main(void) {
                             msg.pm.proc_spawn.path, pid, msg.src);
                         break;
                     }
+                    case PM_PROC_KILL: {
+                        ret = s_proc_kill(msg.pm.proc_kill.pid);
+                        if (is_err(ret)) {
+                            pr_warn("pm: s_proc_kill failed for pid %ld by %ld: %s",
+                                msg.pm.proc_kill.pid,
+                                msg.src,
+                                strerr(ret));
+                        }
+                        rpc_reply_result(msg.src, ret);
+                        break;
+                    }
                     case PM_PROC_PROBE: {
                         struct process_t* proc = NULL;
-                        ret = proc_get(
+                        ret = s_proc_get(
                             msg.pm.proc_probe.pid,
                             &proc
                         );
@@ -275,12 +291,12 @@ main(void) {
                         break;
                     }
                     case PM_PROC_WATCH: {
-                        ret = pm_proc_watch(
+                        ret = s_proc_watch(
                             msg.src,
                             msg.pm.proc_watch.pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: pm_proc_watch failed for pid %ld by %ld: %s",
+                            pr_warn("pm: s_proc_watch failed for pid %ld by %ld: %s",
                                 msg.pm.proc_watch.pid,
                                 msg.src,
                                 strerr(ret));
@@ -289,12 +305,12 @@ main(void) {
                         break;
                     }
                     case PM_PROC_UNWATCH: {
-                        ret = pm_proc_unwatch(
+                        ret = s_proc_unwatch(
                             msg.src,
                             msg.pm.proc_watch.pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: pm_proc_unwatch failed for pid %ld by %ld: %s",
+                            pr_warn("pm: s_proc_unwatch failed for pid %ld by %ld: %s",
                                 msg.pm.proc_watch.pid,
                                 msg.src,
                                 strerr(ret));

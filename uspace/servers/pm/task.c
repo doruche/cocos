@@ -40,10 +40,9 @@ proc_alloc(struct process_t** out_proc) {
 }
 
 result_t
-proc_get(pid_t pid, struct process_t** out_proc) {
+s_proc_get(pid_t pid, struct process_t** out_proc) {
     for (usize i = 0; i < array_size(processes); i++) {
-        if (processes[i].pid == pid) {
-            assert(processes[i].in_use);
+        if (processes[i].pid == pid && processes[i].in_use) {
             *out_proc = &processes[i];
             return OK;
         }
@@ -64,9 +63,9 @@ proc_free(struct process_t* proc) {
 } 
 
 result_t
-proc_exit(pid_t pid, result_t exit_code) {
+s_proc_exit(pid_t pid, result_t exit_code) {
     struct process_t* proc = NULL;
-    unwrap_err(proc_get(pid, &proc));
+    unwrap_err(s_proc_get(pid, &proc));
 
     /* resources cleanup goes here. but now empty */
     list_foreach_safe(iter, &proc->watchers, next) {
@@ -94,6 +93,46 @@ proc_exit(pid_t pid, result_t exit_code) {
     unwrap_err(sys_task_destroy(pid));
     return OK;
 }
+
+result_t
+s_proc_kill(pid_t pid) {
+    struct process_t* proc = NULL;
+    result_t ret = s_proc_get(pid, &proc);
+    if (is_err(ret)) {
+        return ret;
+    }
+    /*
+     * if we kill a running process, it is ok.
+     * we won't receive its exit notification.
+     * but if we kill a zombie task, we'll receive its exit notification
+     * later, and sys_get_zombie wont't return that task, cz we already
+     * destroyed it here. 
+     */
+    list_foreach_safe(iter, &proc->watchers, next) {
+        struct proc_watcher_t* pw = 
+            list_entry(iter, struct proc_watcher_t, node);
+        unwrap_err(async_send(
+            pw->watcher,
+            &(msg_t) {
+                .type = MSG_PM,
+                .pm = {
+                    .type = PM_PROC_EXIT,
+                    .proc_exit = {
+                        .pid = pid,
+                        .xcode = -ERR_KILLED,
+                    }
+                }
+            }
+        ));
+        list_remove(&pw->node);
+        free(pw);
+    }
+    unwrap_err(sys_task_destroy(pid));
+    tn_cleanup(pid);
+    proc_free(proc);
+    return OK;
+}
+
 
 static vm_flags_t
 pflags2vmflags(usize p_flags) {
@@ -134,7 +173,7 @@ proc_setup_stack(const cmdline_t* cmdline) {
         p -= len;
         memcpy(p, cmdline->argv[i], len);
         argv_ptrs[i] = (uaddr_t)__ustack_top - (buf_top - p);
-        pr_info("proc_setup_stack: argv[%ld] at 0x%lx: %s",
+        pr_trace("proc_setup_stack: argv[%ld] at 0x%lx: %s",
             i, argv_ptrs[i], (char*)p);
     }
     p = (u8*)align_down((usize)p, sizeof(u64));
@@ -161,7 +200,7 @@ proc_setup_stack(const cmdline_t* cmdline) {
  * a single cmdline string.
  */
 result_t
-pm_proc_spawn(
+s_proc_spawn(
     const char* path,
     const u8* elf,
     const cmdline_t* cmdline,
@@ -175,7 +214,7 @@ pm_proc_spawn(
 
     elf_hdr_t* elf_hdr = (elf_hdr_t*)elf;
     if (memcmp(elf_hdr->e_ident, ELF_MAGIC, 4) != 0) {
-        pr_warn("proc_spawn: invalid elf magic");
+        pr_warn("s_proc_spawn: invalid elf magic");
         ret = -ERR_INVAL;
         goto err;
     }
@@ -188,7 +227,7 @@ pm_proc_spawn(
         ASID_NEW
     );
     if (is_err(pid)) {
-        pr_warn("proc_spawn: sys_task_spawn failed: %s",
+        pr_warn("s_proc_spawn: sys_task_spawn failed: %s",
             strerr(pid));
         ret = pid;
         goto err;
@@ -245,7 +284,7 @@ pm_proc_spawn(
     usize copy_size = (uaddr_t)__ustack_top - sp;
     u8* src = init_stack_buf + sizeof(init_stack_buf) - copy_size;
     unwrap_err(sys_as_memcpy(asid, sp, src, copy_size));
-    pr_info("proc_spawn: init sp set at 0x%lx, copied %ld bytes",
+    pr_trace("s_proc_spawn: init sp set at 0x%lx, copied %ld bytes",
         sp, copy_size);
 
     /* map guard page */
@@ -265,7 +304,7 @@ pm_proc_spawn(
     
     unwrap_err(sys_task_resume(pid));
     *out_pid = pid;
-    pr_info("proc_spawn: spawned process '%s' (pid %ld)",
+    pr_info("s_proc_spawn: spawned process '%s' (pid %ld)",
         path, pid);
     return OK;
 
@@ -277,9 +316,9 @@ err:
 }
 
 result_t
-pm_proc_watch(pid_t watcher, pid_t target) {
+s_proc_watch(pid_t watcher, pid_t target) {
     struct process_t* proc = NULL;
-    result_t ret = proc_get(target, &proc);
+    result_t ret = s_proc_get(target, &proc);
     if (is_err(ret)) {
         return ret;
     }
@@ -291,15 +330,15 @@ pm_proc_watch(pid_t watcher, pid_t target) {
     }
     pw->watcher = watcher;
     list_push_back(&proc->watchers, &pw->node);
-    pr_info("pm_proc_watch: pid %ld watching pid %ld",
+    pr_info("s_proc_watch: pid %ld watching pid %ld",
         watcher, target);
     return OK;
 }
 
 result_t
-pm_proc_unwatch(pid_t watcher, pid_t target) {
+s_proc_unwatch(pid_t watcher, pid_t target) {
     struct process_t* proc = NULL;
-    result_t ret = proc_get(target, &proc);
+    result_t ret = s_proc_get(target, &proc);
     if (is_err(ret)) {
         return ret;
     }
@@ -310,7 +349,7 @@ pm_proc_unwatch(pid_t watcher, pid_t target) {
         if (pw->watcher == watcher) {
             list_remove(&pw->node);
             free(pw);
-            pr_info("pm_proc_unwatch: pid %ld unwatching pid %ld",
+            pr_info("s_proc_unwatch: pid %ld unwatching pid %ld",
                 watcher, target);
             return OK;
         }
@@ -319,13 +358,13 @@ pm_proc_unwatch(pid_t watcher, pid_t target) {
 }
 
 result_t
-vm_map_anon(
+s_vm_map_anon(
     pid_t pid,
     usize npages,
     vpn_t* out
 ) {
     struct process_t* proc = NULL;
-    result_t ret = proc_get(pid, &proc);
+    result_t ret = s_proc_get(pid, &proc);
     if (is_err(ret)) {
         return ret;
     }
@@ -338,7 +377,7 @@ vm_map_anon(
         VM_USER | VM_ANON | VM_READ | VM_WRITE
     );
     if (is_err(ret)) {
-        pr_warn("vm_map_anon: sys_as_map failed: %s",
+        pr_warn("s_vm_map_anon: sys_as_map failed: %s",
             strerr(ret));
         return ret;
     }
@@ -349,14 +388,14 @@ vm_map_anon(
 }
 
 result_t
-vm_map_mmio(
+s_vm_map_mmio(
     pid_t pid,
     ppn_t ppn,
     usize npages,
     vpn_t* out
 ) {
     struct process_t* proc = NULL;
-    result_t ret = proc_get(pid, &proc);
+    result_t ret = s_proc_get(pid, &proc);
     if (is_err(ret)) {
         return ret;
     }
@@ -369,7 +408,7 @@ vm_map_mmio(
         VM_USER | VM_READ | VM_WRITE
     );
     if (is_err(ret)) {
-        pr_warn("vm_map_mmio: sys_as_map failed: %s",
+        pr_warn("s_vm_map_mmio: sys_as_map failed: %s",
             strerr(ret));
         return ret;
     }
@@ -380,13 +419,13 @@ vm_map_mmio(
 }
 
 result_t
-vm_unmap(
+s_vm_unmap(
     pid_t pid,
     vpn_t vpn,
     usize npages
 ) {
     struct process_t* proc = NULL;
-    result_t ret = proc_get(pid, &proc);
+    result_t ret = s_proc_get(pid, &proc);
     if (is_err(ret)) {
         return ret;
     }
@@ -397,7 +436,7 @@ vm_unmap(
         npages
     );
     if (is_err(ret)) {
-        pr_warn("vm_unmap: sys_as_unmap failed: %s",
+        pr_warn("s_vm_unmap: sys_as_unmap failed: %s",
             strerr(ret));
         return ret;
     }

@@ -67,7 +67,6 @@ main(void) {
                 printf("error executing command '%s': %s\n", buf, strerr(ret));
                 goto done;
             } else if (!background) {
-                /* here we should wait. but now we just continue */
                 proc_join(m.pm.proc_spawn_resp.pid, NULL);
             }
         }

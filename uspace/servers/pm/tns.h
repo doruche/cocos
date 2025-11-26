@@ -1,7 +1,6 @@
 #pragma once
 #include <libs/prelude.h>
 #include <libs/list.h>
-#include <uspace/servers/pm.h>
 
 #define SERVICE_MAX_NUM 32
 

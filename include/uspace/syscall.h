@@ -161,6 +161,18 @@ sys_notify(tid_t tid, notif_t notifs) {
 }
 
 static inline result_t
+sys_kdb(const char* cmd) {
+    return arch_syscall(
+        SYS_KDB,
+        (u64)(cmd),
+        0,
+        0,
+        0,
+        0
+    );
+}
+
+static inline result_t
 sys_task_block(tid_t tid) {
     return arch_syscall(
         SYS_TASK_BLOCK,

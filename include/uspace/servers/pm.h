@@ -27,6 +27,7 @@ typedef enum _pm_msg_type_t {
     PM_PROC_WATCH,
     PM_PROC_UNWATCH,
     PM_PROC_EXIT,
+    PM_PROC_KILL,
     // PM_THREAD_XXX,
 } pm_msg_type_t;
 
@@ -69,6 +70,12 @@ typedef struct _pm_msg_t {
         } map;
         struct {
             vpn_t vpn;
+            /*
+             * this is for dma requirements.(drivers may need this. e.g. virtio)
+             * we could actually make dma allocation a separate pm service,
+             * but it seems overkill for now.
+             */
+            ppn_t ppn;
         } map_resp;
         struct {
             vpn_t vpn;
@@ -94,6 +101,14 @@ typedef struct _pm_msg_t {
             pid_t pid;
             result_t xcode;
         } proc_exit; /* response of proc_watch */
+        struct {
+            pid_t pid;
+        } proc_kill;
     };
 } pm_msg_t;
 
+result_t proc_spawn(const char* path, const char* argv[], pid_t* out_pid);
+result_t proc_watch(pid_t pid);
+result_t proc_unwatch(pid_t pid);
+result_t proc_join(pid_t pid, result_t* xcode);
+result_t proc_kill(pid_t pid);

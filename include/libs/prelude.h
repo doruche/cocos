@@ -105,6 +105,9 @@ typedef isize result_t;
 #define ERR_UNKNOWN_REQ 15 // Unknown request
 #define ERR_NOT_SUPPORTED 16 // Not supported
 #define ERR_UNIMPLEMENTED 17 // Not implemented
+#define ERR_OUT_OF_BOUNDS 18 // Out of bounds
+#define ERR_EXIT_UNEXPECTED 19 // Process exit unexpected
+#define ERR_NOT_FOUND 404 // Not found
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
@@ -151,6 +154,12 @@ strerr(isize err) {
             return "Not supported";
         case -ERR_UNIMPLEMENTED:
             return "Not implemented";
+        case -ERR_OUT_OF_BOUNDS:
+            return "Out of bounds";
+        case -ERR_EXIT_UNEXPECTED:
+            return "Process exit unexpected";
+        case -ERR_NOT_FOUND:
+            return "Not found";
         case -ERR_PAGEFAULT:
             return "Page fault";
         case -ERR_KILLED:
@@ -214,6 +223,7 @@ isize   snprintf(char *buf, usize size, const char *fmt, ...);
 #define SYS_TASK_YIELD  8
 #define SYS_IPC         9
 #define SYS_NOTIFY      10
+#define SYS_KDB         11
 #define SYS_TASK_BLOCK  14
 #define SYS_TASK_RESUME 15
 #define SYS_AS_READ     18
@@ -225,26 +235,26 @@ isize   snprintf(char *buf, usize size, const char *fmt, ...);
 #define SYS_IRQ_UNLISTEN    24
 #define SYS_IRQ_ACK     25
 
-typedef u64 vfs_open_flags_t;
+/* open flags */
 #define O_RDONLY    0x0000
 #define O_WRONLY    0x0001
 #define O_RDWR      0x0002
 #define O_CREATE    0x0100
 #define O_TRUNC     0x0200
-typedef u64 vfs_st_mode_t;
-#define S_IFREG    0x8000  // regular file
-#define S_IFDIR    0x4000  // directory
+/* st_mode */
+#define S_IFREG    0x8000
+#define S_IFDIR    0x4000
 
-typedef struct vfs_dirent_t {
+typedef struct dirent_t {
     char name[PATH_MAX_LEN];   
-    vfs_st_mode_t mode;
-} vfs_dirent_t;
+    u64 mode;
+} dirent_t;
 
-typedef struct vfs_stat_t {
-    vfs_st_mode_t mode;
+typedef struct stat_t {
+    u64 mode;
     u64 size;
     u64 ino;
-} vfs_stat_t;
+} stat_t;
 
 #define SEEK_SET    0
 #define SEEK_CUR    1
