@@ -90,7 +90,7 @@ rpc_reply_result(tid_t client, result_t res) {
 }
 
 result_t
-tns_resolve(const char *name, tid_t *out) {
+pns_resolve(const char *name, tid_t *out) {
     msg_t msg = {0};
     msg.type = MSG_PM;
     msg.pm.type = PM_RESOLVE_NAME;
@@ -101,23 +101,23 @@ tns_resolve(const char *name, tid_t *out) {
         return ret;
     }
 
-    *out = msg.pm.resolve_name_resp.server_tid;
+    *out = msg.pm.resolve_name_resp.server_pid;
     return OK;
 }
 
 result_t
-tns_publish(const char *name) {
+pns_publish(const char *name) {
     msg_t msg = {0};
     msg.type = MSG_PM;
     msg.pm.type = PM_PUBLISH;
-    msg.pm.publish.server_tid = task_gettid();
+    msg.pm.publish.server_pid = task_gettid();
     strncpy(msg.pm.publish.name, name, SERVICE_NAME_MAX_LEN);
 
     return rpc_call(TID_PM, &msg);
 }
 
 result_t
-tns_unpublish(const char *name) {
+pns_unpublish(const char *name) {
     msg_t msg = {0};
     msg.type = MSG_PM;
     msg.pm.type = PM_UNPUBLISH;

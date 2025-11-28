@@ -60,6 +60,10 @@ main(void) {
             msg_t m = {0};
             m.type = MSG_PM;
             m.pm.type = PM_PROC_SPAWN;
+
+            /* refine later */
+            m.pm.proc_spawn.inherit_ns = true;
+
             memcpy(m.pm.proc_spawn.cmdline, buf, SERIAL_BUF_MAX_LEN);
             memcpy(m.pm.proc_spawn.path, args.argv[0], PATH_MAX_LEN);
             ret = rpc_call(TID_PM, &m);

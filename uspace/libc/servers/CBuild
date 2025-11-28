@@ -1,5 +1,4 @@
 obj-y := \
 	serial.o \
-	blk.o \
-	pm.o \
-	ns.o
+	fs.o \
+	pm.o

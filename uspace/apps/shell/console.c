@@ -6,7 +6,7 @@ static tid_t serial = TID_INVALID;
 
 void
 console_init(void) {
-    while (is_err(tns_resolve("serial/uart16550", &serial))) {
+    while (is_err(pns_resolve("serial/uart16550", &serial))) {
         task_yield();        
     }
 }

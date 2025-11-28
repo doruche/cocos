@@ -1,0 +1,1 @@
+obj-y := main.o dir.o file.o inode.o super.o bio.o

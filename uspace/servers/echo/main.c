@@ -5,7 +5,7 @@
 
 result_t
 main(void) {
-    unwrap_err(tns_publish("echo"));
+    unwrap_err(pns_publish("echo"));
 
     pr_info("echo server started.");
 

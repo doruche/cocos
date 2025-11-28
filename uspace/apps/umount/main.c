@@ -1,5 +1,5 @@
 #include <libs/prelude.h>
-#include <uspace/servers/ns.h>
+#include <uspace/servers/pm.h>
 
 result_t
 main(usize argc, char* argv[]) {

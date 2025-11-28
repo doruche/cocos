@@ -6,10 +6,10 @@
 result_t
 main(void) {
     tid_t remote;
-    while (is_err(tns_resolve("echo", &remote))) {
+    while (is_err(pns_resolve("echo", &remote))) {
         sys_task_yield();
     }
-    printf("echoc: resolved 'echo' server at tid %ld\n", remote);
+    printf("echoc: resolved 'echo' server at pid %ld\n", remote);
 
     msg_t msg = {0};
     msg.type = MSG_ECHO;

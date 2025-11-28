@@ -1,5 +1,9 @@
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
+#include <uspace/task.h>
+
+/* meaningless. */
+#define RAMDISK_HANDLE 42
 
 static u8* ramdisk = NULL;
 static usize nblock = 0;
@@ -55,7 +59,7 @@ main(usize argc, char **argv) {
         return -ERR_NOMEM;
     }
 
-    unwrap_err(tns_publish(dev_name));
+    unwrap_err(pns_publish(dev_name));
     pr_info("ramdisk %s started: %ld blocks, block size %ld bytes\n",
         dev_name, nblock, block_size);
 
@@ -69,57 +73,121 @@ main(usize argc, char **argv) {
             continue;
         }
         switch (msg.type) {
-            case MSG_BLK: {
-                resp.type = MSG_BLK;
-                switch (msg.blk.type) {
-                    case BLK_READ: {
+            case MSG_FS: {
+                switch (msg.fs.type) {
+                    resp.type = MSG_FS;
+                    case FS_GET: {
+                        if (strcmp(msg.fs.get.path, "/") != 0) {
+                            pr_warn("ramdisk: invalid get path %s",
+                                msg.fs.get.path);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        resp.fs.type = FS_GET_RESP;
+                        /* only one ramdisk. we do not check handle actually */
+                        resp.fs.get_resp.handle = RAMDISK_HANDLE;
+                        ipc_send(msg.src, &resp);
+                        break;
+                    }
+                    case FS_READ: {
+                        if (msg.fs.read.handle != RAMDISK_HANDLE) {
+                            pr_warn("ramdisk: invalid handle %ld",
+                                msg.fs.read.handle);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        /* for disk we disallow unaligned requests */
+                        if (msg.fs.read.size != block_size ||
+                            msg.fs.read.offset % block_size != 0) {
+                            pr_warn("ramdisk: unaligned read request");
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        usize blkno = msg.fs.read.offset / block_size;
+                        resp.fs.type = FS_READ_RESP;
                         ret = ramdisk_blk_read(
-                            msg.blk.read.blkno,
-                            resp.blk.read_resp.data
+                            blkno,
+                            resp.fs.read_resp.data
                         );
                         if (is_err(ret)) {
-                            pr_warn("ramdisk: blk_read failed: %s",
-                                strerr(ret));
                             rpc_reply_result(msg.src, ret);
                             break;
                         }
-                        resp.blk.type = BLK_READ_RESP;
+                        resp.fs.read_resp.size = block_size;
                         rpc_reply(msg.src, &resp);
                         break;
                     }
-                    case BLK_WRITE: {
+                    case FS_WRITE: {
+                        if (msg.fs.write.handle != RAMDISK_HANDLE) {
+                            pr_warn("ramdisk: invalid handle %ld",
+                                msg.fs.write.handle);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        if (msg.fs.write.size != block_size ||
+                            msg.fs.write.offset % block_size != 0) {
+                            pr_warn("ramdisk: unaligned write request");
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        usize blkno = msg.fs.write.offset / block_size;
                         ret = ramdisk_blk_write(
-                            msg.blk.write.blkno,
-                            msg.blk.write.data
+                            blkno,
+                            msg.fs.write.data
                         );
                         if (is_err(ret)) {
-                            pr_warn("ramdisk: blk_write failed: %s",
-                                strerr(ret));
                             rpc_reply_result(msg.src, ret);
                             break;
                         }
-                        rpc_reply_result(msg.src, OK);
+                        resp.fs.type = FS_WRITE_RESP;
+                        resp.fs.write_resp.size = block_size;
+                        rpc_reply(msg.src, &resp);
                         break;
                     }
-                    case BLK_GET_SIZE: {
-                        resp.blk.type = BLK_GET_SIZE_RESP;
-                        resp.blk.get_size_resp.block_size = block_size;
-                        resp.blk.get_size_resp.nblock = nblock;
+                    case FS_STAT:
+                        if (strcmp(msg.fs.stat.path, "/") != 0) {
+                            pr_warn("ramdisk: invalid stat path %s",
+                                msg.fs.stat.path);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                    case FS_FSTAT: {
+                        if (msg.fs.type == FS_FSTAT &&
+                            msg.fs.fstat.handle != RAMDISK_HANDLE) {
+                            pr_warn("ramdisk: invalid handle %ld",
+                                msg.fs.fstat.handle);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        resp.fs.type = FS_STAT_RESP;
+                        stat_init(&resp.fs.stat_resp.stat);
+                        resp.fs.stat_resp.stat.mode = S_IFBLK;
+                        resp.fs.stat_resp.stat.blksize = block_size;
+                        resp.fs.stat_resp.stat.blocks = nblock;
+                        resp.fs.stat_resp.stat.dev = task_gettid();
                         rpc_reply(msg.src, &resp);
+                        break;
+                    }
+                    case FS_UNLINK:
+                    case FS_MKDIR:
+                    case FS_RMDIR:
+                    case FS_READDIR: {
+                        rpc_reply_result(msg.src, -ERR_NOT_SUPPORTED);
                         break;
                     }
                     default: {
-                        pr_warn("ramdisk: unknown blk message type %d from tid %ld",
-                            msg.blk.type, msg.src);
+                        pr_warn("ramdisk: unknown FS message type %d from tid %ld",
+                            msg.fs.type, msg.src);
+                        rpc_reply_result(msg.src, -ERR_UNKNOWN_REQ);    
                         break;
-                    }       
-                    break;
+                    }
                 }
                 break;
             }
             default: {
                 pr_warn("ramdisk: unknown message type %ld from tid %ld",
                     msg.type, msg.src);
+                rpc_reply_result(msg.src, -ERR_UNKNOWN_REQ);
                 break;
             }
         }

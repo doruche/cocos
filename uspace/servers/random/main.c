@@ -17,7 +17,7 @@ random_gen(usize seed) {
 
 result_t
 main(void) {
-    unwrap_err(tns_publish("random"));
+    unwrap_err(pns_publish("random"));
     pr_info("random server started.");
 
     loop {

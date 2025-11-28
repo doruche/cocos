@@ -5,7 +5,8 @@ result_t
 proc_spawn(
     const char* path,
     const char* argv[],
-    pid_t* out_pid
+    bool inherit_ns,
+    tid_t* out_pid
 ) {
     if (argv == NULL || argv[0] == NULL) {
         return -ERR_INVAL;
@@ -29,6 +30,7 @@ proc_spawn(
     msg_t msg = {0};
     msg.type = MSG_PM;
     msg.pm.type = PM_PROC_SPAWN;
+    msg.pm.proc_spawn.inherit_ns = inherit_ns;
     memcpy(msg.pm.proc_spawn.cmdline, cmdline_buf, SERIAL_BUF_MAX_LEN);
     
     char path_buf[PATH_MAX_LEN] = {0};
@@ -44,7 +46,7 @@ proc_spawn(
 }
 
 result_t
-proc_watch(pid_t pid) {
+proc_watch(tid_t pid) {
     msg_t msg = {0};
     msg.type = MSG_PM;
     msg.pm.type = PM_PROC_WATCH;
@@ -53,7 +55,7 @@ proc_watch(pid_t pid) {
 }
 
 result_t
-proc_unwatch(pid_t pid) {
+proc_unwatch(tid_t pid) {
     msg_t msg = {0};
     msg.type = MSG_PM;
     msg.pm.type = PM_PROC_UNWATCH;
@@ -62,12 +64,12 @@ proc_unwatch(pid_t pid) {
 }
 
 result_t
-proc_join(pid_t pid, result_t* xcode) {
+proc_join(tid_t pid, result_t* xcode) {
     // msg_t msg = {0};
     // loop {
     //     msg.type = MSG_PM;
     //     msg.pm.type = PM_PROC_PROBE;
-    //     msg.pm.proc_probe.pid = pid;
+    //     msg.pm.proc_probe.tid = tid;
     //     
     //     result_t ret = rpc_call(TID_PM, &msg);
     //     /* OK means target still alive */
@@ -92,7 +94,7 @@ proc_join(pid_t pid, result_t* xcode) {
         ret = async_recv(TID_PM, &msg);
         if (ret == OK) {
             break;
-        } else if (ret != -ERR_NOENT) {
+        } else if (ret != -ERR_NOT_FOUND) {
             panic("proc_join: unexpected error from async_recv: %s",
                 strerr(ret));
         }
@@ -106,10 +108,48 @@ proc_join(pid_t pid, result_t* xcode) {
 }
 
 result_t
-proc_kill(pid_t pid) {
+proc_kill(tid_t pid) {
     msg_t msg = {0};
     msg.type = MSG_PM;
     msg.pm.type = PM_PROC_KILL;
     msg.pm.proc_kill.pid = pid;
     return rpc_call(TID_PM, &msg);
+}
+
+result_t
+ns_mount(const char* path, const char* owner) {
+    msg_t msg = {0};
+    msg.type = MSG_PM;
+    msg.pm.type = PM_NS_MOUNT;
+    strncpy(msg.pm.mount.path, path, PATH_MAX_LEN);
+    strncpy(msg.pm.mount.owner, owner, SERVICE_NAME_MAX_LEN);
+    return rpc_call(TID_PM, &msg);
+}
+
+result_t
+ns_umount(const char* path) {
+    msg_t msg = {0};
+    msg.type = MSG_PM;
+    msg.pm.type = PM_NS_UMOUNT;
+    strncpy(msg.pm.umount.path, path, PATH_MAX_LEN);
+    return rpc_call(TID_PM, &msg);
+}
+
+result_t
+ns_resolve(const char* path, tid_t* out_owner, char* out_rpath) {
+    msg_t msg = {0};
+    msg.type = MSG_PM;
+    msg.pm.type = PM_NS_RESOLVE;
+    strncpy(msg.pm.resolve.path, path, PATH_MAX_LEN);
+    result_t ret = rpc_call(TID_PM, &msg);
+    if (is_err(ret)) {
+        return ret;
+    }
+    if (out_owner != NULL) {
+        *out_owner = msg.pm.resolve_resp.owner;
+    }
+    if (out_rpath != NULL) {
+        strncpy(out_rpath, msg.pm.resolve_resp.rpath, PATH_MAX_LEN);
+    }
+    return OK;
 }

@@ -91,7 +91,6 @@ typedef isize result_t;
 #define ERR_NOMEM   1  // Out of memory
 #define ERR_INVAL   2  // Invalid argument
 #define ERR_PERM    3  // Permission denied
-#define ERR_NOENT   4  // No such entry
 #define ERR_EXIST   5  // Entry already exists
 #define ERR_FAULT   6  // Bad address
 #define ERR_ABORT   7  // Operation aborted
@@ -108,6 +107,8 @@ typedef isize result_t;
 #define ERR_OUT_OF_BOUNDS 18 // Out of bounds
 #define ERR_EXIT_UNEXPECTED 19 // Process exit unexpected
 #define ERR_NOT_FOUND 404 // Not found
+#define ERR_IO 0x494F // I/O error
+
 /* user exit reasons */
 #define ERR_PAGEFAULT       42 // Page fault
 #define ERR_KILLED          43 // Task killed
@@ -126,8 +127,6 @@ strerr(isize err) {
             return "Invalid argument";
         case -ERR_PERM:
             return "Permission denied";
-        case -ERR_NOENT:
-            return "No such entry";
         case -ERR_EXIST:
             return "Entry already exists";
         case -ERR_FAULT:
@@ -160,6 +159,8 @@ strerr(isize err) {
             return "Process exit unexpected";
         case -ERR_NOT_FOUND:
             return "Not found";
+        case -ERR_IO:
+            return "I/O error";
         case -ERR_PAGEFAULT:
             return "Page fault";
         case -ERR_KILLED:
@@ -185,8 +186,6 @@ typedef struct _zombie_task_t {
     result_t exit_code;
 } zombie_task_t;
 
-/* pm-defined */
-typedef tid_t pid_t;
 
 typedef u64 asid_t;
 #define ASID_INVALID ((asid_t)-1)
@@ -203,6 +202,10 @@ typedef u64 vm_flags_t;
 // anonymous mapping.
 #define VM_ANON  (1L << 6)
 #define PPN_ANON 0L
+
+typedef u64 nsid_t;
+#define NSID_INVALID ((nsid_t)-1)
+#define NSID_NEW     ((nsid_t)0)
 
 typedef u32 irq_t;
 
@@ -240,10 +243,17 @@ isize   snprintf(char *buf, usize size, const char *fmt, ...);
 #define O_WRONLY    0x0001
 #define O_RDWR      0x0002
 #define O_CREATE    0x0100
-#define O_TRUNC     0x0200
+
 /* st_mode */
-#define S_IFREG    0x8000
-#define S_IFDIR    0x4000
+#define S_IFMT      00170000
+#define S_IFREG      0100000
+#define S_IFBLK      0060000
+#define S_IFDIR      0040000
+#define S_IFCHR      0020000
+#define S_ISREG(m)   (((m) & S_IFMT) == S_IFREG)
+#define S_ISBLK(m)   (((m) & S_IFMT) == S_IFBLK)
+#define S_ISDIR(m)   (((m) & S_IFMT) == S_IFDIR)
+#define S_ISCHR(m)   (((m) & S_IFMT) == S_IFCHR)
 
 typedef struct dirent_t {
     char name[PATH_MAX_LEN];   
@@ -253,14 +263,29 @@ typedef struct dirent_t {
 typedef struct stat_t {
     u64 mode;
     u64 size;
+    u64 blksize;
+    u64 blocks;
+    u64 nlink;
+    tid_t dev; /* dev server */
     u64 ino;
 } stat_t;
 
-#define SEEK_SET    0
-#define SEEK_CUR    1
-#define SEEK_END    2
+static inline void
+stat_init(stat_t* stat) {
+    stat->mode = 0;
+    stat->size = 0;
+    stat->blksize = 0;
+    stat->blocks = 0;
+    stat->nlink = 0;
+    stat->dev = TID_INVALID;
+    stat->ino = 0;
+}
 
-typedef u64 handle_t;
+typedef enum {
+    SEEK_SET = 0,
+    SEEK_CUR = 1,
+    SEEK_END = 2,
+} seek_whence_t;
 
 #include <libs/log.h>
 #include <libs/assert.h>

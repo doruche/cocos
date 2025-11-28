@@ -32,7 +32,7 @@ as_get(asid_t asid, addr_space_t** out) {
             return OK;
         }
     }
-    return -ERR_NOENT;
+    return -ERR_NOT_FOUND;
 }
 
 addr_space_t*
@@ -146,7 +146,7 @@ as_unmap(
     for (usize i = 0; i < npages; i++) {
         if (!arch_vm_is_mapped(as->arch_vm, vpn + i)) {
             pr_warn("as_unmap: vpn 0x%lx is not mapped", vpn + i);
-            return -ERR_NOENT;
+            return -ERR_NOT_FOUND;
         }
     }
 

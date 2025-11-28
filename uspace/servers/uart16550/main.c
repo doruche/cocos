@@ -139,7 +139,7 @@ uart_serial_read(void) {
 result_t
 main(void) {
     unwrap_err(sys_irq_listen(UART0_IRQ));
-    unwrap_err(tns_publish("serial/uart16550"));
+    unwrap_err(pns_publish("serial/uart16550"));
 
     uart_init();
 

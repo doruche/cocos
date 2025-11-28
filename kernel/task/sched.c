@@ -46,7 +46,7 @@ task_get(tid_t tid, task_t** out) {
             return OK;
         }
     }
-    return -ERR_NOENT;
+    return -ERR_NOT_FOUND;
 }
 
 vpn_t
@@ -180,7 +180,7 @@ task_spawn(
         if (is_err(as_get(asid, &as))) {
             kmem_cache_free(&task_cache, task);
             pr_warn("task_spawn: no such address space %ld", asid);
-            return -ERR_NOENT;
+            return -ERR_NOT_FOUND;
         }
         as_bind(as, task);
     }
@@ -216,7 +216,7 @@ task_block(tid_t tid) {
     task_t* task = NULL;
     if (is_err(task_get(tid, &task))) {
         pr_warn("task_block: no such task %ld", tid);
-        return -ERR_NOENT;
+        return -ERR_NOT_FOUND;
     }
     pr_trace("task_block: blocking task tid=%ld name=%s",
         task->tid, task->name);
@@ -242,7 +242,7 @@ task_resume(tid_t tid) {
     task_t* task = NULL;
     if (is_err(task_get(tid, &task))) {
         pr_warn("task_resume: no such task %ld", tid);
-        return -ERR_NOENT;
+        return -ERR_NOT_FOUND;
     }
     if (task->state != T_BLOCKED) {
         pr_warn("task_resume: task tid=%ld name=%s not blocked",
@@ -273,7 +273,7 @@ task_destroy(tid_t tid) {
     task_t* task = NULL;
     if (is_err(task_get(tid, &task))) {
         pr_warn("task_destroy: no such task %ld", tid);
-        return -ERR_NOENT;
+        return -ERR_NOT_FOUND;
     }
 
     /* ipc clean up */
@@ -367,7 +367,7 @@ result_t
 task_getzombie(zombie_task_t *out) {
     list_elem_t* elem = list_peak_front(&zombie_tasks);
     if (elem == NULL) {
-        return -ERR_NOENT;
+        return -ERR_NOT_FOUND;
     }
     task_t* task = list_entry(elem, task_t, node_zombie);
     out->tid = task->tid;

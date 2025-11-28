@@ -1,6 +1,7 @@
-#include "task.h"
+#include "proc.h"
 #include "bfs.h"
-#include "tns.h"
+#include "pns.h"
+#include "ns.h"
 #include <libs/prelude.h>
 #include <uspace/ipc.h>
 #include <uspace/syscall.h>
@@ -11,7 +12,7 @@ spawn_tasks(const char* init_tasks[]) {
         const char* name = init_tasks[i];
         const bfs_inode_t* inode = unwrap_null(bfs_lookup(name));
         const u8* elf = bfs_read_inplace(inode);
-        pid_t pid;
+        tid_t pid;
         unwrap_err(s_proc_spawn(
             name,
             elf,
@@ -19,6 +20,7 @@ spawn_tasks(const char* init_tasks[]) {
                 .argc = 1,
                 .argv = { (char*)name, NULL},
             },
+            s_ns_new(),
             &pid
         ));
         pr_trace("pm: spawned init task '%s' (pid %ld)",
@@ -51,7 +53,8 @@ pm_init(void) {
     ));
 
     bfs_probe();
-    tns_init();
+    pns_init();
+    ns_init();
     task_init();
     spawn_init_tasks();
 }
@@ -81,7 +84,7 @@ main(void) {
                     bool found = false;
                     while (!is_err(sys_task_getzombie(&ztask))) {
                         found = true;
-                        pr_info("pm: process exited: pid=%ld exit_code=%ld %s",
+                        pr_info("pm: process exited: tid=%ld exit_code=%ld %s",
                             ztask.tid, ztask.exit_code, strerr(ztask.exit_code));
                         unwrap_err(s_proc_exit(ztask.tid, ztask.exit_code));
                     }
@@ -123,34 +126,34 @@ main(void) {
                         break;
                     }
                     case PM_RESOLVE_NAME: {
-                        tid_t server_tid;
-                        ret = tn_lookup(
+                        tid_t server_pid;
+                        ret = pn_lookup(
                             msg.pm.resolve_name.name,
-                            &server_tid
+                            &server_pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: tns_lookup failed for name '%s': %s",
+                            pr_warn("pm: pns_lookup failed for name '%s': %s",
                                 msg.pm.resolve_name.name,
                                 strerr(ret));
                             rpc_reply_result(msg.src, ret);
                             break;
                         }
                         resp.pm.type = PM_RESOLVE_NAME_RESP;
-                        resp.pm.resolve_name_resp.server_tid = server_tid;
+                        resp.pm.resolve_name_resp.server_pid = server_pid;
                         pr_trace("pm: resolved service '%s' to %ld for %ld",
                             msg.pm.resolve_name.name,
-                            server_tid,
+                            server_pid,
                             msg.src);
                         rpc_reply(msg.src, &resp);
                         break;
                     }
                     case PM_PUBLISH: {
-                        ret = tn_insert(
+                        ret = pn_insert(
                             msg.pm.publish.name,
-                            msg.pm.publish.server_tid
+                            msg.pm.publish.server_pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: tns_insert failed for name '%s': %s",
+                            pr_warn("pm: pns_insert failed for name '%s': %s",
                                 msg.pm.publish.name,
                                 strerr(ret));
                         }
@@ -162,22 +165,22 @@ main(void) {
                         break;
                     }
                     case PM_UNPUBLISH: {
-                        tid_t server_tid;
-                        ret = tn_lookup(
+                        tid_t server_pid;
+                        ret = pn_lookup(
                             msg.pm.unpublish.name,
-                            &server_tid
+                            &server_pid
                         );
                         if (is_err(ret)) {
-                            pr_warn("pm: tns_lookup failed for name '%s': %s",
+                            pr_warn("pm: pns_lookup failed for name '%s': %s",
                                 msg.pm.unpublish.name, strerr(ret));
                             rpc_reply_result(msg.src, ret);
                             break;
                         }
-                        if (server_tid != msg.src) {
+                        if (server_pid != msg.src) {
                             rpc_reply_result(msg.src, -ERR_PERM);
                             break;
                         }
-                        unwrap_err(tn_remove(msg.pm.unpublish.name));
+                        unwrap_err(pn_remove(msg.pm.unpublish.name));
                         rpc_reply_result(msg.src, OK);
                         pr_info("pm: unpublished service '%s' from %ld",
                             msg.pm.unpublish.name, msg.src);
@@ -194,7 +197,7 @@ main(void) {
                                     &vpn
                                 );
                                 if (is_err(ret)) {
-                                    pr_warn("pm: s_vm_map_anon failed for tid %ld: %s",
+                                    pr_warn("pm: s_vm_map_anon failed for pid %ld: %s",
                                         msg.src, strerr(ret));
                                     rpc_reply_result(msg.src, ret);
                                     break;
@@ -211,7 +214,7 @@ main(void) {
                                     &vpn
                                 );
                                 if (is_err(ret)) {
-                                    pr_warn("pm: s_vm_map_mmio failed for tid %ld: %s",
+                                    pr_warn("pm: s_vm_map_mmio failed for pid %ld: %s",
                                         msg.src, strerr(ret));
                                     rpc_reply_result(msg.src, ret);
                                     break;
@@ -243,14 +246,25 @@ main(void) {
                         if (inode == NULL) {
                             pr_warn("pm: bfs_lookup failed for spawn cmd '%s' from %ld",
                                 msg.pm.proc_spawn.path, msg.src);
-                            rpc_reply_result(msg.src, -ERR_NOENT);
+                            rpc_reply_result(msg.src, -ERR_NOT_FOUND);
                             break;
                         }
                         const u8* elf = bfs_read_inplace(inode);
+
+                        struct name_space* ns = NULL;
+                        if (msg.pm.proc_spawn.inherit_ns) {
+                            struct process_t* spawner = NULL;
+                            unwrap_err(s_proc_get(msg.src, &spawner));
+                            ns = spawner->ns;
+                        } else {
+                            ns = s_ns_new();
+                        }
+
                         ret = s_proc_spawn(
                             msg.pm.proc_spawn.path,
                             elf,
                             (const cmdline_t*)&cmdline,
+                            ns,
                             &pid
                         );
                         if (is_err(ret)) {
@@ -262,7 +276,7 @@ main(void) {
                         resp.pm.type = PM_PROC_SPAWN_RESP;
                         resp.pm.proc_spawn_resp.pid = pid;
                         rpc_reply(msg.src, &resp);
-                        pr_info("pm: spawned process '%s' (tid %ld) for %ld",
+                        pr_info("pm: spawned process '%s' (pid %ld) for %ld",
                             msg.pm.proc_spawn.path, pid, msg.src);
                         break;
                     }
@@ -311,11 +325,73 @@ main(void) {
                         );
                         if (is_err(ret)) {
                             pr_warn("pm: s_proc_unwatch failed for pid %ld by %ld: %s",
-                                msg.pm.proc_watch.pid,
+                                msg.pm.proc_unwatch.pid,
                                 msg.src,
                                 strerr(ret));
                         }
                         rpc_reply_result(msg.src, ret);
+                        break;
+                    }
+                    case PM_NS_MOUNT: {
+                        struct process_t* proc = NULL;
+                        unwrap_err(s_proc_get(msg.src, &proc));
+                        ret = s_ns_mount(
+                            proc->ns,
+                            msg.pm.mount.path,
+                            msg.pm.mount.owner
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: s_ns_mount failed for path '%s' by %ld: %s",
+                                msg.pm.mount.path,
+                                msg.src,
+                                strerr(ret));
+                        }
+                        rpc_reply_result(msg.src, ret);
+                        break;
+                    }
+                    case PM_NS_UMOUNT: {
+                        struct process_t* proc = NULL;
+                        unwrap_err(s_proc_get(msg.src, &proc));
+                        ret = s_ns_umount(
+                            proc->ns,
+                            msg.pm.umount.path
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: s_ns_umount failed for path '%s' by %ld: %s",
+                                msg.pm.umount.path,
+                                msg.src,
+                                strerr(ret));
+                        }
+                        rpc_reply_result(msg.src, ret);
+                        break;
+                    }
+                    case PM_NS_RESOLVE: {
+                        struct process_t* proc = NULL;
+                        unwrap_err(s_proc_get(msg.src, &proc));
+                        tid_t owner;
+                        char rpath[PATH_MAX_LEN];
+                        ret = s_ns_resolve(
+                            proc->ns,
+                            msg.pm.resolve.path,
+                            &owner,
+                            rpath
+                        );
+                        if (is_err(ret)) {
+                            pr_warn("pm: s_ns_resolve failed for path '%s' by %ld: %s",
+                                msg.pm.resolve.path,
+                                msg.src,
+                                strerr(ret));
+                            rpc_reply_result(msg.src, ret);
+                            break;
+                        }
+                        resp.pm.type = PM_NS_RESOLVE_RESP;
+                        resp.pm.resolve_resp.owner = owner;
+                        strncpy(
+                            resp.pm.resolve_resp.rpath,
+                            rpath,
+                            PATH_MAX_LEN
+                        );
+                        rpc_reply(msg.src, &resp);
                         break;
                     }
                     default: {

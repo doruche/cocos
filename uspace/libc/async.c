@@ -61,14 +61,14 @@ async_flush(tid_t send_to) {
         list_remove(&amsg->node);
         free(amsg);
         already_sent = true;
-        pr_info("async_flush: sent async message to %ld\n", send_to);
+        pr_info("async_flush: sent async message to %ld", send_to);
     }
 
     if (is_err(ret)) {
-        pr_warn("async_flush: failed to send async message: %s\n", strerr(ret));
+        pr_warn("async_flush: failed to send async message: %s", strerr(ret));
     }
     if (!already_sent) {
-        rpc_reply_result(send_to, -ERR_NOENT);
+        rpc_reply_result(send_to, -ERR_NOT_FOUND);
     }
     return ret;
 }

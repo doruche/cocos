@@ -31,6 +31,8 @@
 #define FILE_NAME_MAX_LEN 8
 #define FS_TYPE_MAX_LEN 16
 
+#define PER_PROC_OFILES_MAX 16
+
 /*
  * although our kernel supports infinite tasks on theory,
  * we limit the max number of tasks in user space for simplicity.
@@ -43,7 +45,7 @@
 #define MAX_FDS_PER_PROC 32
 
 #define INIT_SERVERS \
-    { "uart16550", "ns", "random", "idle", NULL }
+    { "uart16550", "random", "idle", NULL }
 
 #define INIT_APPS \
     { "shell", NULL }

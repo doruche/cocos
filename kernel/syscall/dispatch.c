@@ -55,11 +55,11 @@ syscall_dispatch(
 ) {
     if (syscall_no >= array_size(syscall_table)) {
         pr_warn("syscall_dispatch: invalid syscall no=%ld", syscall_no);
-        return -ERR_NOENT;
+        return -ERR_NOT_FOUND;
     }
     if (syscall_table[syscall_no] == NULL) {
         pr_warn("syscall_dispatch: unimplemented syscall no=%ld", syscall_no);
-        return -ERR_NOENT;
+        return -ERR_NOT_FOUND;
     }
     
     pr_trace("syscall_dispatch: syscall %s(%ld) called",

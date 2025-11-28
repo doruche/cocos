@@ -18,6 +18,7 @@ main(usize argc, char* argv[]) {
     result_t ret = proc_spawn(
         argv[1],
         (const char**)&argv[1],
+        false,
         &pid
     );
     if (is_err(ret)) {

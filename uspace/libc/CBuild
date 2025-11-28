@@ -6,4 +6,5 @@ obj-y := \
 	crt0.o \
 	mm.o \
 	ipc.o \
-	async.o
+	async.o \
+	fd.o

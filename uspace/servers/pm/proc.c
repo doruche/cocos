@@ -1,5 +1,6 @@
-#include "task.h"
-#include "tns.h"
+#include "proc.h"
+#include "pns.h"
+#include "ns.h"
 #include <libs/prelude.h>
 #include <libs/elf.h>
 #include <libs/iter.h>
@@ -40,14 +41,14 @@ proc_alloc(struct process_t** out_proc) {
 }
 
 result_t
-s_proc_get(pid_t pid, struct process_t** out_proc) {
+s_proc_get(tid_t pid, struct process_t** out_proc) {
     for (usize i = 0; i < array_size(processes); i++) {
         if (processes[i].pid == pid && processes[i].in_use) {
             *out_proc = &processes[i];
             return OK;
         }
     }
-    return -ERR_NOENT;
+    return -ERR_NOT_FOUND;
 }
 
 static void
@@ -63,7 +64,7 @@ proc_free(struct process_t* proc) {
 } 
 
 result_t
-s_proc_exit(pid_t pid, result_t exit_code) {
+s_proc_exit(tid_t pid, result_t exit_code) {
     struct process_t* proc = NULL;
     unwrap_err(s_proc_get(pid, &proc));
 
@@ -87,7 +88,8 @@ s_proc_exit(pid_t pid, result_t exit_code) {
         list_remove(&pw->node);
         free(pw);
     }
-    tn_cleanup(pid);
+    pn_cleanup(pid);
+    s_ns_unbind(proc);
 
     proc_free(proc);
     unwrap_err(sys_task_destroy(pid));
@@ -95,7 +97,7 @@ s_proc_exit(pid_t pid, result_t exit_code) {
 }
 
 result_t
-s_proc_kill(pid_t pid) {
+s_proc_kill(tid_t pid) {
     struct process_t* proc = NULL;
     result_t ret = s_proc_get(pid, &proc);
     if (is_err(ret)) {
@@ -128,7 +130,8 @@ s_proc_kill(pid_t pid) {
         free(pw);
     }
     unwrap_err(sys_task_destroy(pid));
-    tn_cleanup(pid);
+    pn_cleanup(pid);
+    s_ns_unbind(proc);
     proc_free(proc);
     return OK;
 }
@@ -204,7 +207,8 @@ s_proc_spawn(
     const char* path,
     const u8* elf,
     const cmdline_t* cmdline,
-    pid_t* out_pid
+    struct name_space* ns,
+    tid_t* out_pid
 ) {
     struct process_t* proc = NULL;
     result_t ret = proc_alloc(&proc);
@@ -220,20 +224,20 @@ s_proc_spawn(
     }
 
     uaddr_t sp = proc_setup_stack(cmdline);
-    pid_t pid = sys_task_spawn(
+    tid_t tid = sys_task_spawn(
         path,
         elf_hdr->e_entry,
         sp,
         ASID_NEW
     );
-    if (is_err(pid)) {
+    if (is_err(tid)) {
         pr_warn("s_proc_spawn: sys_task_spawn failed: %s",
-            strerr(pid));
-        ret = pid;
+            strerr(tid));
+        ret = tid;
         goto err;
     }
 
-    asid_t asid = unwrap_err(sys_as_get(pid));
+    asid_t asid = unwrap_err(sys_as_get(tid));
     for (usize i = 0; i < elf_hdr->e_phnum; i++) {
         elf_phdr_t* phdr = (elf_phdr_t*)(elf + 
             elf_hdr->e_phoff + i * sizeof(elf_phdr_t));
@@ -296,16 +300,18 @@ s_proc_spawn(
         VM_READ | VM_WRITE | VM_FAKE
     ));
 
-    proc->pid = pid;
+    proc->pid = tid;
     strncpy(proc->path, path, PATH_MAX_LEN);
     proc->path[PATH_MAX_LEN - 1] = '\0';   
     proc->asid = asid;
     proc->brk++;
     
-    unwrap_err(sys_task_resume(pid));
-    *out_pid = pid;
+    s_ns_bind(ns, proc);
+
+    unwrap_err(sys_task_resume(tid));
+    *out_pid = tid;
     pr_info("s_proc_spawn: spawned process '%s' (pid %ld)",
-        path, pid);
+        path, tid);
     return OK;
 
 err:
@@ -316,7 +322,7 @@ err:
 }
 
 result_t
-s_proc_watch(pid_t watcher, pid_t target) {
+s_proc_watch(tid_t watcher, tid_t target) {
     struct process_t* proc = NULL;
     result_t ret = s_proc_get(target, &proc);
     if (is_err(ret)) {
@@ -336,7 +342,7 @@ s_proc_watch(pid_t watcher, pid_t target) {
 }
 
 result_t
-s_proc_unwatch(pid_t watcher, pid_t target) {
+s_proc_unwatch(tid_t watcher, tid_t target) {
     struct process_t* proc = NULL;
     result_t ret = s_proc_get(target, &proc);
     if (is_err(ret)) {
@@ -354,12 +360,12 @@ s_proc_unwatch(pid_t watcher, pid_t target) {
             return OK;
         }
     }
-    return -ERR_NOENT;
+    return -ERR_NOT_FOUND;
 }
 
 result_t
 s_vm_map_anon(
-    pid_t pid,
+    tid_t pid,
     usize npages,
     vpn_t* out
 ) {
@@ -389,7 +395,7 @@ s_vm_map_anon(
 
 result_t
 s_vm_map_mmio(
-    pid_t pid,
+    tid_t pid,
     ppn_t ppn,
     usize npages,
     vpn_t* out
@@ -420,7 +426,7 @@ s_vm_map_mmio(
 
 result_t
 s_vm_unmap(
-    pid_t pid,
+    tid_t pid,
     vpn_t vpn,
     usize npages
 ) {
