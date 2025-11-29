@@ -172,6 +172,10 @@ s_ns_resolve(
     if (is_err(pn_lookup(target->owner, &tmp))) {
         return -ERR_NOT_FOUND;
     }
+    // pr_info("s_ns_resolve: resolved path %s to owner %s, rpath %s",
+    //     path,
+    //     target->owner,
+    //     path + max_matched);
     if (out_owner != NULL) {
         *out_owner = tmp;
     }

@@ -58,7 +58,11 @@ open(const char* path, u64 flags, u64* out) {
         return ret;
     }
     handle_t fs_handle;
-    ret = fs_get(owner, rpath, &fs_handle);
+    if (flags & O_CREATE) {
+        ret = fs_create(owner, rpath, flags & S_IFMT, &fs_handle);
+    } else {
+        ret = fs_get(owner, rpath, &fs_handle);
+    }
     if (is_err(ret)) {
         return ret;
     }
@@ -70,7 +74,7 @@ open(const char* path, u64 flags, u64* out) {
     fd->fs = owner;
     fd->fs_handle = fs_handle;
     fd->offset = 0;
-    fd->flags = flags;
+    fd->flags = flags & (O_RDONLY | O_WRONLY | O_RDWR);
     *out = fd->id;
     return OK;
 }
@@ -109,13 +113,40 @@ read(u64 fd, void* buffer, u64 size, usize* bytes_read) {
         size,
         fdesc->offset,
         &tmp
-    );
+    );    
     if (is_err(ret)) {
         return ret;
     }
     fdesc->offset += tmp;
     if (bytes_read != NULL) {
         *bytes_read = tmp;
+    }
+    return OK;
+}
+
+result_t
+readdir(u64 fd, struct dirent_t* out, usize* next_offset) {
+    if (fd >= PER_PROC_OFILES_MAX) {
+        return -ERR_INVAL;
+    }
+    if (!open_fds[fd].in_use) {
+        return -ERR_INVAL;
+    }
+    fd_t* fdesc = &open_fds[fd];
+    usize tmp_next_offset = 0;
+    result_t ret = fs_readdir(
+        fdesc->fs,
+        fdesc->fs_handle,
+        fdesc->offset,
+        out,
+        &tmp_next_offset
+    );
+    if (is_err(ret)) {
+        return ret;
+    }
+    fdesc->offset = tmp_next_offset;
+    if (next_offset != NULL) {
+        *next_offset = tmp_next_offset;
     }
     return OK;
 }

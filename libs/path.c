@@ -135,3 +135,26 @@ path_canonicalize(char* path, char* buf) {
 
     buf[dst] = '\0';
 }
+
+void
+path_dupparent(const char *path, char *buf) {
+    path_canonicalize((char*)path, buf);
+    if (buf[0] == '/' && buf[1] == '\0') {
+        // root dir has no parent
+        return;
+    }
+    usize n = strlen(buf);
+    /* skip last component */
+    while (buf[n - 1] != '/' && n > 1) {
+        n--;
+    }
+    
+    if (n == 1) {
+        // parent is root
+        buf[0] = '/';
+        buf[1] = '\0';
+        return;
+    }
+    /* else, skip redundant slashes */
+    buf[n - 1] = '\0';
+}

@@ -11,7 +11,11 @@ export APPS := \
 	mount \
 	umount \
 	stat \
+	touch \
+	mkdir \
 	cat \
+	write \
+	ls \
 	mkfs.vsfs \
 	stackof
 export SERVERS := \

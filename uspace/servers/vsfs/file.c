@@ -6,29 +6,29 @@ extern struct vsfs_super vsfs_super;
 result_t
 vsfs_read(u16 ino, void *buf, usize size, usize offset, usize *bytes_read) {
     struct vsfs_inode inode;
-    unwrap_err(vsfs_read_inode(ino, &inode));
+    result_t ret = vsfs_read_inode(ino, &inode);
+    if (is_err(ret)) {
+        return ret;
+    }
 
     if (offset >= inode.size) {
         *bytes_read = 0;
-        return -ERR_OUT_OF_BOUNDS;
+        return OK;
     }
 
-    usize read_size = size;
-    if (offset + read_size > inode.size) {
-        read_size = inode.size - offset;
-    }
+    usize to_read = min(size, (usize)(inode.size - offset));
 
     usize total_read = 0;
     u8 *out_buf = (u8 *)buf;
 
-    while (total_read < read_size) {
+    while (total_read < to_read) {
         usize blk_idx = (offset + total_read) / vsfs_super.blocksz;
         usize blk_off = (offset + total_read) % vsfs_super.blocksz;
-        usize to_read = min(read_size - total_read, vsfs_super.blocksz - blk_off);
+        to_read = min(to_read - total_read, vsfs_super.blocksz - blk_off);
 
-        u16 phy_blk = VSFS_INO_TO_BLKNO(ino) + 1 + blk_idx;
+        u16 blkno = VSFS_INO_TO_BLKNO(ino) + 1 + blk_idx;
         struct vsfs_bufhdr *bh;
-        unwrap_err(vsfs_bio_get(phy_blk, &bh));
+        unwrap_err(vsfs_bio_get(blkno, &bh));
 
         memcpy(out_buf + total_read, bh->data + blk_off, to_read);
         total_read += to_read;
@@ -41,10 +41,12 @@ vsfs_read(u16 ino, void *buf, usize size, usize offset, usize *bytes_read) {
 result_t
 vsfs_write(u16 ino, const void *buf, usize size, usize offset, usize *bytes_written) {
     struct vsfs_inode inode;
-    unwrap_err(vsfs_read_inode(ino, &inode));
+    result_t ret = vsfs_read_inode(ino, &inode);
+    if (is_err(ret)) {
+        return ret;
+    }
 
     usize total_written = 0;
-    const u8 *in_buf = (const u8 *)buf;
 
     while (total_written < size) {
         usize blk_idx = (offset + total_written) / vsfs_super.blocksz;
@@ -55,11 +57,11 @@ vsfs_write(u16 ino, const void *buf, usize size, usize offset, usize *bytes_writ
             return -ERR_NOSPC;
         }
 
-        u16 phy_blk = VSFS_INO_TO_BLKNO(ino) + 1 + blk_idx;
+        u16 blkno = VSFS_INO_TO_BLKNO(ino) + 1 + blk_idx;
         struct vsfs_bufhdr *bh = NULL;
-        unwrap_err(vsfs_bio_get(phy_blk, &bh));
+        unwrap_err(vsfs_bio_get(blkno, &bh));
 
-        memcpy(bh->data + blk_off, in_buf + total_written, to_write);
+        memcpy(bh->data + blk_off, buf + total_written, to_write);
         bh->dirty = true;
         total_written += to_write;
     }
@@ -72,4 +74,3 @@ vsfs_write(u16 ino, const void *buf, usize size, usize offset, usize *bytes_writ
     *bytes_written = total_written;
     return OK;
 }
-

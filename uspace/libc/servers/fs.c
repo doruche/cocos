@@ -17,6 +17,26 @@ fs_get(tid_t fs, const char* path, handle_t* out) {
 }
 
 result_t
+fs_create(
+    tid_t fs,
+    const char* path,
+    u32 mode,
+    handle_t* out
+) {
+    msg_t msg = {0};
+    msg.type = MSG_FS;
+    msg.fs.type = FS_CREATE;
+    strncpy(msg.fs.create.path, path, PATH_MAX_LEN);
+    msg.fs.create.mode = mode;
+    result_t ret = rpc_call(fs, &msg);
+    if (is_err(ret)) {
+        return ret;
+    }
+    *out = msg.fs.create_resp.handle;
+    return OK;
+}
+
+result_t
 fs_read(
     tid_t fs,
     handle_t handle,
@@ -36,7 +56,7 @@ fs_read(
         return ret;
     }
     usize to_copy = min(size, msg.fs.read_resp.size);
-    strncpy((char*)buffer, (char*)msg.fs.read_resp.data, to_copy);
+    memcpy(buffer, msg.fs.read_resp.data, to_copy);
     if (bytes_read != NULL) {
         *bytes_read = to_copy;
     }
@@ -59,7 +79,7 @@ fs_write(
     msg.fs.write.size = size;
     msg.fs.write.offset = offset;
     usize to_copy = min(size, FS_MAX_IO_SIZE);
-    strncpy((char*)msg.fs.write.data, (const char*)buffer, to_copy);
+    memcpy(msg.fs.write.data, buffer, to_copy);
     result_t ret = rpc_call(fs, &msg);
     if (is_err(ret)) {
         return ret;
@@ -148,4 +168,14 @@ fs_fstat(tid_t fs, handle_t handle, stat_t* out) {
     }
     *out = msg.fs.stat_resp.stat;
     return OK;
+}
+
+result_t
+fs_sync(tid_t fs, bool umount) {
+    msg_t msg = {0};
+    msg.type = MSG_FS;
+    msg.fs.type = FS_SYNC;
+    msg.fs.sync.umount = umount;
+    result_t ret = rpc_call(fs, &msg);
+    return ret;
 }

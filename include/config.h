@@ -24,8 +24,7 @@
 
 #define NUM_CMD_ARGS_MAX 8
 
-/* 64KB heap */
-#define USER_HEAP_SIZE (1024 * 64)
+#define USER_HEAP_SIZE (1024 * 256)
 
 #define PATH_MAX_LEN 64
 #define FILE_NAME_MAX_LEN 8

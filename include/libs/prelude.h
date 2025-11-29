@@ -261,13 +261,13 @@ isize   snprintf(char *buf, usize size, const char *fmt, ...);
 static inline const char*
 strfiletype(u64 mode) {
     if (S_ISREG(mode)) {
-        return "regular file";
+        return "regular";
     } else if (S_ISDIR(mode)) {
         return "directory";
     } else if (S_ISBLK(mode)) {
-        return "block device";
+        return "block";
     } else if (S_ISCHR(mode)) {
-        return "character device";
+        return "character";
     } else {
         return "unknown";
     }
@@ -275,6 +275,7 @@ strfiletype(u64 mode) {
 
 typedef struct dirent_t {
     char name[PATH_MAX_LEN];   
+    u64 ino;
     u64 mode;
 } dirent_t;
 
@@ -287,6 +288,8 @@ typedef struct stat_t {
     tid_t dev; /* dev server */
     u64 ino;
 } stat_t;
+
+#define INO_INVALID ((u64)-1)
 
 static inline void
 stat_init(stat_t* stat) {

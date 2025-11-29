@@ -1,5 +1,5 @@
 #include <libs/prelude.h>
-#include <uspace/servers/pm.h>
+#include <uspace/ipc.h>
 
 result_t
 main(usize argc, char* argv[]) {
@@ -9,7 +9,16 @@ main(usize argc, char* argv[]) {
     }
 
     const char* path = argv[1];
-    result_t ret = ns_umount(path);
+
+    tid_t owner;
+    result_t ret = ns_resolve(path, &owner, NULL);
+    if (is_err(ret)) {
+        printf("umount: failed to resolve %s: %s\n", path, strerr(ret));
+        return ret;
+    }
+    fs_sync(owner, true);    
+
+    ret = ns_umount(path);
     if (is_err(ret)) {
         printf("umount: failed to umount %s: %s\n", path, strerr(ret));
         return ret;

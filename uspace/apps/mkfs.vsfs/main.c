@@ -14,11 +14,11 @@ struct vsfs_inode {
     bool in_use;
     u16 size;
     u16 nlinks;
-    u32 mode;
-    /* data blocks... */
+    u16 mode;
 };
 struct vsfs_dirent {
-    char name[30];
+    char name[28];
+    u16 mode;
     u16 ino;
 };
 
@@ -41,7 +41,7 @@ main(usize argc, char* argv[]) {
         .magic = VSFS_MAGIC,
         .blocksz = st.blksize,
         .nblocks = st.blocks,
-        .ninodes = (st.blocks - 1) / 8, /* minus 1 for superblock */
+        .ninodes = (st.blocks - 1) / 4, /* minus 1 for superblock */
     };
     pr_info("mkfs.vsfs: creating vsfs on %s with %d inodes, %d blocks, block size %d",
         dev, super.ninodes, super.nblocks, super.blocksz);
@@ -75,9 +75,11 @@ main(usize argc, char* argv[]) {
     assert_eq(bytes_written, st.blksize);
     /* write . and .. entries */
     struct vsfs_dirent entries[] = {
-        { .name = ".", .ino = 0 },
-        { .name = "..", .ino = 0 }
+        { .ino = 0, .mode = S_IFDIR },
+        { .ino = 0, .mode = S_IFDIR }
     };
+    strncpy(entries[0].name, ".", sizeof(entries[0].name));
+    strncpy(entries[1].name, "..", sizeof(entries[1].name));
     memset(buf, 0, st.blksize);
     memcpy(buf, entries, sizeof(entries));
     unwrap_err(lseek(fd, super.blocksz * 2, SEEK_SET));
@@ -89,23 +91,24 @@ main(usize argc, char* argv[]) {
     ));
     assert_eq(bytes_written, st.blksize);
 
-
-    /* test write */
-    memset(buf, 0, st.blksize);
-    unwrap_err(lseek(fd, 0, SEEK_SET));
+    /* read back inode for testing */
+    struct vsfs_inode test;
+    unwrap_err(lseek(fd, super.blocksz, SEEK_SET));
+    usize bytes_read = 0;
     unwrap_err(read(
         fd,
         buf,
         st.blksize,
-        &bytes_written
+        &bytes_read
     ));
-    assert_eq(bytes_written, st.blksize);
-    struct vsfs_super* dsuper = (struct vsfs_super*)buf;
-    assert_eq(dsuper->magic, VSFS_MAGIC);
-    assert_eq(dsuper->blocksz, st.blksize);
-    assert_eq(dsuper->nblocks, st.blocks);
-    assert_eq(dsuper->ninodes, (st.blocks - 1) / 8);
+    assert_eq(bytes_read, st.blksize);
+    memcpy(&test, buf, sizeof(test));
+    assert_eq(test.in_use, true);
+    assert_eq(test.size, 2 * sizeof(struct vsfs_dirent));
+    assert_eq(test.nlinks, 2);
+    assert_eq(test.mode, S_IFDIR);
 
     unwrap_err(close(fd));
+    
     return OK;
 }

@@ -60,7 +60,7 @@ main(usize argc, char **argv) {
     }
 
     unwrap_err(pns_publish(dev_name));
-    pr_info("ramdisk %s started: %ld blocks, block size %ld bytes\n",
+    pr_info("ramdisk %s started: %ld blocks, block size %ld bytes",
         dev_name, nblock, block_size);
 
     loop {

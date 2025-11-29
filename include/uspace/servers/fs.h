@@ -13,6 +13,8 @@
 typedef enum {
     FS_GET,
     FS_GET_RESP,
+    FS_CREATE,
+    FS_CREATE_RESP,
     FS_READ,
     FS_READ_RESP,
     FS_WRITE,
@@ -28,6 +30,7 @@ typedef enum {
     FS_FSTAT,
     FS_STAT_RESP,
 
+    FS_SYNC,
     /* FS_IOCTL */
 } fs_msg_type_t;
 
@@ -40,6 +43,13 @@ typedef struct {
         struct {
             handle_t handle;
         } get_resp;
+        struct {
+            char path[PATH_MAX_LEN];
+            u32 mode;
+        } create;
+        struct {
+            handle_t handle;
+        } create_resp;
         struct {
             handle_t handle;
             u64 size;
@@ -86,12 +96,21 @@ typedef struct {
         struct {
             stat_t stat;
         } stat_resp;
+        struct {
+            bool umount;
+        } sync;
     };
 } fs_msg_t;
 
 result_t fs_get(
     tid_t fs,
-    const char* path, 
+    const char* path,
+    handle_t* out
+);
+result_t fs_create(
+    tid_t fs,
+    const char* path,
+    u32 mode,
     handle_t* out
 );
 result_t fs_read(
@@ -122,3 +141,4 @@ result_t fs_readdir(
 result_t fs_rmdir(tid_t fs, const char* path);
 result_t fs_stat(tid_t fs, const char* path, stat_t* out);
 result_t fs_fstat(tid_t fs, handle_t handle, stat_t* out);
+result_t fs_sync(tid_t fs, bool umount);

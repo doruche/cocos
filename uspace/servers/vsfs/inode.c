@@ -25,6 +25,7 @@ vsfs_free_inode(u16 ino) {
     struct vsfs_bufhdr* bh;
     unwrap_err(vsfs_bio_get(VSFS_INO_TO_BLKNO(ino), &bh));
     struct vsfs_inode* inode = (struct vsfs_inode*)bh->data;
+    assert(inode->in_use);
     inode->in_use = false;
     bh->dirty = true;
     return OK;
@@ -35,6 +36,9 @@ vsfs_read_inode(u16 ino, struct vsfs_inode *out) {
     struct vsfs_bufhdr* bh;
     unwrap_err(vsfs_bio_get(VSFS_INO_TO_BLKNO(ino), &bh));
     struct vsfs_inode* inode = (struct vsfs_inode*)bh->data;
+    if (!inode->in_use) {
+        return -ERR_NOT_FOUND;
+    }
     memcpy(out, inode, sizeof(struct vsfs_inode));
     return OK;
 }
@@ -44,6 +48,9 @@ vsfs_write_inode(u16 ino, const struct vsfs_inode *inode) {
     struct vsfs_bufhdr* bh;
     unwrap_err(vsfs_bio_get(VSFS_INO_TO_BLKNO(ino), &bh));
     struct vsfs_inode* dinode = (struct vsfs_inode*)bh->data;
+    if (!dinode->in_use) {
+        return -ERR_NOT_FOUND;
+    }
     memcpy(dinode, inode, sizeof(struct vsfs_inode));
     bh->dirty = true;
     return OK;

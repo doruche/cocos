@@ -21,6 +21,9 @@ vsfs_mount(void) {
     vsfs_super.nblocks = st.size / st.blksize;
     vsfs_super.blocksz = (u16)st.blksize;
 
+    /*
+     * now we'v got enough info to set up bio layer(block size, etc). 
+     */
     vsfs_bio_init();
 
     struct vsfs_bufhdr* bh;

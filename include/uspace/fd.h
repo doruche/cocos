@@ -24,6 +24,7 @@ result_t chdir(const char* path);
 result_t open(const char* path, u64 flags, u64* out);
 result_t close(u64 fd);
 result_t read(u64 fd, void* buffer, u64 size, usize* bytes_read);
+result_t readdir(u64 fd, struct dirent_t* out, usize* next_offset);
 result_t write(u64 fd, const void* buffer, u64 size, usize* bytes_written);
 result_t lseek(u64 fd, isize offset, seek_whence_t whence);
 result_t stat(const char* path, stat_t* out);
