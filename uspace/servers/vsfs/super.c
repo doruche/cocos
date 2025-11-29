@@ -24,12 +24,13 @@ vsfs_mount(void) {
     vsfs_bio_init();
 
     struct vsfs_bufhdr* bh;
-    ret = vsfs_bio_read(0, &bh);
+    ret = vsfs_bio_get(0, &bh);
     if (is_err(ret)) {
         goto done;
     }
     struct vsfs_super* dsuper = (struct vsfs_super*)bh->data;
     if (dsuper->magic != VSFS_MAGIC) {
+        ret = -ERR_FMT;
         printf("vsfs_mount: invalid magic: 0x%x\n", dsuper->magic);
         goto done;
     }
@@ -43,34 +44,6 @@ done:
         unwrap_err(close(fd));
     }
     return ret;
-}
-
-result_t
-vsfs_alloc_inode(u16 *out) {
-    for (u16 ino = 0; ino < vsfs_super.ninodes; ino++) {
-        struct vsfs_bufhdr* bh;
-        unwrap_err(vsfs_bio_read(VSFS_INO_TO_BLKNO(ino), &bh));
-        struct vsfs_inode* inode = (struct vsfs_inode*)bh->data;
-        if (!inode->in_use) {
-            inode->in_use = true;
-            inode->size = 0;
-            memset(inode->blocks, 0, sizeof(inode->blocks));
-            bh->dirty = true;
-            *out = ino;
-            return OK;
-        }
-    }
-    return -ERR_NOSPC;
-}
-
-result_t
-vsfs_free_inode(u16 ino) {
-    struct vsfs_bufhdr* bh;
-    unwrap_err(vsfs_bio_read(VSFS_INO_TO_BLKNO(ino), &bh));
-    struct vsfs_inode* inode = (struct vsfs_inode*)bh->data;
-    inode->in_use = false;
-    bh->dirty = true;
-    return OK;
 }
 
 result_t

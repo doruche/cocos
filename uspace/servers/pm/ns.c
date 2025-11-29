@@ -83,8 +83,6 @@ s_ns_unbind(struct process_t* proc) {
 
 static usize
 mountp_match(const char* path, const char* mountp) {
-    pr_info("mountp_match: matching path %s with mount point %s",
-        path, mountp);
     usize len = strlen(mountp);
     if (len == 1 && mountp[0] == '/') {
         return 1; /* root mount point matches everything */

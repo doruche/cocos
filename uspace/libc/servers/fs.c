@@ -37,7 +37,9 @@ fs_read(
     }
     usize to_copy = min(size, msg.fs.read_resp.size);
     strncpy((char*)buffer, (char*)msg.fs.read_resp.data, to_copy);
-    *bytes_read = to_copy;
+    if (bytes_read != NULL) {
+        *bytes_read = to_copy;
+    }
     return OK;
 }
 
@@ -62,7 +64,9 @@ fs_write(
     if (is_err(ret)) {
         return ret;
     }
-    *bytes_written = to_copy;
+    if (bytes_written != NULL) {
+        *bytes_written = msg.fs.write_resp.size;
+    }
     return OK;
 }
 

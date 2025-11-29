@@ -20,7 +20,6 @@ about_message(void) {
 
 result_t
 main(void) {
-    console_init();
     about_message();
     
     char buf[SERIAL_BUF_MAX_LEN] = {0};

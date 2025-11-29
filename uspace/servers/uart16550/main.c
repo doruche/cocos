@@ -2,6 +2,7 @@
 #include <libs/prelude.h>
 #include <uspace/syscall.h>
 #include <uspace/ipc.h>
+#include <uspace/task.h>
 
 /*
  * currenly, this driver also serves as a simple tty driver.
@@ -10,6 +11,8 @@
  * those are weird, as they almost only work on my local terminal.
  * i'll improve it later.
  */
+
+#define UART_HANDLE 42
 
 static vaddr_t uart_base;
 
@@ -72,15 +75,17 @@ static usize rd_buf_idx = 0;
 static usize rd_req_len = 0;
 static tid_t rd_req_tid = TID_INVALID;
 static bool is_rd_waiting = false;
+static bool is_eof_received = false;
 
 static result_t
 uart_serial_read_register(tid_t tid, usize len) {
     if (is_rd_waiting) {
         return -ERR_DEV_BUSY;
     }
-    if (len > SERIAL_BUF_MAX_LEN) {
-        return -ERR_INVAL;
-    }
+    len = min(len, SERIAL_BUF_MAX_LEN);
+    // if (len > SERIAL_BUF_MAX_LEN) {
+    //     return -ERR_INVAL;
+    // }
     is_rd_waiting = true;
     rd_buf_idx = 0;
     rd_req_len = len;
@@ -103,23 +108,30 @@ uart_serial_read(void) {
                 uart_serial_write((const u8*)bs_seq, sizeof(bs_seq));
             }
         } else {
+            msg_t resp = {0};
             if (byte == '\r') {
                 /* convert carriage return to newline */
                 byte = '\n';
             }
-            rd_buf[rd_buf_idx++] = byte;  
-            uart_serial_write(&byte, 1); /* echo back */
+            if (byte == 4) { /* EOT */
+                is_eof_received = true;
+            } else {
+                rd_buf[rd_buf_idx++] = byte;
+                uart_serial_write(&byte, 1); /* echo back */
+            }
+
             bool rd_ready = 
                 (rd_buf_idx == rd_req_len) ||
-                (byte == '\n');
+                (byte == '\n') ||
+                is_eof_received;
+
             if (rd_ready) {
                 /* fulfill read request */
-                msg_t resp = {0};
-                resp.type = MSG_SERIAL;
-                resp.serial.type = SERIAL_READ_RESP;
-                resp.serial.read_resp.len = rd_buf_idx;
+                resp.type = MSG_FS;
+                resp.fs.type = FS_READ_RESP;
+                resp.fs.read_resp.size = rd_buf_idx;
                 memcpy(
-                    resp.serial.read_resp.buf,
+                    resp.fs.read_resp.data,
                     rd_buf,
                     rd_buf_idx
                 );
@@ -129,6 +141,7 @@ uart_serial_read(void) {
                 rd_buf_idx = 0;
                 rd_req_len = 0;
                 rd_req_tid = TID_INVALID;
+                is_eof_received = false;
             }
         }
     }
@@ -139,12 +152,12 @@ uart_serial_read(void) {
 result_t
 main(void) {
     unwrap_err(sys_irq_listen(UART0_IRQ));
-    unwrap_err(pns_publish("serial/uart16550"));
+    unwrap_err(pns_publish("uart16550"));
+    unwrap_err(ns_mount("/dev/serial0", "uart16550"));
 
     uart_init();
 
-    pr_info("serial/uart16550 server started.");
-
+    pr_info("uart16550 server started.");
     loop {
         msg_t msg;
         result_t ret = ipc_recv(IPC_OPEN, &msg);
@@ -153,6 +166,7 @@ main(void) {
                 strerr(ret));
             continue;
         }
+        msg_t resp = {0};
         switch (msg.type) {
             case MSG_NOTIF: {
                 if (msg.notifs & NOTIF_IRQ) {
@@ -168,49 +182,97 @@ main(void) {
                 }
                 break; 
             }
-            case MSG_SERIAL: {
-                switch (msg.serial.type) {
-                    case SERIAL_WRITE: {
-                        ret = uart_serial_write(
-                            msg.serial.write.buf,
-                            msg.serial.write.len
+            case MSG_FS: {
+                resp.type = MSG_FS;
+                switch (msg.fs.type) {
+                    case FS_GET: {
+                        if (strcmp(msg.fs.get.path, "/") != 0) {
+                            pr_warn("uart16550: fs_get invalid path %s",
+                                msg.fs.get.path);
+                            break;
+                        }
+                        resp.fs.type = FS_GET_RESP;
+                        resp.fs.get_resp.handle = UART_HANDLE;
+                        rpc_reply(msg.src, &resp);
+                        break;
+                    }
+                    case FS_READ: {
+                        if (msg.fs.read.handle != UART_HANDLE) {
+                            pr_warn("uart16550: fs_read invalid handle %ld",
+                                msg.fs.read.handle);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        /* register read */
+                        ret = uart_serial_read_register(
+                            msg.src,
+                            msg.fs.read.size
                         );
-                        pr_trace("uart16550: wrote %ld bytes from tid %ld",
-                            msg.serial.write.len,
-                            msg.src);
+                        if (is_err(ret)) {
+                            pr_warn("uart16550: serial_read_register failed: %s",
+                                strerr(ret));
+                            rpc_reply_result(msg.src, ret);
+                        }
+                        /* reply will be sent when data is available */
+                        break;
+                    }
+                    case FS_WRITE: {
+                        if (msg.fs.write.handle != UART_HANDLE) {
+                            pr_warn("uart16550: fs_write invalid handle %ld",
+                                msg.fs.write.handle);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        ret = uart_serial_write(
+                            msg.fs.write.data,
+                            msg.fs.write.size
+                        );
                         if (is_err(ret)) {
                             pr_warn("uart16550: serial_write failed: %s",
                                 strerr(ret));
                             rpc_reply_result(msg.src, ret);
                             break;
                         }
-                        msg_t resp = {0};
-                        resp.type = MSG_SERIAL;
-                        resp.serial.type = SERIAL_WRITE_RESP;
-                        resp.serial.write_resp.written_len = msg.serial.write.len;
+                        resp.fs.type = FS_WRITE_RESP;
+                        resp.fs.write_resp.size = msg.fs.write.size;
                         rpc_reply(msg.src, &resp);
                         break;
                     }
-                    case SERIAL_READ: {
-                        ret = uart_serial_read_register(
-                            msg.src,
-                            msg.serial.read.len
-                        );
-                        if (is_err(ret)) {
-                            pr_warn("uart16550: serial_read_register failed: %s",
-                            strerr(ret));
-                            rpc_reply_result(msg.src, ret);        
+                    case FS_STAT: {
+                        if (strcmp(msg.fs.stat.path, "/") != 0) {
+                            pr_warn("uart16550: fs_stat invalid path %s",
+                                msg.fs.stat.path);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
                         }
-                        /*
-                         * this just register a read request 
-                         * we'll response when data is available
-                         */
+                    }
+                    case FS_FSTAT: {
+                        if (msg.fs.type == FS_FSTAT &&
+                            msg.fs.fstat.handle != UART_HANDLE) {
+                            pr_warn("uart16550: fs_fstat invalid handle %ld",
+                                msg.fs.fstat.handle);
+                            rpc_reply_result(msg.src, -ERR_INVAL);
+                            break;
+                        }
+                        resp.fs.type = FS_STAT_RESP;
+                        stat_init(&resp.fs.stat_resp.stat);
+                        resp.fs.stat_resp.stat.mode = S_IFCHR;
+                        resp.fs.stat_resp.stat.size = 0;
+                        resp.fs.stat_resp.stat.dev = task_gettid();
+                        rpc_reply(msg.src, &resp);
                         break;
-                        
+                    }
+                    case FS_UNLINK:
+                    case FS_MKDIR:
+                    case FS_RMDIR:
+                    case FS_READDIR: {
+                        rpc_reply_result(msg.src, -ERR_NOT_SUPPORTED);
+                        break;
                     }
                     default: {
-                        pr_warn("uart16550: unknown serial msg type %ld from %ld",
-                            msg.serial.type, msg.src);
+                        pr_warn("uart16550: unknown fs msg type %ld from %ld",
+                            msg.fs.type, msg.src);
+                        rpc_reply_result(msg.src, -ERR_UNKNOWN_REQ);
                         break;
                     }
                 }
@@ -219,8 +281,12 @@ main(void) {
             default: {
                 pr_warn("uart16550: received unknown msg type %ld from %ld",
                     msg.type, msg.src);
+                rpc_reply_result(msg.src, -ERR_UNKNOWN_REQ);    
                 break;
             }
         }
     }
+
+    pr_info("uart16550 server exiting.");
+    return OK;
 }

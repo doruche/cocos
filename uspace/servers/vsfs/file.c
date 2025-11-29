@@ -10,7 +10,7 @@ vsfs_read(u16 ino, void *buf, usize size, usize offset, usize *bytes_read) {
 
     if (offset >= inode.size) {
         *bytes_read = 0;
-        return OK;
+        return -ERR_OUT_OF_BOUNDS;
     }
 
     usize read_size = size;
@@ -26,13 +26,9 @@ vsfs_read(u16 ino, void *buf, usize size, usize offset, usize *bytes_read) {
         usize blk_off = (offset + total_read) % vsfs_super.blocksz;
         usize to_read = min(read_size - total_read, vsfs_super.blocksz - blk_off);
 
-        if (blk_idx >= VSFS_BLK_PER_INODE) {
-            break; // Should not happen if size is correct
-        }
-
         u16 phy_blk = VSFS_INO_TO_BLKNO(ino) + 1 + blk_idx;
         struct vsfs_bufhdr *bh;
-        unwrap_err(vsfs_bio_read(phy_blk, &bh));
+        unwrap_err(vsfs_bio_get(phy_blk, &bh));
 
         memcpy(out_buf + total_read, bh->data + blk_off, to_read);
         total_read += to_read;
@@ -60,8 +56,8 @@ vsfs_write(u16 ino, const void *buf, usize size, usize offset, usize *bytes_writ
         }
 
         u16 phy_blk = VSFS_INO_TO_BLKNO(ino) + 1 + blk_idx;
-        struct vsfs_bufhdr *bh;
-        unwrap_err(vsfs_bio_read(phy_blk, &bh));
+        struct vsfs_bufhdr *bh = NULL;
+        unwrap_err(vsfs_bio_get(phy_blk, &bh));
 
         memcpy(bh->data + blk_off, in_buf + total_written, to_write);
         bh->dirty = true;

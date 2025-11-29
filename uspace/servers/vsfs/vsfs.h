@@ -35,7 +35,7 @@ struct vsfs_inode {
     u16 size;
     u16 nlinks;
     u32 mode;
-    u16 blocks[VSFS_BLK_PER_INODE];
+    /* data blocks... */
 };
 
 struct vsfs_dirent {
@@ -53,7 +53,7 @@ struct vsfs_bufhdr {
 };
 #define BCACHE_SIZE 4
 void vsfs_bio_init(void);
-result_t vsfs_bio_read(u16 blkno, struct vsfs_bufhdr **out);
+result_t vsfs_bio_get(u16 blkno, struct vsfs_bufhdr **out);
 result_t vsfs_bio_write(u16 blkno, const void *buf);
 result_t vsfs_bio_sync(void);
 /* super.c */
@@ -73,5 +73,6 @@ result_t vsfs_write(u16 ino, const void *buf, usize size, usize offset, usize *b
 /* dir.c */
 result_t vsfs_lookup(u16 dir_ino, const char *name, u16 *out_ino);
 result_t vsfs_create(u16 dir_ino, const char *name, u32 mode, u16 *out_ino);
-result_t vsfs_unlink(u16 dir_ino, const char *name);
+// result_t vsfs_unlink(u16 dir_ino, const char *name);
 result_t vsfs_readdir(u16 dir_ino, usize offset, struct vsfs_dirent *out);
+result_t vsfs_resolve_path(char *path, u16 *out_ino);

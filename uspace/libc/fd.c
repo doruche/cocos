@@ -97,22 +97,26 @@ read(u64 fd, void* buffer, u64 size, usize* bytes_read) {
         return -ERR_INVAL;
     }
     fd_t* fdesc = &open_fds[fd];
-    if (!(fdesc->flags & O_RDONLY) && 
-        !(fdesc->flags & O_RDWR)) {
+    if (fdesc->flags != O_RDONLY &&
+        fdesc->flags != O_RDWR) {
         return -ERR_PERM;
     }
+    usize tmp = 0;
     result_t ret = fs_read(
         fdesc->fs,
         fdesc->fs_handle,
         (u8*)buffer,
         size,
         fdesc->offset,
-        bytes_read
+        &tmp
     );
     if (is_err(ret)) {
         return ret;
     }
-    fdesc->offset += *bytes_read;
+    fdesc->offset += tmp;
+    if (bytes_read != NULL) {
+        *bytes_read = tmp;
+    }
     return OK;
 }
 
@@ -125,22 +129,26 @@ write(u64 fd, const void* buffer, u64 size, usize* bytes_written) {
         return -ERR_INVAL;
     }
     fd_t* fdesc = &open_fds[fd];
-    if (!(fdesc->flags & O_WRONLY) && 
-        !(fdesc->flags & O_RDWR)) {
+    if (fdesc->flags != O_WRONLY &&
+        fdesc->flags != O_RDWR) {
         return -ERR_PERM;
     }
+    usize tmp = 0;
     result_t ret = fs_write(
         fdesc->fs,
         fdesc->fs_handle,
         (const u8*)buffer,
         size,
         fdesc->offset,
-        bytes_written
+        &tmp
     );
     if (is_err(ret)) {
         return ret;
     }
-    fdesc->offset += *bytes_written;
+    fdesc->offset += tmp;
+    if (bytes_written != NULL) {
+        *bytes_written = tmp;
+    }
     return OK;
 }
 
@@ -162,6 +170,8 @@ lseek(u64 fd, isize offset, seek_whence_t whence) {
     switch (whence) {
         case SEEK_SET: {
             if (offset < 0 || offset >= st.size) {
+                pr_info("lseek: SEEK_SET invalid offset %ld for fd %ld with size %ld",
+                    offset, fd, st.size);
                 return -ERR_INVAL;
             }
             new_offset = (usize)offset;

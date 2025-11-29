@@ -1,30 +1,24 @@
 #include "console.h"
 #include <uspace/ipc.h>
 #include <uspace/task.h>
+#include <uspace/fd.h>
 
 static tid_t serial = TID_INVALID;
-
-void
-console_init(void) {
-    while (is_err(pns_resolve("serial/uart16550", &serial))) {
-        task_yield();        
-    }
-}
 
 result_t
 console_gets(char* buf) {
     loop {
-        usize placeholder;
-        result_t ret = serial_read(
-            serial,
-            (u8*)buf,
-            SERIAL_BUF_MAX_LEN,
-            &placeholder
-        );
-        if (ret == -ERR_DEV_BUSY) {
+        u64 fd;
+        result_t ret = open("/dev/serial0", O_RDONLY, &fd);
+        if (ret == -ERR_DEV_BUSY || ret == -ERR_NOT_FOUND) {
             task_yield();
             continue;
+        } else if (is_err(ret)) {
+            unwrap_err(close(fd));
+            return ret;
         }
+        unwrap_err(read(fd, buf, SERIAL_BUF_MAX_LEN, NULL));
+        unwrap_err(close(fd));
         break;
     }
     if (buf[SERIAL_BUF_MAX_LEN - 1] != '\0' &&

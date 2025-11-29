@@ -106,6 +106,7 @@ typedef isize result_t;
 #define ERR_UNIMPLEMENTED 17 // Not implemented
 #define ERR_OUT_OF_BOUNDS 18 // Out of bounds
 #define ERR_EXIT_UNEXPECTED 19 // Process exit unexpected
+#define ERR_FMT 20 // Format error
 #define ERR_NOT_FOUND 404 // Not found
 #define ERR_IO 0x494F // I/O error
 
@@ -157,6 +158,8 @@ strerr(isize err) {
             return "Out of bounds";
         case -ERR_EXIT_UNEXPECTED:
             return "Process exit unexpected";
+        case -ERR_FMT:
+            return "Format error";
         case -ERR_NOT_FOUND:
             return "Not found";
         case -ERR_IO:
@@ -239,10 +242,10 @@ isize   snprintf(char *buf, usize size, const char *fmt, ...);
 #define SYS_IRQ_ACK     25
 
 /* open flags */
-#define O_RDONLY    0x0000
-#define O_WRONLY    0x0001
-#define O_RDWR      0x0002
-#define O_CREATE    0x0100
+#define O_RDONLY    00000000
+#define O_WRONLY    00000001
+#define O_RDWR      00000002
+#define O_CREATE    00000100
 
 /* st_mode */
 #define S_IFMT      00170000
@@ -254,6 +257,21 @@ isize   snprintf(char *buf, usize size, const char *fmt, ...);
 #define S_ISBLK(m)   (((m) & S_IFMT) == S_IFBLK)
 #define S_ISDIR(m)   (((m) & S_IFMT) == S_IFDIR)
 #define S_ISCHR(m)   (((m) & S_IFMT) == S_IFCHR)
+
+static inline const char*
+strfiletype(u64 mode) {
+    if (S_ISREG(mode)) {
+        return "regular file";
+    } else if (S_ISDIR(mode)) {
+        return "directory";
+    } else if (S_ISBLK(mode)) {
+        return "block device";
+    } else if (S_ISCHR(mode)) {
+        return "character device";
+    } else {
+        return "unknown";
+    }
+}
 
 typedef struct dirent_t {
     char name[PATH_MAX_LEN];   

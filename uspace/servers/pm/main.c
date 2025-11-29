@@ -20,7 +20,7 @@ spawn_tasks(const char* init_tasks[]) {
                 .argc = 1,
                 .argv = { (char*)name, NULL},
             },
-            s_ns_new(),
+            s_ns_global(),
             &pid
         ));
         pr_trace("pm: spawned init task '%s' (pid %ld)",

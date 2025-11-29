@@ -86,7 +86,7 @@ main(usize argc, char **argv) {
                         resp.fs.type = FS_GET_RESP;
                         /* only one ramdisk. we do not check handle actually */
                         resp.fs.get_resp.handle = RAMDISK_HANDLE;
-                        ipc_send(msg.src, &resp);
+                        rpc_reply(msg.src, &resp);
                         break;
                     }
                     case FS_READ: {
@@ -164,6 +164,7 @@ main(usize argc, char **argv) {
                         resp.fs.stat_resp.stat.mode = S_IFBLK;
                         resp.fs.stat_resp.stat.blksize = block_size;
                         resp.fs.stat_resp.stat.blocks = nblock;
+                        resp.fs.stat_resp.stat.size = nblock * block_size;
                         resp.fs.stat_resp.stat.dev = task_gettid();
                         rpc_reply(msg.src, &resp);
                         break;

@@ -40,8 +40,8 @@ bio_evict_one(struct vsfs_bufhdr** out) {
     return OK;
 }
 
-static struct vsfs_bufhdr*
-bio_get(u16 blkno) {
+result_t
+vsfs_bio_get(u16 blkno, struct vsfs_bufhdr **out) {
     list_foreach(iter, &bcache_list) {
         struct vsfs_bufhdr* bh = 
             list_entry(iter, struct vsfs_bufhdr, node);
@@ -49,7 +49,8 @@ bio_get(u16 blkno) {
             /* cache hit */
             list_remove(&bh->node);
             list_push_back(&bcache_list, &bh->node);
-            return bh;
+            *out = bh;
+            return OK;
         }
     }
     /* must evict */
@@ -64,18 +65,14 @@ bio_get(u16 blkno) {
     unwrap_err(read(fd, bh->data, vsfs_super.blocksz, NULL));
     unwrap_err(close(fd));
 
-    return bh;
-}
-
-result_t
-vsfs_bio_read(u16 blkno, struct vsfs_bufhdr **out) {
-    *out = bio_get(blkno);
+    *out = bh;
     return OK;
 }
 
 result_t
 vsfs_bio_write(u16 blkno, const void *buf) {
-    struct vsfs_bufhdr* bh = bio_get(blkno);
+    struct vsfs_bufhdr* bh = NULL;
+    unwrap_err(vsfs_bio_get(blkno, &bh));
     memcpy(bh->data, buf, vsfs_super.blocksz);
     bh->dirty = true;
     return OK;
@@ -83,19 +80,17 @@ vsfs_bio_write(u16 blkno, const void *buf) {
 
 result_t
 vsfs_bio_sync(void) {
+    u64 fd;
+    unwrap_err(open(dev, O_WRONLY, &fd));
     list_foreach(iter, &bcache_list) {
         struct vsfs_bufhdr* bh = 
             list_entry(iter, struct vsfs_bufhdr, node);
         if (bh->dirty) {
-            u64 fd;
-            unwrap_err(open(dev, O_WRONLY, &fd));
             unwrap_err(lseek(fd, bh->blkno * vsfs_super.blocksz, SEEK_SET));
             unwrap_err(write(fd, bh->data, vsfs_super.blocksz, NULL));
-            unwrap_err(close(fd));
             bh->dirty = false;
         }
     }
+    unwrap_err(close(fd));
     return OK;
 }
-
-

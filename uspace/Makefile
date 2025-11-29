@@ -10,11 +10,15 @@ export APPS := \
 	tests \
 	mount \
 	umount \
+	stat \
+	cat \
+	mkfs.vsfs \
 	stackof
 export SERVERS := \
 	idle \
 	ramdisk \
 	echo \
+	vsfs \
 	uart16550 \
 	random
 
