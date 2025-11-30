@@ -4,7 +4,6 @@
 /* server protocol headers */
 #include <uspace/servers/pm.h>
 #include <uspace/servers/echo.h>
-#include <uspace/servers/serial.h>
 #include <uspace/servers/random.h>
 #include <uspace/servers/fs.h>
 
@@ -31,7 +30,6 @@ typedef u64 msg_type_t;
 #define MSG_ASYNC_PULL 3
 #define MSG_PM      4
 #define MSG_FS     5
-#define MSG_SERIAL  7
 #define MSG_ECHO    8
 #define MSG_RANDOM  9
 
@@ -73,7 +71,6 @@ typedef struct _msg_t {
         /* user defined */
         pm_msg_t pm;
         fs_msg_t fs;
-        serial_msg_t serial;
         echo_msg_t echo;
         random_msg_t random;
     };

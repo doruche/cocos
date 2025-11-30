@@ -8,7 +8,7 @@ main(usize argc, char* argv[]) {
         printf("usage: ls <abs_path>\n");
         return -ERR_INVAL;
     }
-    const char* path = argv[1];
+    char* path = argv[1];
     u64 fd;
     result_t ret = open(path, O_RDONLY, &fd);
     if (is_err(ret)) {

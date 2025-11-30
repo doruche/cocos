@@ -3,8 +3,6 @@
 #include <uspace/task.h>
 #include <uspace/fd.h>
 
-static tid_t serial = TID_INVALID;
-
 result_t
 console_gets(char* buf) {
     loop {

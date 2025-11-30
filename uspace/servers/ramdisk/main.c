@@ -75,7 +75,6 @@ main(usize argc, char **argv) {
         switch (msg.type) {
             case MSG_FS: {
                 switch (msg.fs.type) {
-                    resp.type = MSG_FS;
                     case FS_GET: {
                         if (strcmp(msg.fs.get.path, "/") != 0) {
                             pr_warn("ramdisk: invalid get path %s",
@@ -104,6 +103,7 @@ main(usize argc, char **argv) {
                             break;
                         }
                         usize blkno = msg.fs.read.offset / block_size;
+                        resp.type = MSG_FS;
                         resp.fs.type = FS_READ_RESP;
                         ret = ramdisk_blk_read(
                             blkno,
@@ -139,6 +139,7 @@ main(usize argc, char **argv) {
                             rpc_reply_result(msg.src, ret);
                             break;
                         }
+                        resp.type = MSG_FS;
                         resp.fs.type = FS_WRITE_RESP;
                         resp.fs.write_resp.size = block_size;
                         rpc_reply(msg.src, &resp);
@@ -159,6 +160,7 @@ main(usize argc, char **argv) {
                             rpc_reply_result(msg.src, -ERR_INVAL);
                             break;
                         }
+                        resp.type = MSG_FS;
                         resp.fs.type = FS_STAT_RESP;
                         stat_init(&resp.fs.stat_resp.stat);
                         resp.fs.stat_resp.stat.mode = S_IFBLK;
