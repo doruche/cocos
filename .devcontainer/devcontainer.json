@@ -1,0 +1,32 @@
+{
+	"name": "cocos-devcontainer",
+	"build": {
+		"context": "..",
+		"dockerfile": "../Dockerfile",
+		"target": "final",
+		"args": {
+			"QEMU_VERSION": "10.0.5",
+			"GNU_VERSION": "2026.01.09"
+		}
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {
+			"ppa": true,
+			"version": "latest"
+		}
+	},
+	"remoteUser": "1000",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"llvm-vs-code-extensions.vscode-clangd",
+				"donjayamanne.githistory",
+				"github.copilot-chat",
+				"ms-vscode.hexeditor",
+				"ms-python.python"
+			],
+			"settings": {}
+		}
+	},
+	"postCreateCommand": "echo devcontainer created"
+}

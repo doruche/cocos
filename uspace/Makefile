@@ -44,6 +44,7 @@ apps: libc $(LINKER)
 	@$(MAKE) -C $@ all
 
 $(LINKER): $(LINKER_TEMPLATE)
+	@mkdir -p $(dir $@)
 	@echo "  PP\t$(shell realpath -m --relative-to=$(BUILD_DIR) $@)"
 	@$(CC) \
 		-E \

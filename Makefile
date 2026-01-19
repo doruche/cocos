@@ -56,7 +56,7 @@ kernel: uspace
 
 $(MODULES): prepare
 	@echo "  MAKE\t$@"
-	@$(MAKE) all -C $@
+	@bear --append -- $(MAKE) all -C $@
 
 prepare: $(patsubst %,$(BUILD_DIR)/%,$(MODULES))
 
