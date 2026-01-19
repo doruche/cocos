@@ -9,12 +9,9 @@
 			"GNU_VERSION": "2026.01.09"
 		}
 	},
-	"features": {
-		"ghcr.io/devcontainers/features/git:1": {
-			"ppa": true,
-			"version": "latest"
-		}
-	},
+	// Set your user ID here.
+	// If unfortunately your uid is not 1000, then you might
+	// need to login as root first and create a user with the same uid as your host user.
 	"remoteUser": "1000",
 	"customizations": {
 		"vscode": {

@@ -33,7 +33,9 @@ RUN apt update && apt install -y \
     clang \
     clangd \
     bear \
-    libglib2.0-0 
+    libglib2.0-0 \
+    git \
+    openssh-client
 COPY --from=build_qemu /opt/qemu /opt/qemu
 COPY --from=build_gnu_riscv /build/riscv /opt/gnu-riscv
 ENV PATH="/opt/gnu-riscv/bin:/opt/qemu/bin:${PATH}"
